@@ -138,20 +138,32 @@ class PreKickoffCompleteCommand(SimpleTeamOverrideCommand):
         super().__init__('PreKickoffComplete', id, turn, team, command_type, data)
 
 
-class PlayerTurnEndedCommand(Command):
+class BlockDiceChoiceCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
         self.team = player_idx_to_type(data[0]) # Override the team
         self.player_idx = data[1]
-        self.unknown = data[2]
+        self.dice_idx = data[2]
     
     def __repr__(self):
-        return f'PlayerTurnEnded(team={self.team}, unknown={self.unknown}, data={self._data})'
+        return f'BlockDiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, data={self._data})'
 
 
 class PickupBallCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
+
+
+class PushbackCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.team = player_idx_to_type(data[0]) # Override the team
+        self.player_idx = data[1]
+        self.x = data[2]
+        self.y = data[3]
+    
+    def __repr__(self):
+        return f'Pushback(team={self.team}, pushing_player={self.player_idx}, push_destination={self.x},{self.y}, data={self._data})'
 
 
 class NetworkCommand(SimpleCommand):
@@ -179,9 +191,10 @@ MOVE_MAP = {
     10: KickoffCommand,
     14: PreKickoffCompleteCommand,
     17: EndTurnCommand,
-    19: PlayerTurnEndedCommand,
+    19: BlockDiceChoiceCommand,
     25: create_player_command,
     26: PickupBallCommand,
+    46: PushbackCommand,
     59: AbandonMatchCommand,
     69: NetworkCommand,
     94: NetworkCommand
