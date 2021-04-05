@@ -119,7 +119,7 @@ class BlockCommand(PlayerCommand):
         super().__init__(id, turn, team, command_type, data)
     
     def __repr__(self):
-        return f'BlockCommand(team={self.team}, player={self.player_idx}, sequence={self.sequence}, target={self.x},{self.y}, ' \
+        return f'Block(team={self.team}, player={self.player_idx}, sequence={self.sequence}, target={self.x},{self.y}, ' \
             f'data={self._data})'
 
 
