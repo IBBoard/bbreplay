@@ -14,6 +14,7 @@ class Role(Enum):
     KICK = 0
     RECEIVE = 1
 
+
 class Command:
     def __init__(self, id, turn, team, command_type, data):
         self.id = id
@@ -123,6 +124,15 @@ class BlockCommand(PlayerCommand):
             f'data={self._data})'
 
 
+class DodgeMoveCommand(PlayerCommand):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+
+    def __repr__(self):
+        return f'DodgeMove?(team={self.team}, player={self.player_idx}, sequence={self.sequence}, move_to={self.x},{self.y}, ' \
+            f'data={self._data})'
+
+
 class KickoffCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
@@ -154,6 +164,14 @@ class PickupBallCommand(Command):
         super().__init__(id, turn, team, command_type, data)
 
 
+class FollowUpChoiceCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.choice = data[0] == 1
+    
+    def __repr__(self):
+        return f'FollowUp(team={self.team}, choice={self.choice}, data={self._data})'
+
 class PushbackCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
@@ -179,6 +197,8 @@ def create_player_command(id, turn, team, command_type, data):
         return MovementCommand(id, turn, team, command_type, data)
     elif action_type == 26:
         return BlockCommand(id, turn, team, command_type, data)
+    elif action_type == 24:
+        return DodgeMoveCommand(id, turn, team, command_type, data)
     else:
         return PlayerCommand(id, turn, team, command_type, data)
     
@@ -194,9 +214,12 @@ MOVE_MAP = {
     19: BlockDiceChoiceCommand,
     25: create_player_command,
     26: PickupBallCommand,
+    45: FollowUpChoiceCommand,
     46: PushbackCommand,
     59: AbandonMatchCommand,
     69: NetworkCommand,
+    #91: Block related? After BlockDiceChoice and before PushbackCommand
+    #92: Block related? After BlockDiceChoice and before PushbackCommand
     94: NetworkCommand
 }
 
