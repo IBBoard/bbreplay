@@ -161,9 +161,19 @@ class BlockDiceChoiceCommand(Command):
         return f'BlockDiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, data={self._data})'
 
 
-class PickupBallCommand(Command):
+class TargetPlayerCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
+        self.team = player_idx_to_type(data[0]) # Override the team
+        self.player_idx = data[1]
+        self.target_team = player_idx_to_type(data[2])
+        self.target_player = data[3]
+        # data[4] and data[5] are 255 and 255 *or* below ~20
+        # data[8] is often 0 but sometimes 1
+
+    def __repr__(self):
+        return f'TargetPlayerCommand(team={self.team}, player={self.player_idx}, ' \
+               f'target_team?={self.target_team}, target_player?={self.target_player}, data={self._data})'
 
 
 class FollowUpChoiceCommand(Command):
@@ -219,7 +229,8 @@ MOVE_MAP = {
     17: EndTurnCommand,
     19: BlockDiceChoiceCommand,
     25: create_player_command,
-    26: PickupBallCommand,
+    26: TargetPlayerCommand,
+    33: UnknownVerboseCommand,
     45: FollowUpChoiceCommand,
     46: PushbackCommand,
     59: AbandonMatchCommand,
