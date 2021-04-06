@@ -4,11 +4,13 @@
 import sqlite3
 from .teams import Team
 from .command import create_command
+from .log import parse_log_entries
 
 
 class Replay:
-    def __init__(self, db):
+    def __init__(self, db, log_entries):
         self.__db = db
+        self.__log_entries = log_entries
         self.__commands = None
     
     def get_teams(self):
@@ -27,6 +29,7 @@ class Replay:
         return self.__commands
 
 
-def load(path):
-    db = sqlite3.connect(path)
-    return Replay(db)
+def load(db_path, log_path):
+    db = sqlite3.connect(db_path)
+    log_entries = parse_log_entries(log_path)
+    return Replay(db, log_entries)
