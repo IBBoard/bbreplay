@@ -125,12 +125,13 @@ class BlockCommand(PlayerCommand):
             f'data={self._data})'
 
 
-class DodgeMoveCommand(PlayerCommand):
+class EndMovementCommand(PlayerCommand):
+    # Note: This may just end a sequence of moves, not the player's entire movement
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'DodgeMove?(team={self.team}, player={self.player_idx}, sequence={self.sequence}, move_to={self.x},{self.y}, ' \
+        return f'EndMovement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, move_to={self.x},{self.y}, ' \
             f'data={self._data})'
 
 
@@ -203,7 +204,7 @@ def create_player_command(id, turn, team, command_type, data):
     elif action_type == 26:
         return BlockCommand(id, turn, team, command_type, data)
     elif action_type == 24:
-        return DodgeMoveCommand(id, turn, team, command_type, data)
+        return EndMovementCommand(id, turn, team, command_type, data)
     else:
         return PlayerCommand(id, turn, team, command_type, data)
     

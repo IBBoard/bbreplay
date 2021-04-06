@@ -7,7 +7,7 @@ import os.path
 from collections import namedtuple
 from bbreplay.replay import load
 from bbreplay.command import SetupCommand, SetupCompleteCommand, \
-    MovementCommand, BlockCommand, PushbackCommand, DodgeMoveCommand, \
+    MovementCommand, BlockCommand, PushbackCommand, EndMovementCommand, \
     FollowUpChoiceCommand, \
     EndTurnCommand, AbandonMatchCommand
 from bbreplay.teams import PlayerType
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     for cmd in replay.get_commands():
         cmd_type = type(cmd)
 
-        if cmd_type is SetupCommand or cmd_type is MovementCommand or cmd_type is DodgeMoveCommand:
+        if cmd_type is SetupCommand or cmd_type is MovementCommand or cmd_type is EndMovementCommand:
             player = Player(cmd.team, cmd.player_idx)
             if player in players_to_coords:
                 old_coords = players_to_coords[player]
