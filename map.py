@@ -134,6 +134,16 @@ if __name__ == '__main__':
         elif cmd_type is SetupCompleteCommand:
             setups += 1
             if setups % 2 == 0:
+                substitute_coords = []
+                for coords in coords_to_players:                    
+                    _, y = coords
+                    if y == 0 or y == 25:
+                        substitute_coords.append(coords)
+                
+                for coords in substitute_coords:
+                    player = coords_to_players[coords]
+                    del(coords_to_players[coords])
+                    del(players_to_coords[player])
                 print("Setup")
                 print(draw_map(coords_to_players))
         elif cmd_type is EndTurnCommand or cmd_type is AbandonMatchCommand:
