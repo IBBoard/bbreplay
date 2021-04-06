@@ -13,24 +13,33 @@ from bbreplay.command import SetupCommand, SetupCompleteCommand, \
 from bbreplay.teams import PlayerType
 
 
-TOPLINE =    "╔═╤╤╗"
-ENDZONE =    "╟╍┿╋╢"
-ROW =        "║ ┆┇║"
-ROW_AFTER =  "╟╌┼╂╢"
-HALFWAY =    "╟━┿╋╢"
-BOTTOMLINE = "╚═╧╧╝"
+TOPLINE =      "╔═╤╤╗"
+ENDZONE =      "╟╍┿╋╢"
+ROW =          "║ ┆┇║"
+ROW_AFTER =    "╟╌┼╂╢"
+HALFWAY_LINE = "╟━┿╋╢"
+BOTTOMLINE =   "╚═╧╧╝"
+
+PITCH_LENGTH = 26
+PITCH_WIDTH = 15
+TOP_ENDZONE = 0
+BOTTOM_ENDZONE = PITCH_LENGTH - 1
+LEFT_WIDEZONE = 3 # Note: zero-based indexing
+RIGHT_WIDEZONE = 10
+HALFWAY = PITCH_LENGTH // 2 - 1
+LAST_COLUMN = PITCH_WIDTH - 1
 
 
 Player = namedtuple('Player', ['team', 'number'])
 
 def draw_filler_row(chars):
     # TODO: String builder
-    row = chars[0]
-    for col in range(15):
+    row = "   " + chars[0]
+    for col in range(PITCH_WIDTH):
         row += chars[1] * 3
-        if col == 3 or col == 10:
+        if col == LEFT_WIDEZONE or col == RIGHT_WIDEZONE:
             row += chars[3]
-        elif col == 14:
+        elif col == LAST_COLUMN:
             row += chars[4]
         else:
             row += chars[2]
@@ -44,11 +53,16 @@ def player_to_text(player):
 def draw_map(positions):
     # TODO: String builder
     map = ""
-    for row in range(26):
+    for row in range(PITCH_LENGTH):
         if row == 0:
+            map += "    "  # Three spaces for numbering, plus one for the border
+            for col in range(PITCH_WIDTH):
+                map += f"{col:^4}"
+            map += "\n"
             map += draw_filler_row(TOPLINE)
+        map += f"{row:^3}"
         map += ROW[0]
-        for col in range(15):
+        for col in range(PITCH_WIDTH):
             map += ROW[1]
             contents = positions.get((col, row), None)
             if contents:
@@ -56,19 +70,21 @@ def draw_map(positions):
             else:
                 map += ROW[1]
             map += ROW[1]
-            if col == 3 or col == 10:
+            if col == LEFT_WIDEZONE or col == RIGHT_WIDEZONE:
                 map += ROW[3]
-            elif col == 14:
+            elif col == LAST_COLUMN:
                 map += ROW[4]
             else:
                 map += ROW[2]
         map += "\n"
-        if row == 0 or row == 24:
+        if row == TOP_ENDZONE:
             map += draw_filler_row(ENDZONE)
-        elif row == 12:
-            map += draw_filler_row(HALFWAY)
-        elif row == 25:
+        elif row == HALFWAY:
+            map += draw_filler_row(HALFWAY_LINE)
+        elif row == BOTTOM_ENDZONE:
             map += draw_filler_row(BOTTOMLINE)
+        elif row == BOTTOM_ENDZONE - 1:
+            map += draw_filler_row(ENDZONE)
         else:
             map += draw_filler_row(ROW_AFTER)
     
@@ -147,7 +163,7 @@ if __name__ == '__main__':
                 substitute_coords = []
                 for coords in coords_to_players:                    
                     _, y = coords
-                    if y == 0 or y == 25:
+                    if y == TOP_ENDZONE or y == BOTTOM_ENDZONE:
                         substitute_coords.append(coords)
                 
                 for coords in substitute_coords:
