@@ -20,6 +20,6 @@ if __name__ == '__main__':
     print(f"Away: {away_team.name} ({away_team.race})")
 
     for cmd in replay.get_commands():
-        if args.verbose or type(cmd) is not NetworkCommand:
+        if args.verbose or not cmd.is_verbose:
             print(cmd)
     

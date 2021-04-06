@@ -16,12 +16,13 @@ class Role(Enum):
 
 
 class Command:
-    def __init__(self, id, turn, team, command_type, data):
+    def __init__(self, id, turn, team, command_type, data, is_verbose=False):
         self.id = id
         self.turn = turn
         self.team = team
         self.command_type = command_type
         self._data = data
+        self.is_verbose = is_verbose
 
     def __repr__(self):
         return f'UnknownCommand(id={self.id}, turn={self.turn}, team={self.team},' \
@@ -29,8 +30,8 @@ class Command:
 
 
 class SimpleCommand(Command):
-    def __init__(self, name, id, turn, team, command_type, data):
-        super().__init__(id, turn, team, command_type, data)
+    def __init__(self, name, id, turn, team, command_type, data, is_verbose=False):
+        super().__init__(id, turn, team, command_type, data, is_verbose)
         self.name = name
         # Data is always 0s
     
@@ -187,7 +188,11 @@ class PushbackCommand(Command):
 class NetworkCommand(SimpleCommand):
     # These commands are only seen in online games and never in local exhibitions
     def __init__(self, id, turn, team, command_type, data):
-        super().__init__("Network", id, turn, team, command_type, data)
+        super().__init__("Network", id, turn, team, command_type, data, True)
+
+class UnknownVerboseCommand(SimpleCommand):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(f"UnknownVerboseCommand{command_type}", id, turn, team, command_type, data, True)
 
 
 def create_player_command(id, turn, team, command_type, data):
@@ -218,8 +223,10 @@ MOVE_MAP = {
     46: PushbackCommand,
     59: AbandonMatchCommand,
     69: NetworkCommand,
-    #91: Block related? After BlockDiceChoice and before PushbackCommand
-    #92: Block related? After BlockDiceChoice and before PushbackCommand
+    # Block related? After BlockDiceChoice and before PushbackCommand
+    91: UnknownVerboseCommand,
+    # Block related? After BlockDiceChoice and before PushbackCommand
+    92: UnknownVerboseCommand,
     94: NetworkCommand
 }
 
