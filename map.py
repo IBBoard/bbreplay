@@ -13,11 +13,12 @@ from bbreplay.command import SetupCommand, SetupCompleteCommand, \
 from bbreplay.teams import PlayerType
 
 
-TOPLINE =    "╔═╤╗"
-ENDZONE =    "╟╌┼╢"
-ROW =        "║ ┆║"
-HALFWAY =    "╟─┼╢"
-BOTTOMLINE = "╚═╧╝"
+TOPLINE =    "╔═╤╤╗"
+ENDZONE =    "╟╍┿╋╢"
+ROW =        "║ ┆┇║"
+ROW_AFTER =  "╟╌┼╂╢"
+HALFWAY =    "╟━┿╋╢"
+BOTTOMLINE = "╚═╧╧╝"
 
 
 Player = namedtuple('Player', ['team', 'number'])
@@ -26,10 +27,13 @@ def draw_filler_row(chars):
     # TODO: String builder
     row = chars[0]
     for col in range(15):
-        row += chars[1] + chars[1]
+        row += chars[1] * 3
         if col == 3 or col == 10:
+            row += chars[3]
+        elif col == 14:
+            row += chars[4]
+        else:
             row += chars[2]
-    row += chars[3]
     row += "\n"
     return row
 
@@ -51,9 +55,13 @@ def draw_map(positions):
                 map += player_to_text(contents)
             else:
                 map += ROW[1]
+            map += ROW[1]
             if col == 3 or col == 10:
+                map += ROW[3]
+            elif col == 14:
+                map += ROW[4]
+            else:
                 map += ROW[2]
-        map += ROW[3]
         map += "\n"
         if row == 0 or row == 24:
             map += draw_filler_row(ENDZONE)
@@ -61,6 +69,8 @@ def draw_map(positions):
             map += draw_filler_row(HALFWAY)
         elif row == 25:
             map += draw_filler_row(BOTTOMLINE)
+        else:
+            map += draw_filler_row(ROW_AFTER)
     
     return map
 
