@@ -2,7 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from enum import Enum
-from .teams import player_idx_to_type, PlayerType
+from .teams import player_idx_to_type, TeamType
 
 
 class CoinToss(Enum):

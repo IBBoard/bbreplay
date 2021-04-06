@@ -10,7 +10,7 @@ from bbreplay.command import SetupCommand, SetupCompleteCommand, \
     MovementCommand, BlockCommand, PushbackCommand, EndMovementCommand, \
     FollowUpChoiceCommand, \
     EndTurnCommand, AbandonMatchCommand
-from bbreplay.teams import PlayerType
+from bbreplay.teams import TeamType
 
 
 TOPLINE =      "╔═╤╤╗"
@@ -48,7 +48,7 @@ def draw_filler_row(chars):
 
 
 def player_to_text(player):
-    return chr((0x2460 if player.team == PlayerType.HOME else 0x2474) + player.number)
+    return chr((0x2460 if player.team == TeamType.HOME else 0x2474) + player.number)
 
 def draw_map(positions):
     # TODO: String builder

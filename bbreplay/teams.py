@@ -4,7 +4,7 @@
 from enum import Enum
 
 
-class PlayerType(Enum):
+class TeamType(Enum):
     HOME = 0
     AWAY = 1
     HOTSEAT = -1
@@ -12,9 +12,9 @@ class PlayerType(Enum):
 
 def player_idx_to_type(idx):
     if (idx > 1):
-        return PlayerType.HOTSEAT
+        return TeamType.HOTSEAT
     else:
-        return PlayerType(idx)
+        return TeamType(idx)
 
 
 class Team:
