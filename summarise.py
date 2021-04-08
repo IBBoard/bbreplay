@@ -3,7 +3,7 @@
 
 import argparse
 import os.path
-from bbreplay.replay import load
+from bbreplay.replay import Replay
 from bbreplay.command import NetworkCommand
 
 
@@ -15,12 +15,24 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(f"{os.path.basename(args.replay_file)}")
-    replay = load(args.replay_file, args.log_file)
+    replay = Replay(args.replay_file, args.log_file)
     home_team, away_team = replay.get_teams()
     print(f"Home: {home_team.name} ({home_team.race})")
     print(f"Away: {away_team.name} ({away_team.race})")
 
+    print("+++ Events")
+
+    for event in replay.events():
+        print(event)
+
+    print("+++ Commands")
+
     for cmd in replay.get_commands():
         if args.verbose or not cmd.is_verbose:
             print(cmd)
+
+    print("+++ Log entries")
+
+    for log in replay.get_log_entries():
+        print(log)
     

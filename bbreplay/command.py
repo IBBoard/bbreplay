@@ -1,18 +1,8 @@
 # Copyright © 2021, IBBoard
 # Licensed under GPLv3 or later - see COPYING
 
-from enum import Enum
-from .teams import player_idx_to_type, TeamType
-
-
-class CoinToss(Enum):
-    HEADS = 1
-    TAILS = 0
-
-
-class Role(Enum):
-    KICK = 0
-    RECEIVE = 1
+from . import player_idx_to_type
+from . import CoinToss, Role, TeamType, Position
 
 
 class Command:
@@ -52,8 +42,15 @@ class SetupCommand(Command):
         super().__init__(id, turn, team, command_type, data)
         self.team = player_idx_to_type(data[0]) # Override the team
         self.player_idx = data[1]
-        self.x = data[2]
-        self.y = data[3]
+        self.position = Position(data[2], data[3])
+
+    @property
+    def x(self):
+        return self.position.x
+    
+    @property
+    def y(self):
+        return self.position.y
 
     def __repr__(self):
         return f'Setup(team={self.team}, player={self.player_idx}, pos={self.x},{self.y}, data={self._data})'
@@ -99,8 +96,15 @@ class PlayerCommand(Command):
         self.player_idx = data[1]
         self.sequence = data[2]
         self.action_type = data[4]
-        self.x = data[8]
-        self.y = data[9]
+        self.position = Position(data[8], data[9])
+
+    @property
+    def x(self):
+        return self.position.x
+    
+    @property
+    def y(self):
+        return self.position.y
     
     def __repr__(self):
         return f'UnknownPlayerCommand(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
@@ -138,8 +142,15 @@ class EndMovementCommand(PlayerCommand):
 class KickoffCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
-        self.x = data[0]
-        self.y = data[1]
+        self.position = Position(data[0], data[1])
+
+    @property
+    def x(self):
+        return self.position.x
+    
+    @property
+    def y(self):
+        return self.position.y
     
     def __repr__(self):
         return f'Kickoff(team={self.team}, pos={self.x},{self.y}, data={self._data})'
@@ -189,8 +200,15 @@ class PushbackCommand(Command):
         super().__init__(id, turn, team, command_type, data)
         self.team = player_idx_to_type(data[0]) # Override the team
         self.player_idx = data[1]
-        self.x = data[2]
-        self.y = data[3]
+        self.position = Position(data[2], data[3])
+
+    @property
+    def x(self):
+        return self.position.x
+    
+    @property
+    def y(self):
+        return self.position.y
     
     def __repr__(self):
         return f'Pushback(team={self.team}, pushing_player={self.player_idx}, push_destination={self.x},{self.y}, data={self._data})'
