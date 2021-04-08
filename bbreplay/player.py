@@ -4,8 +4,25 @@
 from . import PlayerStatus, Position, OFF_PITCH_POSITION
 
 
-class Player:
+class Positionable:
+    def __init__(self):
+        self.position = OFF_PITCH_POSITION
+    
+    def is_on_pitch(self):
+        return self.position != OFF_PITCH_POSITION
+
+
+class Ball(Positionable):
+    def __init__(self):
+        super().__init__()
+
+    def __repr__(self):
+        return f"Ball({self.position})"
+
+
+class Player(Positionable):
     def __init__(self, team, number, name, move, strength, agility, armour_value, level, spp, value):
+        super().__init__()
         self.team = team
         self.number = number
         self.name = name
@@ -17,11 +34,7 @@ class Player:
         self.level = level
         self.SPP = spp
         self.value = value
-        self.position = OFF_PITCH_POSITION
         self.status = PlayerStatus.OKAY
-    
-    def is_on_pitch(self):
-        return self.position != OFF_PITCH_POSITION
 
     def __repr__(self):
         return f"Player(number={self.number}, name={self.name}, " \

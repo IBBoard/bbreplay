@@ -6,6 +6,7 @@ from collections import namedtuple
 from . import CoinToss, TeamType, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import create_command, CoinTossCommand, RoleCommand, SetupCommand, SetupCompleteCommand, KickoffCommand
 from .log import parse_log_entries, MatchLogEntry
+from .player import Ball
 from .teams import Team
 
 
@@ -13,6 +14,7 @@ MatchEvent = namedtuple('Match', [])
 CoinTossEvent = namedtuple('CoinToss', ['toss_team', 'toss_choice', 'toss_result', 'role_team', 'role_choice'])
 TeamSetupComplete = namedtuple('TeamSetupComplete', ['team', 'player_positions'])
 SetupComplete = namedtuple('SetupComplete', ['board'])
+Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'bounces', 'ball', 'board'])
 
 
 class Replay:
@@ -128,6 +130,19 @@ class Replay:
 
             set_board_position(board, coords, player)
             cmd = next(cmds)
+        
+        kickoff_cmd = find_next(cmd, cmds, KickoffCommand)
+        kickoff_direction = next(log_entries)
+        kickoff_scatter = next(log_entries)
+        # TODO: Handle no bounce when it gets caught straight away
+        kickoff_bounce = next(log_entries)
+        # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
+        ball = Ball()
+        ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)\
+                                        .scatter(kickoff_bounce.direction)
+        set_board_position(board, ball_dest, ball)
+        yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
+                      [kickoff_bounce.direction], ball, board)
 
     def get_commands(self):
         return self.__commands

@@ -50,10 +50,19 @@ class KickDistanceLogEntry:
     def __init__(self, team, player, distance):
         self.team = team
         self.player = int(player)
-        self.distance = distance
+        self.distance = int(distance)
     
     def __repr__(self):
         return f"KickDistance(team={self.team}, player_num={self.player}, distance={self.distance})"
+
+
+class BounceLogEntry:
+    def __init__(self, direction):
+        self.direction = ScatterDirection(int(direction))
+
+    def __repr__(self):
+        # XXX Is this relative to the kick direction? i.e. rotated for the other team's kicks
+        return f"Bounce(direction={self.direction})"
 
 
 TEAM = "([A-Z0-9]+)"
@@ -65,7 +74,7 @@ coin_toss_re = re.compile(f"{TEAM} choose (Heads|Tails)")
 role_re = re.compile(f"{TEAM} choose to (Kick|Receive)")
 kick_direction_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Direction \(D8\) : ([1-8])")
 kick_distance_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Distance \(D6\) : (?: [1-6] / 2 {{Kick\}} -> )?([1-6])")
-ball_bounce_re = re.compile("(Bounce) \(D8\) : ([1-8])")
+ball_bounce_re = re.compile("Bounce \(D8\) : ([1-8])")
 block_re = re.compile(f"{TEAM} \(([0-9]+)\).*(Block)  Result:")
 block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : (Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
 gfi_re = re.compile(f"{TEAM} #([0-9]+).* (Going for it) .* (Success|Failure)")
@@ -88,7 +97,7 @@ turn_regexes = [
     (role_re, RoleLogEntry),
     (kick_direction_re, KickDirectionLogEntry),
     (kick_distance_re, KickDistanceLogEntry),
-    (ball_bounce_re, None),
+    (ball_bounce_re, BounceLogEntry),
     (other_success_failure_re, None)
 ]
 

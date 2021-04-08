@@ -1,5 +1,4 @@
 from enum import Enum, Flag, auto
-from collections import namedtuple
 
 
 class BlockResult(Enum):
@@ -36,6 +35,10 @@ class ScatterDirection(Enum):
     S = 7
     SE = 8
 
+_wests = [ScatterDirection.NW, ScatterDirection.W, ScatterDirection.SW]
+_easts = [ScatterDirection.NE, ScatterDirection.E, ScatterDirection.SE]
+_norths = [ScatterDirection.NW, ScatterDirection.N, ScatterDirection.NE]
+_souths = [ScatterDirection.SW, ScatterDirection.S, ScatterDirection.SE]
 
 class PlayerStatus(Enum):
     OKAY = auto()
@@ -44,7 +47,29 @@ class PlayerStatus(Enum):
     STUPID = auto()
 
 
-Position = namedtuple('Position', ['x', 'y'])
+class Position:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    
+    def scatter(self, direction, distance=1):
+        global _wests, _easts, _norths, _souths
+
+        new_x = self.x
+        if direction in _wests:
+            new_x -= distance
+        elif direction in _easts:
+            new_x += distance
+
+        new_y = self.y
+        if direction in _norths:
+            new_y += distance
+        elif direction in _souths:
+            new_y -= distance
+
+        return Position(new_x, new_y)
+
+
 OFF_PITCH_POSITION = Position(-1, -1)
 
 PITCH_LENGTH = 26

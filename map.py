@@ -7,7 +7,8 @@ import os.path
 from collections import namedtuple
 from bbreplay import TeamType, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, \
     LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, AFTER_HALFWAY_IDX, BEFORE_HALFWAY_IDX
-from bbreplay.replay import Replay, SetupComplete
+from bbreplay.replay import Replay, SetupComplete, Kickoff
+from bbreplay.player import Ball
 from bbreplay.command import SetupCommand, SetupCompleteCommand, \
     MovementCommand, BlockCommand, PushbackCommand, EndMovementCommand, \
     FollowUpChoiceCommand, \
@@ -21,8 +22,6 @@ ROW_AFTER =    "╟╌┼╂╢"
 HALFWAY_LINE = "╟━┿╋╢"
 BOTTOMLINE =   "╚═╧╧╝"
 
-
-Player = namedtuple('Player', ['team', 'number'])
 
 def draw_filler_row(chars):
     # TODO: String builder
@@ -38,6 +37,15 @@ def draw_filler_row(chars):
     row += "\n"
     return row
 
+
+def object_to_text(obj):
+    if not obj:
+        return ROW[1] * 3
+    elif isinstance(obj, Ball):
+        return ROW[1] + "B" + ROW[1]  # "🏈" is too wide ☹
+    else:
+        # TODO: Put the ball in the first space if it's being carried!
+        return ROW[1] + player_to_text(obj) + ROW[1]
 
 def player_to_text(player):
     return chr((0x2460 if player.team.team_type == TeamType.HOME else 0x2474) + player.number - 1)
@@ -55,12 +63,7 @@ def draw_map(board):
         map += f"{row:^3}"
         map += ROW[0]
         for col, contents in enumerate(row_data):
-            map += ROW[1]
-            if contents:
-                map += player_to_text(contents)
-            else:
-                map += ROW[1]
-            map += ROW[1]
+            map += object_to_text(contents)
             if col == LEFT_WIDEZONE_IDX or col == RIGHT_WIDEZONE_IDX - 1:
                 map += ROW[3]
             elif col == LAST_COLUMN_IDX:
@@ -110,6 +113,9 @@ if __name__ == '__main__':
         event_type = type(event)
         if event_type is SetupComplete:
             print("\nSetup")
+            print(draw_map(event.board))
+        elif event_type is Kickoff:
+            print("\nKickoff")
             print(draw_map(event.board))
 
         
