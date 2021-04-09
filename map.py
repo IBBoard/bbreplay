@@ -82,7 +82,8 @@ def draw_map(board, pretty):
             map += "\n"
             map += draw_filler_row(TOPLINE, pretty)
         map += f"{row:^3}"
-        map += BOARD_COLOUR
+        if pretty:
+            map += BOARD_COLOUR
         map += ROW[0]
         for col, contents in enumerate(row_data):
             map += object_to_text(contents, pretty)
