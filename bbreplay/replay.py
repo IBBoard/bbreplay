@@ -3,9 +3,10 @@
 
 import sqlite3
 from collections import namedtuple
-from . import CoinToss, TeamType, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
-from .command import create_command, CoinTossCommand, RoleCommand, SetupCommand, SetupCompleteCommand, KickoffCommand
-from .log import parse_log_entries, MatchLogEntry
+from . import CoinToss, TeamType, ActionResult, \
+    PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
+from .command import *
+from .log import parse_log_entries, MatchLogEntry, StupidEntry
 from .player import Ball
 from .teams import Team
 
@@ -15,7 +16,9 @@ CoinTossEvent = namedtuple('CoinToss', ['toss_team', 'toss_choice', 'toss_result
 TeamSetupComplete = namedtuple('TeamSetupComplete', ['team', 'player_positions'])
 SetupComplete = namedtuple('SetupComplete', ['board'])
 Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'bounces', 'ball', 'board'])
-
+Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
+Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
+FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 
 class Replay:
     def __init__(self, db_path, log_path):
@@ -55,14 +58,14 @@ class Replay:
     
     def events(self):
         log_entries = (log_entry for log_entry in self.__log_entries)
-        cmds = (cmd for cmd in self.__commands)
+        cmds = (cmd for cmd in self.__commands if not cmd.is_verbose)
         
         cmd = next(log_entries)
         yield MatchEvent()
 
-        toss_cmd = find_next(cmd, cmds, CoinTossCommand)
+        toss_cmd = find_next(cmds, CoinTossCommand)
         toss_log = next(log_entries)
-        role_cmd = find_next(toss_cmd, cmds, RoleCommand)
+        role_cmd = find_next(cmds, RoleCommand)
         role_log = next(log_entries)
         if toss_cmd.team != toss_log.team or toss_cmd.choice != toss_log.choice:
             raise ValueError("Mistmatch in toss details")
@@ -77,7 +80,7 @@ class Replay:
             toss_result = CoinToss.HEADS
         yield CoinTossEvent(toss_cmd.team, toss_choice, toss_result, role_cmd.team, role_cmd.choice)
 
-        cmd = find_next(role_cmd, cmds, SetupCommand)
+        cmd = find_next(cmds, SetupCommand)
 
         board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
         deployments_finished = 0
@@ -115,7 +118,7 @@ class Replay:
             player = team.get_player(cmd.player_idx)
             if player.is_on_pitch():
                 old_coords = player.position
-                set_board_position(board, old_coords, None)
+                reset_board_position(board, old_coords)
             else:
                 old_coords = None
             
@@ -131,7 +134,7 @@ class Replay:
             set_board_position(board, coords, player)
             cmd = next(cmds)
         
-        kickoff_cmd = find_next(cmd, cmds, KickoffCommand)
+        kickoff_cmd = find_next(cmds, KickoffCommand)
         kickoff_direction = next(log_entries)
         kickoff_scatter = next(log_entries)
         # TODO: Handle no bounce when it gets caught straight away
@@ -144,16 +147,68 @@ class Replay:
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
                       [kickoff_bounce.direction], ball, board)
 
+        while True:
+            cmd = next(cmds)
+            cmd_type = type(cmd)
+            if isinstance(cmd, TargetPlayerCommand):
+                target = cmd
+                target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
+                log_entry = next(log_entries)
+                if isinstance(log_entry, StupidEntry):
+                    if log_entry.result == ActionResult.SUCCESS:
+                        log_entry = next(log_entries)
+                    else:
+                        # The stupid stopped us
+                        continue
+
+                cmd = next(cmds)
+                if isinstance(cmd, BlockCommand):
+                    block = cmd
+                    blocking_player = self.get_team(block.team).get_player(block.player_idx)
+                    block_dice = log_entry
+                    # TODO: Handle cmd_type=20 (reroll?)
+                    block_choice = next(cmds)
+                    target_by_coords = get_board_position(board, block.position)
+                    if target_by_coords != target_by_idx:
+                        raise ValueError(f"{target} targetted {target_by_idx} but {block} targetted {target_by_coords}")
+                    yield Block(blocking_player, target_by_idx,
+                                block_dice.results, block_dice.results[block_choice.dice_idx])
+                    block_result = next(cmds)
+                    if isinstance(block_result, PushbackCommand):
+                        old_coords = block.position
+                        reset_board_position(board, old_coords)
+                        set_board_position(board, block_result.position, target_by_coords)
+                        yield Pushback(blocking_player, target_by_idx, old_coords, block_result.position, board)
+                        block_result = next(cmds)
+                    # Follow-up
+                    if block_result.choice:
+                        old_coords = blocking_player.position
+                        reset_board_position(board, old_coords)
+                        set_board_position(board, block.position, blocking_player)
+                        yield FollowUp(blocking_player, target_by_idx, old_coords, block.position, board)
+
+            elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
+                continue
+            elif cmd_type is EndTurnCommand:
+                break
+
+
     def get_commands(self):
         return self.__commands
     
     def get_log_entries(self):
         return self.__log_entries
 
-def find_next(cur, generator, target_cls):
-    while type(cur) is not target_cls:
+
+def find_next(generator, target_cls):
+    while True:
         cur = next(generator)
+        if isinstance(cur, target_cls):
+            break
     return cur
+
+def reset_board_position(board, position):
+    set_board_position(board, position, None)
 
 def set_board_position(board, position, value):
     board[position.y][position.x] = value

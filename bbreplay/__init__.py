@@ -25,6 +25,11 @@ class TeamType(Enum):
     HOTSEAT = -1
 
 
+class ActionResult(Enum):
+    SUCCESS = 0
+    FAILURE = 1
+
+
 class ScatterDirection(Enum):
     NW = 1
     N = 2
@@ -35,10 +40,12 @@ class ScatterDirection(Enum):
     S = 7
     SE = 8
 
+
 _wests = [ScatterDirection.NW, ScatterDirection.W, ScatterDirection.SW]
 _easts = [ScatterDirection.NE, ScatterDirection.E, ScatterDirection.SE]
 _norths = [ScatterDirection.NW, ScatterDirection.N, ScatterDirection.NE]
 _souths = [ScatterDirection.SW, ScatterDirection.S, ScatterDirection.SE]
+
 
 class PlayerStatus(Enum):
     OKAY = auto()

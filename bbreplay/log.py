@@ -3,7 +3,7 @@
 
 import re
 from . import block_string_to_enum
-from . import CoinToss, Role, TeamType, ScatterDirection
+from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult
 
 
 class MatchLogEntry:
@@ -65,6 +65,45 @@ class BounceLogEntry:
         return f"Bounce(direction={self.direction})"
 
 
+class BlockLogEntry:
+    def __init__(self, team, player):
+        self.team = team
+        self.player = int(player)
+        self.results = []
+
+    def set_dice(self, results):
+        self.results = results
+    
+    def __repr__(self):
+        return f"Block(team={self.team}, player={self.player}, results={self.results})"
+
+
+class ActionResultEntry:
+    def __init__(self, name, team, player, required, roll, result):
+        self.__name = name
+        self.team = team
+        self.player = int(player)
+        self.required = required
+        self.roll = roll
+        self.result = ActionResult[result.upper()]
+    
+    def __repr__(self):
+        return f"{self.__name}(team={self.team}, player={self.player}, required={self.required}, "\
+               f"roll={self.roll}, result={self.result})"
+
+
+class StupidEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Stupid", team, player, required, roll, result)
+
+
+def create_other_entry(team, player, action, required, roll, result):
+    if action == "Stupid":
+        return StupidEntry(team, player, required, roll, result)
+    else:
+        return action, team, player, required, roll, result
+
+
 TEAM = "([A-Z0-9]+)"
 
 gamelog_re = re.compile('GameLog\(-?[0-9]+\): (.*)')
@@ -75,18 +114,17 @@ role_re = re.compile(f"{TEAM} choose to (Kick|Receive)")
 kick_direction_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Direction \(D8\) : ([1-8])")
 kick_distance_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Distance \(D6\) : (?:[1-6] / 2 {{Kick\}} -> )?([1-6])$")
 ball_bounce_re = re.compile("Bounce \(D8\) : ([1-8])")
-block_re = re.compile(f"{TEAM} \(([0-9]+)\).*(Block)  Result:")
+block_re = re.compile(f"{TEAM} \(([0-9]+)\).*Block  Result:")
 block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : (Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
 gfi_re = re.compile(f"{TEAM} #([0-9]+).* (Going for it) .* (Success|Failure)")
 pickup_re = re.compile(f"{TEAM} #([0-9]+).* (Pick-up) {{AG}} .* (Success|Failure)")
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* (Dodge) {{AG}} .* (Success|Failure)")
 reroll_re = re.compile(f"{TEAM} use a (re-roll)")
 turnover_re = re.compile(f"{TEAM} suffer a (TURNOVER!) : (.*)")
-other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\([0-9]+\+\).* (Success|Failure)")
+other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> (Success|Failure)")
 
 turn_regexes = [
-    (block_re, None),
-    (block_dice_choice_re, None),
+    (block_re, BlockLogEntry),
     (pickup_re, None),
     (dodge_re, None),
     (gfi_re, None),
@@ -98,7 +136,7 @@ turn_regexes = [
     (kick_direction_re, KickDirectionLogEntry),
     (kick_distance_re, KickDistanceLogEntry),
     (ball_bounce_re, BounceLogEntry),
-    (other_success_failure_re, None)
+    (other_success_failure_re, create_other_entry)
 ]
 
 def parse_log_entry(log_entry, home_abbrev, away_abbrev):
@@ -113,13 +151,14 @@ def parse_log_entry(log_entry, home_abbrev, away_abbrev):
                 groups[0] = TeamType.HOME
             elif groups[0] == away_abbrev:
                 groups[0] = TeamType.AWAY
-
             return constructor(*groups) if constructor else groups
 
 
 def parse_block_result(block_entry, pending_block):
     block_results = [block_string_to_enum(block_string.strip(' []')) for block_string in block_entry.split('-')]
-    return (*pending_block, block_results)
+    pending_block.set_dice(block_results)
+    return pending_block
+
 
 def parse_log_entries(log_path):
     log_entries = []
@@ -135,7 +174,7 @@ def parse_log_entries(log_path):
                 if not log_entry:
                     # Some even we don't care about yet, so skip it
                     continue
-                elif isinstance(log_entry, list) and len(log_entry) == 3 and log_entry[2] == 'Block': # XXX Ugly kludge
+                elif isinstance(log_entry, BlockLogEntry):
                     pending_block = log_entry
                 else:
                     if not home_abbrev and isinstance(log_entry, MatchLogEntry):
