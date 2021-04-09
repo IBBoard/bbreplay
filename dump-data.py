@@ -21,16 +21,6 @@ if __name__ == '__main__':
     print(f"Home: {home_team.name} ({home_team.race})")
     print(f"Away: {away_team.name} ({away_team.race})")
 
-    print("\n+++ Events")
-
-    for event in replay.events():
-        # Fudge the output so that we're not dumping the board each time,
-        # because it gets messy and unreadable
-        event_details = event._asdict()
-        if 'board' in event_details:
-            del(event_details['board'])
-        print(f"{type(event).__name__}{event_details}")
-
     print("\n+++ Commands")
 
     for cmd in replay.get_commands():
@@ -42,3 +32,12 @@ if __name__ == '__main__':
     for log in replay.get_log_entries():
         print(log)
     
+    print("\n+++ Events")
+
+    for event in replay.events():
+        # Fudge the output so that we're not dumping the board each time,
+        # because it gets messy and unreadable
+        event_details = event._asdict()
+        if 'board' in event_details:
+            del(event_details['board'])
+        print(f"{type(event).__name__}{event_details}")
