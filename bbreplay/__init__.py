@@ -68,6 +68,9 @@ class Position:
             new_y -= distance
 
         return Position(new_x, new_y)
+    
+    def __repr__(self):
+        return f"Position({self.x}, {self.y})"
 
 
 OFF_PITCH_POSITION = Position(-1, -1)
