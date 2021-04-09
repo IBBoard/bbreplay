@@ -133,14 +133,19 @@ if __name__ == '__main__':
     coords_to_players = {}
     players_to_coords = {}
     turn = 0
+    board = None
 
     for event in replay.events():
         event_type = type(event)
+        if hasattr(event, 'board'):
+            board = event.board
         if event_type is SetupComplete:
             print("\nSetup")
             print(draw_map(event.board, args.pretty))
         elif event_type is Kickoff:
             print("\nKickoff")
             print(draw_map(event.board, args.pretty))
+    print("\nEnd")
+    print(draw_map(board, args.pretty))
 
         
