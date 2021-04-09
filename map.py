@@ -74,18 +74,24 @@ def player_to_text(player, pretty):
 def draw_map(board, pretty):
     # TODO: String builder
     map = ""
-    for row, row_data in enumerate(board):
-        if row == 0:
-            map += "    "  # Three spaces for numbering, plus one for the border
-            for col in range(PITCH_WIDTH):
-                map += f"{col:^4}"
-            map += "\n"
+    for row in range(PITCH_LENGTH - 1, -1, -1):
+        row_data = board[row]
+        if row == TOP_ENDZONE_IDX:
+            map += draw_filler_row(ENDZONE, pretty)
+        elif row == BEFORE_HALFWAY_IDX:
+            map += draw_filler_row(HALFWAY_LINE, pretty)
+        elif row == BOTTOM_ENDZONE_IDX:
             map += draw_filler_row(TOPLINE, pretty)
+        elif row == BOTTOM_ENDZONE_IDX - 1:
+            map += draw_filler_row(ENDZONE, pretty)
+        else:
+            map += draw_filler_row(ROW_AFTER, pretty)
         map += f"{row:^3}"
         if pretty:
             map += BOARD_COLOUR
         map += ROW[0]
-        for col, contents in enumerate(row_data):
+        for col in range(PITCH_WIDTH):
+            contents = row_data[col]
             map += object_to_text(contents, pretty)
             if col == LEFT_WIDEZONE_IDX or col == RIGHT_WIDEZONE_IDX - 1:
                 map += ROW[3]
@@ -94,17 +100,12 @@ def draw_map(board, pretty):
             else:
                 map += ROW[2]
         map += ROW_RESET + "\n"
-        if row == TOP_ENDZONE_IDX:
-            map += draw_filler_row(ENDZONE, pretty)
-        elif row == BEFORE_HALFWAY_IDX:
-            map += draw_filler_row(HALFWAY_LINE, pretty)
-        elif row == BOTTOM_ENDZONE_IDX:
+        if row == 0:
             map += draw_filler_row(BOTTOMLINE, pretty)
-        elif row == BOTTOM_ENDZONE_IDX - 1:
-            map += draw_filler_row(ENDZONE, pretty)
-        else:
-            map += draw_filler_row(ROW_AFTER, pretty)
-
+            map += "    "  # Three spaces for numbering, plus one for the border
+            for col in range(PITCH_WIDTH):
+                map += f"{col:^4}"
+            map += "\n"
     return map
 
 
