@@ -73,7 +73,7 @@ teams_re = re.compile(f"([^\()]+)\({TEAM}\) vs ([^\)]+)\({TEAM}\)")
 coin_toss_re = re.compile(f"{TEAM} choose (Heads|Tails)")
 role_re = re.compile(f"{TEAM} choose to (Kick|Receive)")
 kick_direction_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Direction \(D8\) : ([1-8])")
-kick_distance_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Distance \(D6\) : (?: [1-6] / 2 {{Kick\}} -> )?([1-6])")
+kick_distance_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Distance \(D6\) : (?:[1-6] / 2 {{Kick\}} -> )?([1-6])$")
 ball_bounce_re = re.compile("Bounce \(D8\) : ([1-8])")
 block_re = re.compile(f"{TEAM} \(([0-9]+)\).*(Block)  Result:")
 block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : (Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
@@ -128,6 +128,7 @@ def parse_log_entries(log_path):
     away_abbrev = None
     with open(log_path, 'r') as f:
         for line in f:
+            line = line.strip()
             result = gamelog_re.search(line)
             if result:
                 log_entry = parse_log_entry(result.group(1), home_abbrev, away_abbrev)
