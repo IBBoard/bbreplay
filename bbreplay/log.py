@@ -92,6 +92,11 @@ class ActionResultEntry:
                f"roll={self.roll}, result={self.result})"
 
 
+class PickupEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Pickup", team, player, required, roll, result)
+
+
 class DodgeEntry(ActionResultEntry):
     def __init__(self, team, player, required, roll, result):
         super().__init__("Dodge", team, player, required, roll, result)
@@ -100,6 +105,11 @@ class DodgeEntry(ActionResultEntry):
 class ArmourValueRollEntry(ActionResultEntry):
     def __init__(self, team, player, required, roll, result):
         super().__init__("ArmourValueRoll", team, player, required, roll, result)
+
+
+class GoingForItEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("GoingForIt", team, player, required, roll, result)
 
 
 class StupidEntry(ActionResultEntry):
@@ -138,8 +148,9 @@ ball_bounce_re = re.compile("Bounce \\(D8\\) : ([1-8])")
 block_re = re.compile(f"{TEAM} \\(([0-9]+)\\).*Block  Result:")
 block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : "
                                   "(Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
-gfi_re = re.compile(f"{TEAM} #([0-9]+).* (Going for it) .* (Success|Failure)")
-pickup_re = re.compile(f"{TEAM} #([0-9]+).* (Pick-up) {{AG}} .* (Success|Failure)")
+gfi_re = re.compile(f"{TEAM} #([0-9]+).* Going for it +\(([0-9]+\+)\) : ([0-9]+) -> .* (Success|Failure)")
+pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? ->"
+                       " (Success|Failure)")
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* (Dodge) {{AG}} .* (Success|Failure)")
 dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
 reroll_re = re.compile(f"{TEAM} use a (re-roll)")
@@ -149,10 +160,10 @@ other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[
 
 turn_regexes = [
     (block_re, BlockLogEntry),
-    (pickup_re, None),
+    (pickup_re, PickupEntry),
     (dodge_re, None),
     (dodge_skill_re, DodgeSkillEntry),
-    (gfi_re, None),
+    (gfi_re, GoingForItEntry),
     (reroll_re, None),
     (turnover_re, None),
     (teams_re, MatchLogEntry),

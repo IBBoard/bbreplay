@@ -6,7 +6,8 @@ from collections import namedtuple
 from . import CoinToss, TeamType, ActionResult, BlockResult, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeSkillEntry, ArmourValueRollEntry
+from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeSkillEntry, ArmourValueRollEntry, \
+    PickupEntry
 from .player import Ball
 from .teams import Team
 
@@ -23,6 +24,7 @@ DodgeBlock = namedtuple('DodgeBlock', ['blocking_player', 'blocked_player'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
+Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
@@ -247,11 +249,24 @@ class Replay:
 
     def __process_movement(self, player, cmd, cmds, log_entries, board):
         events = []
-        #failed_dodge = False
         while True:
             movement = cmd
             start_space = player.position
             target_space = movement.position
+
+            target_contents = get_board_position(board, target_space)
+            if target_contents:
+                if target_contents == player:
+                        # It's a stand-up in the same space
+                        pass
+                elif isinstance(target_contents, Ball):
+                    log_entry = next(log_entries)
+                    if not isinstance(log_entry, PickupEntry):
+                        raise ValueError('Expected PickupEntry when moving into ball space ' \
+                                            f'but got {type(log_entry)}')
+                    events.append(Pickup(player, movement.position, log_entry.result))
+                else:
+                    raise ValueError(f"{player} tried to move to occupied space {target_space}")
 
             reset_board_position(board, start_space)
             set_board_position(board, target_space, player)
