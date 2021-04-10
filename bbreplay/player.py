@@ -1,7 +1,7 @@
 # Copyright © 2021, IBBoard
 # Licensed under GPLv3 or later - see COPYING
 
-from . import PlayerStatus, Position, OFF_PITCH_POSITION
+from . import PlayerStatus, OFF_PITCH_POSITION
 
 
 class Positionable:

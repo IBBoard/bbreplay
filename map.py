@@ -4,15 +4,10 @@
 
 import argparse
 import os.path
-from collections import namedtuple
 from bbreplay import TeamType, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, \
-    LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, AFTER_HALFWAY_IDX, BEFORE_HALFWAY_IDX
+    LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, BEFORE_HALFWAY_IDX
 from bbreplay.replay import Replay, SetupComplete, Kickoff
 from bbreplay.player import Ball
-from bbreplay.command import SetupCommand, SetupCompleteCommand, \
-    MovementCommand, BlockCommand, PushbackCommand, EndMovementCommand, \
-    FollowUpChoiceCommand, \
-    EndTurnCommand, AbandonMatchCommand
 
 
 TOPLINE =      "╔═╤╤╗"

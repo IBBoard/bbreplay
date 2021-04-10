@@ -2,7 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from . import player_idx_to_type
-from . import CoinToss, Role, TeamType, Position
+from . import CoinToss, Role, Position
 
 
 class Command:
@@ -116,8 +116,8 @@ class MovementCommand(PlayerCommand):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'Movement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, move_to={self.x},{self.y}, ' \
-            f'data={self._data})'
+        return f'Movement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+            f'move_to={self.x},{self.y}, data={self._data})'
 
 
 class EndMovementCommand(MovementCommand):
@@ -126,8 +126,8 @@ class EndMovementCommand(MovementCommand):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'EndMovement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, move_to={self.x},{self.y}, ' \
-            f'data={self._data})'
+        return f'EndMovement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+            f'move_to={self.x},{self.y}, data={self._data})'
 
 
 class BlockCommand(PlayerCommand):
@@ -135,8 +135,8 @@ class BlockCommand(PlayerCommand):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'Block(team={self.team}, player={self.player_idx}, sequence={self.sequence}, target={self.x},{self.y}, ' \
-            f'data={self._data})'
+        return f'Block(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+            f'target={self.x},{self.y}, data={self._data})'
 
 
 class KickoffCommand(Command):
@@ -169,7 +169,8 @@ class BlockDiceChoiceCommand(Command):
         self.dice_idx = data[2]
 
     def __repr__(self):
-        return f'BlockDiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, data={self._data})'
+        return f'BlockDiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, ' \
+            f'data={self._data})'
 
 
 class TargetPlayerCommand(Command):
@@ -212,7 +213,8 @@ class PushbackCommand(Command):
         return self.position.y
 
     def __repr__(self):
-        return f'Pushback(team={self.team}, pushing_player={self.player_idx}, push_destination={self.x},{self.y}, data={self._data})'
+        return f'Pushback(team={self.team}, pushing_player={self.player_idx}, push_destination={self.x},{self.y}, ' \
+            f'data={self._data})'
 
 
 class RerollCommand(Command):

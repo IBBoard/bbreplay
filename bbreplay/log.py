@@ -106,22 +106,24 @@ def create_other_entry(team, player, action, required, roll, result):
 
 TEAM = "([A-Z0-9]+)"
 
-gamelog_re = re.compile('GameLog\(-?[0-9]+\): (.*)')
-block_dice_re = re.compile('^\[[^\]]+\]( - \[[^\]]+\])*')
-teams_re = re.compile(f"([^\()]+)\({TEAM}\) vs ([^\)]+)\({TEAM}\)")
+gamelog_re = re.compile('GameLog\\(-?[0-9]+\\): (.*)')
+block_dice_re = re.compile('^\\[[^\\]]+\\]( - \\[[^\\]]+\\])*')
+teams_re = re.compile(f"([^\\()]+)\\({TEAM}\\) vs ([^\\)]+)\\({TEAM}\\)")
 coin_toss_re = re.compile(f"{TEAM} choose (Heads|Tails)")
 role_re = re.compile(f"{TEAM} choose to (Kick|Receive)")
-kick_direction_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Direction \(D8\) : ([1-8])")
-kick_distance_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Distance \(D6\) : (?:[1-6] / 2 {{Kick\}} -> )?([1-6])$")
-ball_bounce_re = re.compile("Bounce \(D8\) : ([1-8])")
-block_re = re.compile(f"{TEAM} \(([0-9]+)\).*Block  Result:")
-block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : (Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
+kick_direction_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Direction \\(D8\\) : ([1-8])")
+kick_distance_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Distance \\(D6\\) : (?:[1-6] / 2 {{Kick}} -> )?([1-6])$")
+ball_bounce_re = re.compile("Bounce \\(D8\\) : ([1-8])")
+block_re = re.compile(f"{TEAM} \\(([0-9]+)\\).*Block  Result:")
+block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : "
+                                  "(Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
 gfi_re = re.compile(f"{TEAM} #([0-9]+).* (Going for it) .* (Success|Failure)")
 pickup_re = re.compile(f"{TEAM} #([0-9]+).* (Pick-up) {{AG}} .* (Success|Failure)")
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* (Dodge) {{AG}} .* (Success|Failure)")
 reroll_re = re.compile(f"{TEAM} use a (re-roll)")
 turnover_re = re.compile(f"{TEAM} suffer a (TURNOVER!) : (.*)")
-other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> (Success|Failure)")
+other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
+                                      " .*([0-9]+)(?: Critical)? -> (Success|Failure)")
 
 turn_regexes = [
     (block_re, BlockLogEntry),
@@ -144,8 +146,8 @@ def parse_log_entry(log_entry, home_abbrev, away_abbrev):
     if not log_entry:
         return None
 
-    for re, constructor in turn_regexes:
-        result = re.match(log_entry)
+    for regex, constructor in turn_regexes:
+        result = regex.match(log_entry)
         if result:
             groups = list(result.groups())
             if groups[0] == home_abbrev:

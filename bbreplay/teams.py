@@ -27,10 +27,10 @@ class Team:
             self._player_number_map[int(num.text)] = i
         self._players = [None] * len(self._player_number_map)
 
-        player_rows = cur.execute('SELECT iNumber, strName, ' \
-                                  'Characteristics_fMovementAllowance, Characteristics_fStrength, ' \
-                                  'Characteristics_fAgility, Characteristics_fArmourValue, ' \
-                                  'idPlayer_Levels, iExperience, iValue ' \
+        player_rows = cur.execute('SELECT iNumber, strName, '
+                                  'Characteristics_fMovementAllowance, Characteristics_fStrength, '
+                                  'Characteristics_fAgility, Characteristics_fArmourValue, '
+                                  'idPlayer_Levels, iExperience, iValue '
                                   f'FROM {self._table_prefix}_Player_Listing')
 
         for row in player_rows:

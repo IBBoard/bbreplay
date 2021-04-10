@@ -4,7 +4,6 @@
 import argparse
 import os.path
 from bbreplay.replay import Replay
-from bbreplay.command import NetworkCommand
 
 
 def logging_generator(data):

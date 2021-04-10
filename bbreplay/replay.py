@@ -26,11 +26,11 @@ class Replay:
     def __init__(self, db_path, log_path):
         self.__db = sqlite3.connect(db_path)
         cur = self.__db.cursor()
-        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity ' \
-            'FROM Home_Team_Listing team INNER JOIN Home_Races race ON idRaces = race.ID')
+        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity '
+                    'FROM Home_Team_Listing team INNER JOIN Home_Races race ON idRaces = race.ID')
         self.home_team = Team(*cur.fetchone(), TeamType.HOME, self.__db)
-        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity ' \
-            'FROM Away_Team_Listing team INNER JOIN Away_Races race ON idRaces = race.ID')
+        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity '
+                    'FROM Away_Team_Listing team INNER JOIN Away_Races race ON idRaces = race.ID')
         self.away_team = Team(*cur.fetchone(), TeamType.AWAY, self.__db)
         self.__commands = [create_command(self, row)
                            for row in cur.execute('SELECT * FROM Replay_NetCommands ORDER BY ID')]
@@ -123,7 +123,7 @@ class Replay:
             elif cmd_type is not SetupCommand:
                 cmd = next(cmds)
                 continue
-            #else…
+            # else…
 
             if team is None:
                 team = self.get_team(cmd.team)
