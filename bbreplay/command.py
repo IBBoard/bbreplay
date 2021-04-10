@@ -195,6 +195,7 @@ class FollowUpChoiceCommand(Command):
     def __repr__(self):
         return f'FollowUp(team={self.team}, choice={self.choice}, data={self._data})'
 
+
 class PushbackCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
@@ -214,10 +215,20 @@ class PushbackCommand(Command):
         return f'Pushback(team={self.team}, pushing_player={self.player_idx}, push_destination={self.x},{self.y}, data={self._data})'
 
 
+class RerollCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        # 0 and 1 MIGHT be team and player IDX, but it doesn't always match
+        super().__init__(id, turn, team, command_type, data)
+    
+    def __repr__(self):
+        return f'Reroll?(team={self.team}, data={self._data})'
+
+
 class NetworkCommand(SimpleCommand):
     # These commands are only seen in online games and never in local exhibitions
     def __init__(self, id, turn, team, command_type, data):
         super().__init__("Network", id, turn, team, command_type, data, True)
+
 
 class UnknownVerboseCommand(SimpleCommand):
     def __init__(self, id, turn, team, command_type, data):
@@ -246,6 +257,7 @@ MOVE_MAP = {
     14: PreKickoffCompleteCommand,
     17: EndTurnCommand,
     19: BlockDiceChoiceCommand,
+    20: RerollCommand,
     25: create_player_command,
     26: TargetPlayerCommand,
     33: UnknownVerboseCommand,
