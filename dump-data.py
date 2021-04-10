@@ -34,14 +34,19 @@ if __name__ == '__main__':
 
     print("\n+++ Commands")
 
-    for cmd in replay.get_commands():
-        if args.verbose or not cmd.is_verbose:
+    for i, cmd in enumerate(cmd for cmd in replay.get_commands() if args.verbose or not cmd.is_verbose):
+        if args.debug:
+            print(f"Command {i} - {cmd}")
+        else:
             print(cmd)
 
     print("\n+++ Log entries")
 
-    for log in replay.get_log_entries():
-        print(log)
+    for i, log in enumerate(replay.get_log_entries()):
+        if args.debug:
+            print(f"Log {i} - {log}")
+        else:
+            print(log)
 
     print("\n+++ Events")
 
