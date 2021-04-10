@@ -46,9 +46,11 @@ class Replay:
             raise ValueError("Away team mismatch between replay and log")
         # TODO: More validation of matching
 
+        self.__generator = self.__default_generator
+
     def get_teams(self):
         return self.home_team, self.away_team
-    
+
     def get_team(self, team_type):
         if team_type == TeamType.HOME:
             return self.home_team
@@ -56,10 +58,19 @@ class Replay:
             return self.away_team
         else:
             raise ValueError(f"Cannot get team for {team_type}")
+
+    def __default_generator(self, data):
+        yield from data
+
+    def set_generator(self, generator):
+        if generator:
+            self.__generator = generator
+        else:
+            self.__generator = self.__default_generator
     
     def events(self):
-        log_entries = (log_entry for log_entry in self.__log_entries)
-        cmds = (cmd for cmd in self.__commands if not cmd.is_verbose)
+        log_entries = self.__generator(log_entry for log_entry in self.__log_entries)
+        cmds = self.__generator(cmd for cmd in self.__commands if not cmd.is_verbose)
         
         cmd = next(log_entries)
         yield MatchEvent()
