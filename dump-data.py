@@ -21,6 +21,7 @@ def print_team(team):
         if player.skills:
             skill_string = ', '.join(skill.name.replace('_', ' ').title() for skill in player.skills)
             print(f"\t\t{skill_string}")
+    print("\n")
 
 
 if __name__ == '__main__':
@@ -33,7 +34,7 @@ if __name__ == '__main__':
                         help='include debug messages to track progress')
     args = parser.parse_args()
 
-    print(f"{os.path.basename(args.replay_file)}")
+    print(f"{os.path.basename(args.replay_file)}\n")
     replay = Replay(args.replay_file, args.log_file)
 
     if args.debug:
