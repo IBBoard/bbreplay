@@ -24,7 +24,7 @@ class SimpleCommand(Command):
         super().__init__(id, turn, team, command_type, data, is_verbose)
         self.name = name
         # Data is always 0s
-    
+
     def __repr__(self):
         # Note: This isn't always useful in Hotseat games where the player ID is always 1.8e19 (8-byte unsigned max)
         return f'{self.name}(team={self.team}, data={self._data})'
@@ -33,21 +33,21 @@ class SimpleCommand(Command):
 class SimpleTeamOverrideCommand(SimpleCommand):
     def __init__(self, name, id, turn, team, command_type, data):
         super().__init__(name, id, turn, team, command_type, data)
-        self.team = player_idx_to_type(data[0]) # Override the team
+        self.team = player_idx_to_type(data[0])  # Override the team
 
 
 class SetupCommand(Command):
     # TODO: AI setup doesn't show up
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
-        self.team = player_idx_to_type(data[0]) # Override the team
+        self.team = player_idx_to_type(data[0])  # Override the team
         self.player_idx = data[1]
         self.position = Position(data[2], data[3])
 
     @property
     def x(self):
         return self.position.x
-    
+
     @property
     def y(self):
         return self.position.y
@@ -75,7 +75,7 @@ class CoinTossCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
         self.choice = CoinToss(data[0])
-    
+
     def __repr__(self):
         return f'CoinToss(team={self.team}, choice={self.choice}, data={self._data})'
 
@@ -84,7 +84,7 @@ class RoleCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
         self.choice = Role(data[0])
-    
+
     def __repr__(self):
         return f'Role(team={self.team}, choice={self.choice}, data={self._data})'
 
@@ -92,7 +92,7 @@ class RoleCommand(Command):
 class PlayerCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
-        self.team = player_idx_to_type(data[0]) # Override the team
+        self.team = player_idx_to_type(data[0])  # Override the team
         self.player_idx = data[1]
         self.sequence = data[2]
         self.action_type = data[4]
@@ -101,11 +101,11 @@ class PlayerCommand(Command):
     @property
     def x(self):
         return self.position.x
-    
+
     @property
     def y(self):
         return self.position.y
-    
+
     def __repr__(self):
         return f'UnknownPlayerCommand(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
             f'action_type={self.action_type}, target={self.x},{self.y}, data={self._data})'
@@ -133,7 +133,7 @@ class EndMovementCommand(MovementCommand):
 class BlockCommand(PlayerCommand):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
-    
+
     def __repr__(self):
         return f'Block(team={self.team}, player={self.player_idx}, sequence={self.sequence}, target={self.x},{self.y}, ' \
             f'data={self._data})'
@@ -147,11 +147,11 @@ class KickoffCommand(Command):
     @property
     def x(self):
         return self.position.x
-    
+
     @property
     def y(self):
         return self.position.y
-    
+
     def __repr__(self):
         return f'Kickoff(team={self.team}, pos={self.x},{self.y}, data={self._data})'
 
@@ -164,10 +164,10 @@ class PreKickoffCompleteCommand(SimpleTeamOverrideCommand):
 class BlockDiceChoiceCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
-        self.team = player_idx_to_type(data[0]) # Override the team
+        self.team = player_idx_to_type(data[0])  # Override the team
         self.player_idx = data[1]
         self.dice_idx = data[2]
-    
+
     def __repr__(self):
         return f'BlockDiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, data={self._data})'
 
@@ -175,7 +175,7 @@ class BlockDiceChoiceCommand(Command):
 class TargetPlayerCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
-        self.team = player_idx_to_type(data[0]) # Override the team
+        self.team = player_idx_to_type(data[0])  # Override the team
         self.player_idx = data[1]
         self.target_team = player_idx_to_type(data[2])
         self.target_player = data[3]
@@ -191,7 +191,7 @@ class FollowUpChoiceCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
         self.choice = data[0] == 1
-    
+
     def __repr__(self):
         return f'FollowUp(team={self.team}, choice={self.choice}, data={self._data})'
 
@@ -199,18 +199,18 @@ class FollowUpChoiceCommand(Command):
 class PushbackCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
-        self.team = player_idx_to_type(data[0]) # Override the team
+        self.team = player_idx_to_type(data[0])  # Override the team
         self.player_idx = data[1]
         self.position = Position(data[2], data[3])
 
     @property
     def x(self):
         return self.position.x
-    
+
     @property
     def y(self):
         return self.position.y
-    
+
     def __repr__(self):
         return f'Pushback(team={self.team}, pushing_player={self.player_idx}, push_destination={self.x},{self.y}, data={self._data})'
 
@@ -219,7 +219,7 @@ class RerollCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         # 0 and 1 MIGHT be team and player IDX, but it doesn't always match
         super().__init__(id, turn, team, command_type, data)
-    
+
     def __repr__(self):
         return f'Reroll?(team={self.team}, data={self._data})'
 
@@ -246,7 +246,7 @@ def create_player_command(id, turn, team, command_type, data):
         return EndMovementCommand(id, turn, team, command_type, data)
     else:
         return PlayerCommand(id, turn, team, command_type, data)
-    
+
 
 MOVE_MAP = {
     6: CoinTossCommand,

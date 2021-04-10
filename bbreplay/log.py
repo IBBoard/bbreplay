@@ -12,7 +12,7 @@ class MatchLogEntry:
         self.home_abbrev = home_abbrev
         self.away_name = away_name
         self.away_abbrev = away_abbrev
-    
+
     def __repr__(self):
         return f'MatchEntry(home={self.home_name}({self.home_abbrev}, away={self.away_name}({self.away_abbrev}))'
 
@@ -21,7 +21,7 @@ class CoinTossLogEntry:
     def __init__(self, team, choice):
         self.team = team
         self.choice = CoinToss[choice.upper()]
-    
+
     def __repr__(self):
         return f'CoinToss(team={self.team}, choice={self.choice})'
 
@@ -30,7 +30,7 @@ class RoleLogEntry:
     def __init__(self, team, choice):
         self.team = team
         self.choice = Role[choice.upper()]
-    
+
     def __repr__(self):
         return f'Role(team={self.team}, choice={self.choice})'
 
@@ -51,7 +51,7 @@ class KickDistanceLogEntry:
         self.team = team
         self.player = int(player)
         self.distance = int(distance)
-    
+
     def __repr__(self):
         return f"KickDistance(team={self.team}, player_num={self.player}, distance={self.distance})"
 
@@ -73,7 +73,7 @@ class BlockLogEntry:
 
     def set_dice(self, results):
         self.results = results
-    
+
     def __repr__(self):
         return f"Block(team={self.team}, player={self.player}, results={self.results})"
 
@@ -86,7 +86,7 @@ class ActionResultEntry:
         self.required = required
         self.roll = roll
         self.result = ActionResult[result.upper()]
-    
+
     def __repr__(self):
         return f"{self.__name}(team={self.team}, player={self.player}, required={self.required}, "\
                f"roll={self.roll}, result={self.result})"
@@ -138,6 +138,7 @@ turn_regexes = [
     (ball_bounce_re, BounceLogEntry),
     (other_success_failure_re, create_other_entry)
 ]
+
 
 def parse_log_entry(log_entry, home_abbrev, away_abbrev):
     if not log_entry:

@@ -1,6 +1,6 @@
 # Copyright © 2021, IBBoard
 # Licensed under GPLv3 or later - see COPYING
- 
+
 import xml.etree.ElementTree as ET
 from . import TeamType
 from .player import Player
@@ -28,10 +28,10 @@ class Team:
         self._players = [None] * len(self._player_number_map)
 
         player_rows = cur.execute('SELECT iNumber, strName, ' \
-                                    'Characteristics_fMovementAllowance, Characteristics_fStrength, ' \
-                                    'Characteristics_fAgility, Characteristics_fArmourValue, ' \
-                                    'idPlayer_Levels, iExperience, iValue ' \
-                                    f'FROM {self._table_prefix}_Player_Listing')
+                                  'Characteristics_fMovementAllowance, Characteristics_fStrength, ' \
+                                  'Characteristics_fAgility, Characteristics_fArmourValue, ' \
+                                  'idPlayer_Levels, iExperience, iValue ' \
+                                  f'FROM {self._table_prefix}_Player_Listing')
 
         for row in player_rows:
             player = Player(self, *row)
@@ -40,7 +40,7 @@ class Team:
 
     def get_players(self):
         return self._players
-    
+
     def get_player(self, idx):
         return self._players[idx]
 

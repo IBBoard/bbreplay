@@ -21,6 +21,7 @@ Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_sp
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
 
+
 class Replay:
     def __init__(self, db_path, log_path):
         self.__db = sqlite3.connect(db_path)
@@ -35,7 +36,7 @@ class Replay:
                            for row in cur.execute('SELECT * FROM Replay_NetCommands ORDER BY ID')]
         cur.close()
         self.__log_entries = parse_log_entries(log_path)
-        
+
         log_entry = self.__log_entries[0]
 
         if type(log_entry) is not MatchLogEntry:
@@ -67,11 +68,11 @@ class Replay:
             self.__generator = generator
         else:
             self.__generator = self.__default_generator
-    
+
     def events(self):
         log_entries = self.__generator(log_entry for log_entry in self.__log_entries)
         cmds = self.__generator(cmd for cmd in self.__commands if not cmd.is_verbose)
-        
+
         cmd = next(log_entries)
         yield MatchEvent()
 
@@ -97,7 +98,7 @@ class Replay:
         board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
         deployments_finished = 0
         team = None
-        
+
         while True:
             cmd_type = type(cmd)
             if cmd_type is SetupCompleteCommand:
@@ -133,7 +134,7 @@ class Replay:
                 reset_board_position(board, old_coords)
             else:
                 old_coords = None
-            
+
             coords = cmd.position
             space_contents = get_board_position(board, coords)
 
@@ -145,7 +146,7 @@ class Replay:
 
             set_board_position(board, coords, player)
             cmd = next(cmds)
-        
+
         kickoff_cmd = find_next(cmds, KickoffCommand)
         kickoff_direction = next(log_entries)
         kickoff_scatter = next(log_entries)
@@ -209,10 +210,9 @@ class Replay:
                 turn += 1
                 yield EndTurn(cmd.team, turn // 2 + 1, board)
 
-
     def get_commands(self):
         return self.__commands
-    
+
     def get_log_entries(self):
         return self.__log_entries
 
@@ -224,13 +224,16 @@ def find_next(generator, target_cls):
             break
     return cur
 
+
 def reset_board_position(board, position):
     set_board_position(board, position, None)
+
 
 def set_board_position(board, position, value):
     board[position.y][position.x] = value
     if value:
         value.position = position
+
 
 def get_board_position(board, position):
     return board[position.y][position.x]

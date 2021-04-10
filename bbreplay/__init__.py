@@ -58,7 +58,7 @@ class Position:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-    
+
     def scatter(self, direction, distance=1):
         global _wests, _easts, _norths, _souths
 
@@ -75,7 +75,7 @@ class Position:
             new_y -= distance
 
         return Position(new_x, new_y)
-    
+
     def __repr__(self):
         return f"Position({self.x}, {self.y})"
 

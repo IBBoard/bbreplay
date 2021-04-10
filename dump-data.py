@@ -43,7 +43,7 @@ if __name__ == '__main__':
 
     for log in replay.get_log_entries():
         print(log)
-    
+
     print("\n+++ Events")
 
     for event in replay.events():

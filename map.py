@@ -57,10 +57,11 @@ def object_to_text(obj, pretty):
         return ROW[1] * 3
     elif isinstance(obj, Ball):
         ball = "●" if not pretty else BALL_COLOUR + "●" + PIECE_RESET  # "🏈" is too wide to align properly☹
-        return ROW[1] + ball + ROW[1]  
+        return ROW[1] + ball + ROW[1]
     else:
         # TODO: Put the ball in the first space if it's being carried!
         return ROW[1] + player_to_text(obj, pretty) + ROW[1]
+
 
 def player_to_text(player, pretty):
     team_type = player.team.team_type
@@ -70,6 +71,7 @@ def player_to_text(player, pretty):
         colour = HOME_TEAM_COLOUR if team_type == TeamType.HOME else AWAY_TEAM_COLOUR
         player_char = colour + player_char + PIECE_RESET
     return player_char
+
 
 def draw_map(board, pretty):
     # TODO: String builder
@@ -147,5 +149,3 @@ if __name__ == '__main__':
             print(draw_map(event.board, args.pretty))
     print("\nEnd")
     print(draw_map(board, args.pretty))
-
-        
