@@ -3,7 +3,7 @@
 
 import sqlite3
 from collections import namedtuple
-from . import CoinToss, TeamType, ActionResult, BlockResult, \
+from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeSkillEntry, ArmourValueRollEntry, \
@@ -180,12 +180,11 @@ class Replay:
                 target = cmd
                 targeting_player = self.get_team(target.team).get_player(target.player_idx)
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
-                log_entry = next(log_entries)
-                if isinstance(log_entry, StupidEntry):
+                if Skills.REALLY_STUPID in targeting_player.skills:
+                    log_entry = next(log_entries)
+                    validate_log_entry(log_entry, StupidEntry, target.team, targeting_player.number)
                     yield ConditionCheck(targeting_player, 'Really Stupid', log_entry.result)
-                    if log_entry.result == ActionResult.SUCCESS:
-                        log_entry = next(log_entries)
-                    else:
+                    if log_entry.result != ActionResult.SUCCESS:
                         # The stupid stopped us
                         continue
 
@@ -197,8 +196,7 @@ class Replay:
                 if isinstance(cmd, BlockCommand):
                     block = cmd
                     blocking_player = targeting_player
-                    block_dice = log_entry
-                    # TODO: Handle cmd_type=20 (reroll?)
+                    block_dice = next(log_entries)
                     block_choice = next(cmds)
                     if isinstance(block_choice, RerollCommand):
                         reroll = next(log_entries)
@@ -231,12 +229,22 @@ class Replay:
                         armour_entry = next(log_entries)
                         if isinstance(armour_entry, DodgeSkillEntry):
                             yield DodgeBlock(blocking_player, target_by_idx)
-                        elif validate_log_entry(armour_entry, ArmourValueRollEntry,
-                                                target.target_team, target_by_idx.number):
+                        else:
+                            validate_log_entry(armour_entry, ArmourValueRollEntry,
+                                               target.target_team, target_by_idx.number)
                             yield PlayerDown(target_by_idx)
                             yield ArmourRoll(target_by_idx, armour_entry.result)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
+                if Skills.REALLY_STUPID in player.skills:
+                    log_entry = next(log_entries)
+                    validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
+                    yield ConditionCheck(player, 'Really Stupid', log_entry.result)
+                    if log_entry.result == ActionResult.SUCCESS:
+                        log_entry = next(log_entries)
+                    else:
+                        # The stupid stopped us
+                        continue
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
                 _, actions = self.__process_movement(player, cmd, cmds, log_entries, board)
                 yield from actions
@@ -330,7 +338,6 @@ def is_dodge(board, player, destination):
         return any(entity.team != player.team for entity in entities)
 
 
-
 def validate_log_entry(log_entry, expected_type, expected_team, expected_number):
     if not isinstance(log_entry, expected_type):
         raise ValueError(f"Expected {expected_type.__name__} but got {type(armour_entry)}")
@@ -338,4 +345,3 @@ def validate_log_entry(log_entry, expected_type, expected_team, expected_number)
         raise ValueError(f"Expected {expected_type.__name__} for "
                          f"{expected_team} #{expected_number}"
                          f" but got {log_entry.team} #{log_entry.player}")
-    return True
