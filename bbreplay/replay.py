@@ -19,6 +19,7 @@ Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distanc
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
+ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
 
 
@@ -169,9 +170,11 @@ class Replay:
             cmd_type = type(cmd)
             if isinstance(cmd, TargetPlayerCommand):
                 target = cmd
+                targeting_player = self.get_team(target.team).get_player(target.player_idx)
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
                 log_entry = next(log_entries)
                 if isinstance(log_entry, StupidEntry):
+                    yield ConditionCheck(targeting_player, 'Really Stupid', log_entry.result)
                     if log_entry.result == ActionResult.SUCCESS:
                         log_entry = next(log_entries)
                     else:
@@ -181,7 +184,7 @@ class Replay:
                 cmd = next(cmds)
                 if isinstance(cmd, BlockCommand):
                     block = cmd
-                    blocking_player = self.get_team(block.team).get_player(block.player_idx)
+                    blocking_player = targeting_player
                     block_dice = log_entry
                     # TODO: Handle cmd_type=20 (reroll?)
                     block_choice = next(cmds)
