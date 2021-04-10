@@ -3,6 +3,7 @@
 
 import argparse
 import os.path
+from bbreplay import TeamType
 from bbreplay.replay import Replay
 
 
@@ -10,6 +11,16 @@ def logging_generator(data):
     for i, datum in enumerate(data):
         print(f"\tConsuming {type(datum).__name__} {i}: {datum}")
         yield datum
+
+
+def print_team(team):
+    prefix = "Home" if team.team_type == TeamType.HOME else "Away"
+    print(f"{prefix}: {team.name} ({team.race})")
+    for player in sorted(team.get_players(), key=lambda p: p.number):
+        print(f"\t{player.number} - {player.name}")
+        if player.skills:
+            skill_string = ', '.join(skill.name.replace('_', ' ').title() for skill in player.skills)
+            print(f"\t\t{skill_string}")
 
 
 if __name__ == '__main__':
@@ -29,8 +40,8 @@ if __name__ == '__main__':
         replay.set_generator(logging_generator)
 
     home_team, away_team = replay.get_teams()
-    print(f"Home: {home_team.name} ({home_team.race})")
-    print(f"Away: {away_team.name} ({away_team.race})")
+    print_team(home_team)
+    print_team(away_team)
 
     print("\n+++ Commands")
 
