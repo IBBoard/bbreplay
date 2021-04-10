@@ -92,14 +92,35 @@ class ActionResultEntry:
                f"roll={self.roll}, result={self.result})"
 
 
+class DodgeEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Dodge", team, player, required, roll, result)
+
+
+class ArmourValueRollEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("ArmourValueRoll", team, player, required, roll, result)
+
+
 class StupidEntry(ActionResultEntry):
     def __init__(self, team, player, required, roll, result):
         super().__init__("Stupid", team, player, required, roll, result)
 
 
+class DodgeSkillEntry:
+    def __init__(self, team, player):
+        self.team = team
+        self.player = player
+
+    def __repr__(self):
+        return f'DodgeSkill(team={self.team}, player={self.player})'
+
+
 def create_other_entry(team, player, action, required, roll, result):
     if action == "Stupid":
         return StupidEntry(team, player, required, roll, result)
+    elif action == "Value":
+        return ArmourValueRollEntry(team, player, required, roll, result)
     else:
         return action, team, player, required, roll, result
 
@@ -120,15 +141,17 @@ block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : "
 gfi_re = re.compile(f"{TEAM} #([0-9]+).* (Going for it) .* (Success|Failure)")
 pickup_re = re.compile(f"{TEAM} #([0-9]+).* (Pick-up) {{AG}} .* (Success|Failure)")
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* (Dodge) {{AG}} .* (Success|Failure)")
+dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
 reroll_re = re.compile(f"{TEAM} use a (re-roll)")
 turnover_re = re.compile(f"{TEAM} suffer a (TURNOVER!) : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
-                                      " .*([0-9]+)(?: Critical)? -> (Success|Failure)")
+                                      " .* ([0-9]+)(?: Critical)? -> (Success|Failure)")
 
 turn_regexes = [
     (block_re, BlockLogEntry),
     (pickup_re, None),
     (dodge_re, None),
+    (dodge_skill_re, DodgeSkillEntry),
     (gfi_re, None),
     (reroll_re, None),
     (turnover_re, None),

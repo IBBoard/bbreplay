@@ -3,10 +3,10 @@
 
 import sqlite3
 from collections import namedtuple
-from . import CoinToss, TeamType, ActionResult, \
+from . import CoinToss, TeamType, ActionResult, BlockResult, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import parse_log_entries, MatchLogEntry, StupidEntry
+from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeSkillEntry, ArmourValueRollEntry
 from .player import Ball
 from .teams import Team
 
@@ -19,6 +19,8 @@ Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distanc
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
+ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
+PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
 
@@ -191,8 +193,9 @@ class Replay:
                     target_by_coords = get_board_position(board, block.position)
                     if target_by_coords != target_by_idx:
                         raise ValueError(f"{target} targetted {target_by_idx} but {block} targetted {target_by_coords}")
+                    chosen_block_dice = block_dice.results[block_choice.dice_idx]
                     yield Block(blocking_player, target_by_idx,
-                                block_dice.results, block_dice.results[block_choice.dice_idx])
+                                block_dice.results, chosen_block_dice)
                     block_result = next(cmds)
                     if isinstance(block_result, PushbackCommand):
                         old_coords = block.position
@@ -207,6 +210,16 @@ class Replay:
                         set_board_position(board, block.position, blocking_player)
                         yield FollowUp(blocking_player, target_by_idx, old_coords, block.position, board)
 
+                    if chosen_block_dice == BlockResult.DEFENDER_DOWN \
+                        or chosen_block_dice == BlockResult.DEFENDER_STUMBLES \
+                        or chosen_block_dice == BlockResult.BOTH_DOWN:
+                        armour_entry = next(log_entries)
+                        if isinstance(armour_entry, DodgeSkillEntry):
+                            yield DodgeBlock(blocking_player, target_by_idx)
+                        elif validate_log_entry(armour_entry, ArmourValueRollEntry,
+                                                target.target_team, target_by_idx.number):
+                            yield PlayerDown(target_by_idx)
+                            yield ArmourRoll(target_by_idx, armour_entry.result)
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
             elif cmd_type is EndTurnCommand:
@@ -240,3 +253,13 @@ def set_board_position(board, position, value):
 
 def get_board_position(board, position):
     return board[position.y][position.x]
+
+
+def validate_log_entry(log_entry, expected_type, expected_team, expected_number):
+    if not isinstance(log_entry, expected_type):
+        raise ValueError(f"Expected {expected_type.__name__} but got {type(armour_entry)}")
+    elif log_entry.team != expected_team or log_entry.player != expected_number:
+        raise ValueError(f"Expected {expected_type.__name__} for "
+                         f"{expected_team} #{expected_number}"
+                         f" but got {log_entry.team} #{log_entry.player}")
+    return True
