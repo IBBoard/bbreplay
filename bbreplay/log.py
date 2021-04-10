@@ -126,6 +126,14 @@ class DodgeSkillEntry:
         return f'DodgeSkill(team={self.team}, player={self.player})'
 
 
+class RerollEntry:
+    def __init__(self, team):
+        self.team = team
+
+    def __repr__(self):
+        return f'Reroll(team={self.team})'
+
+
 def create_other_entry(team, player, action, required, roll, result):
     if action == "Stupid":
         return StupidEntry(team, player, required, roll, result)
@@ -153,7 +161,7 @@ pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*(
                        " (Success|Failure)")
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* (Dodge) {{AG}} .* (Success|Failure)")
 dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
-reroll_re = re.compile(f"{TEAM} use a (re-roll)")
+reroll_re = re.compile(f"{TEAM} use a re-roll")
 turnover_re = re.compile(f"{TEAM} suffer a (TURNOVER!) : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
                                       " .* ([0-9]+)(?: Critical)? -> (Success|Failure)")
@@ -164,7 +172,7 @@ turn_regexes = [
     (dodge_re, None),
     (dodge_skill_re, DodgeSkillEntry),
     (gfi_re, GoingForItEntry),
-    (reroll_re, None),
+    (reroll_re, RerollEntry),
     (turnover_re, None),
     (teams_re, MatchLogEntry),
     (coin_toss_re, CoinTossLogEntry),

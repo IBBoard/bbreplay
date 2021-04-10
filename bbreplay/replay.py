@@ -27,6 +27,7 @@ ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
+Reroll = namedtuple('Reroll', ['team'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
 
 
@@ -199,6 +200,11 @@ class Replay:
                     block_dice = log_entry
                     # TODO: Handle cmd_type=20 (reroll?)
                     block_choice = next(cmds)
+                    if isinstance(block_choice, RerollCommand):
+                        reroll = next(log_entries)
+                        yield Reroll(reroll.team)
+                        block_dice = next(log_entries)
+                        block_choice = next(cmds)
                     target_by_coords = get_board_position(board, block.position)
                     if target_by_coords != target_by_idx:
                         raise ValueError(f"{target} targetted {target_by_idx} but {block} targetted {target_by_coords}")
