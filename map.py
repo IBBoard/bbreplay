@@ -51,21 +51,21 @@ def object_to_text(obj, pretty):
     if not obj:
         return ROW[1] * 3
     elif isinstance(obj, Ball):
-        ball = "●" if not pretty else BALL_COLOUR + "●" + PIECE_RESET  # "🏈" is too wide to align properly☹
-        return ROW[1] + ball + ROW[1]
+        ball = ROW[1] + "●" + ROW[1]  # "🏈" is too wide to align properly☹
+        return ball if not pretty else BALL_COLOUR + ball + PIECE_RESET
     else:
         # TODO: Put the ball in the first space if it's being carried!
-        return ROW[1] + player_to_text(obj, pretty) + ROW[1]
+        return player_to_text(obj, pretty)
 
 
 def player_to_text(player, pretty):
     team_type = player.team.team_type
-    player_char = chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1)
+    player_str = ROW[1] + chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1) + ROW[1]
     if pretty:
         # TODO: Can we pull this from the team? Relies on 24-bit terminals
         colour = HOME_TEAM_COLOUR if team_type == TeamType.HOME else AWAY_TEAM_COLOUR
-        player_char = colour + player_char + PIECE_RESET
-    return player_char
+        player_str = colour + player_str + PIECE_RESET
+    return player_str
 
 
 def draw_map(board, pretty):
