@@ -120,22 +120,22 @@ class MovementCommand(PlayerCommand):
             f'data={self._data})'
 
 
+class EndMovementCommand(MovementCommand):
+    # Note: This may just end a sequence of moves, not the player's entire turn
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+
+    def __repr__(self):
+        return f'EndMovement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, move_to={self.x},{self.y}, ' \
+            f'data={self._data})'
+
+
 class BlockCommand(PlayerCommand):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
     
     def __repr__(self):
         return f'Block(team={self.team}, player={self.player_idx}, sequence={self.sequence}, target={self.x},{self.y}, ' \
-            f'data={self._data})'
-
-
-class EndMovementCommand(PlayerCommand):
-    # Note: This may just end a sequence of moves, not the player's entire movement
-    def __init__(self, id, turn, team, command_type, data):
-        super().__init__(id, turn, team, command_type, data)
-
-    def __repr__(self):
-        return f'EndMovement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, move_to={self.x},{self.y}, ' \
             f'data={self._data})'
 
 
