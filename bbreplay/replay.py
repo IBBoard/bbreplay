@@ -19,6 +19,7 @@ Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distanc
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
+EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
 
 class Replay:
     def __init__(self, db_path, log_path):
@@ -147,6 +148,8 @@ class Replay:
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
                       [kickoff_bounce.direction], ball, board)
 
+        turn = 0
+
         while True:
             cmd = next(cmds, None)
             if cmd is None:
@@ -192,7 +195,8 @@ class Replay:
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
             elif cmd_type is EndTurnCommand:
-                break
+                turn += 1
+                yield EndTurn(cmd.team, turn // 2 + 1, board)
 
 
     def get_commands(self):
