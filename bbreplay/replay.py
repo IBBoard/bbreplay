@@ -148,7 +148,9 @@ class Replay:
                       [kickoff_bounce.direction], ball, board)
 
         while True:
-            cmd = next(cmds)
+            cmd = next(cmds, None)
+            if cmd is None:
+                break
             cmd_type = type(cmd)
             if isinstance(cmd, TargetPlayerCommand):
                 target = cmd
