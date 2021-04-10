@@ -16,7 +16,10 @@ CoinTossEvent = namedtuple('CoinToss', ['toss_team', 'toss_choice', 'toss_result
 TeamSetupComplete = namedtuple('TeamSetupComplete', ['team', 'player_positions'])
 SetupComplete = namedtuple('SetupComplete', ['board'])
 Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'bounces', 'ball', 'board'])
+Movement = namedtuple('Movement', ['player', 'source_space', 'target_space', 'board'])
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
+Blitz = namedtuple('Blitz', ['blitzing_player', 'blitzed_player'])
+DodgeBlock = namedtuple('DodgeBlock', ['blocking_player', 'blocked_player'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
@@ -184,6 +187,10 @@ class Replay:
                         continue
 
                 cmd = next(cmds)
+                if isinstance(cmd, MovementCommand):
+                    yield Blitz(player, target_by_idx)
+                    cmd, actions = self.__process_movement(targeting_player, cmd, cmds, log_entries, board)
+                    yield from actions
                 if isinstance(cmd, BlockCommand):
                     block = cmd
                     blocking_player = targeting_player
@@ -220,6 +227,11 @@ class Replay:
                                                 target.target_team, target_by_idx.number):
                             yield PlayerDown(target_by_idx)
                             yield ArmourRoll(target_by_idx, armour_entry.result)
+            elif isinstance(cmd, MovementCommand):
+                player = self.get_team(cmd.team).get_player(cmd.player_idx)
+                # We stop when the movement stops, so the returned command is the EndMovementCommand
+                _, actions = self.__process_movement(player, cmd, cmds, log_entries, board)
+                yield from actions
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
             elif cmd_type is EndTurnCommand:
@@ -233,6 +245,27 @@ class Replay:
         return self.__log_entries
 
 
+    def __process_movement(self, player, cmd, cmds, log_entries, board):
+        events = []
+        #failed_dodge = False
+        while True:
+            movement = cmd
+            start_space = player.position
+            target_space = movement.position
+
+            reset_board_position(board, start_space)
+            set_board_position(board, target_space, player)
+            events.append(Movement(player, start_space, target_space, board))
+
+            if type(cmd) is EndMovementCommand:
+                break
+            cmd = next(cmds)
+            if not isinstance(cmd, MovementCommand):
+                break
+
+        return cmd, events
+
+
 def find_next(generator, target_cls):
     while True:
         cur = next(generator)
@@ -240,19 +273,41 @@ def find_next(generator, target_cls):
             break
     return cur
 
-
 def reset_board_position(board, position):
     set_board_position(board, position, None)
-
 
 def set_board_position(board, position, value):
     board[position.y][position.x] = value
     if value:
         value.position = position
 
-
 def get_board_position(board, position):
     return board[position.y][position.x]
+
+def get_surrounding_players(board, position):
+    entities = []
+    for i in [-1, 0, 1]:
+        x = position.x + i
+        if x < 0 or x >= PITCH_WIDTH:
+            continue
+        for j in [-1, 0, 1]:
+            y = position.y + j
+            if y < 0 or y >= PITCH_LENGTH:
+                continue
+            if i == 0 and j == 0:
+                continue
+            entity = board[y][x]
+            if entity and not isinstance(entity, Ball):
+                entities.append(entity)
+    return entities
+
+def is_dodge(board, player, destination):
+    if player.position == destination:
+        return False
+    else:
+        entities = get_surrounding_players(board, player.position)
+        return any(entity.team != player.team for entity in entities)
+
 
 
 def validate_log_entry(log_entry, expected_type, expected_team, expected_number):
