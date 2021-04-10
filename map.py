@@ -6,7 +6,7 @@ import argparse
 import os.path
 from bbreplay import TeamType, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, \
     LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, BEFORE_HALFWAY_IDX
-from bbreplay.replay import Replay, SetupComplete, Kickoff
+from bbreplay.replay import Replay, SetupComplete, Kickoff, EndTurn
 from bbreplay.player import Ball
 
 
@@ -141,6 +141,9 @@ if __name__ == '__main__':
             print(draw_map(event.board, args.pretty))
         elif event_type is Kickoff:
             print("\nKickoff")
+            print(draw_map(event.board, args.pretty))
+        elif event_type is EndTurn:
+            print(f'\nEnd of Turn {event.number} - {replay.get_team(event.team).name}')
             print(draw_map(event.board, args.pretty))
     print("\nEnd")
     print(draw_map(board, args.pretty))
