@@ -1,3 +1,6 @@
+# Copyright © 2021, IBBoard
+# Licensed under GPLv3 or later - see COPYING
+
 from enum import Enum, auto
 
 
