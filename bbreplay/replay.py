@@ -51,9 +51,11 @@ class Replay:
         if type(log_entry) is not MatchLogEntry:
             raise ValueError("Log did not start with MatchLog entry")
         if log_entry.home_name != self.home_team.name:
-            raise ValueError("Home team mismatch between replay and log")
+            raise ValueError("Home team mismatch between replay and log - got "
+                             f"{log_entry.home_name} expected {self.home_team.name}")
         if log_entry.away_name != self.away_team.name:
-            raise ValueError("Away team mismatch between replay and log")
+            raise ValueError("Away team mismatch between replay and log - got "
+                             f"{log_entry.away_name} expected {self.away_team.name}")
         # TODO: More validation of matching
 
         self.__generator = self.__default_generator
