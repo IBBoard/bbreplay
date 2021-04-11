@@ -67,7 +67,10 @@ class PlayerStatus(Enum):
 # and extended as new skills are found in replays
 class Skills(Enum):
     STRIP_BALL = 1
+    PLUS_1_ST = 2
+    PLUS_1_AG = 3
     PLUS_1_MA = 4
+    PLUS_1_AV = 5
     CATCH = 6
     DODGE = 7
     SPRINT = 8
@@ -78,15 +81,18 @@ class Skills(Enum):
     LEADER = 14
     HORNS = 15
     STAND_FIRM = 17
+    ALWAYS_HUNGRY = 18
     REGENERATION = 19
     TAKE_ROOT = 20
     ACCURATE = 21
     BREAK_TACKLE = 22
+    SNEAKY_GIT = 23
     DAUNTLESS = 26
     DIRTY_PLAYER = 27
     DIVING_CATCH = 28
     DUMP_OFF = 29
     BLOCK = 30
+    BONE_HEAD = 31
     VERY_LONG_LEGS = 32
     DISTURBING_PRESENCE = 33
     DIVING_TACKLE = 34
@@ -104,12 +110,14 @@ class Skills(Enum):
     PRO = 50
     REALLY_STUPID = 51
     RIGHT_STUFF = 52
+    SAFE_THROW = 53
     SECRET_WEAPON = 54
     SIDE_STEP = 56
     TACKLE = 57
     STRONG_ARM = 58
     STUNTY = 59
     SURE_FEET = 60
+    SURE_HANDS = 61
     THICK_SKULL = 63
     THROW_TEAMMATE = 64
     WILD_ANIMAL = 67
@@ -117,6 +125,7 @@ class Skills(Enum):
     TENTACLES = 69
     MULTIPLE_BLOCK = 70
     KICK = 71
+    KICKOFF_RETURN = 72
     CLAWS = 75
     STAB = 77
     HYPTNOTIC_GAZE = 78
@@ -124,6 +133,7 @@ class Skills(Enum):
     BOMBARDIER = 80
     DECAY = 81
     NURGLES_ROT = 82
+    TITCHY = 83
 
 
 class Position:
@@ -147,6 +157,14 @@ class Position:
             new_y -= distance
 
         return Position(new_x, new_y)
+
+    def __eq__(self, other):
+        if not other:
+            return False
+        elif type(other) != type(self):
+            return False
+        else:
+            return self.x == other.x and self.y == other.y
 
     def __repr__(self):
         return f"Position({self.x}, {self.y})"

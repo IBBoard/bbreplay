@@ -45,21 +45,28 @@ class Player(Positionable):
             self.__skills = []
             table_prefix = prefix_for_teamtype(self.team.team_type)
             cur = self.__db.cursor()
-            skills = cur.execute(f'SELECT idSkill_Listing FROM {table_prefix}_Player_Listing player '
-                                 f'INNER JOIN {table_prefix}_Player_Type_Skills type_skills '
-                                 'ON player.idPlayer_Types = type_skills.idPlayer_Types '
-                                 f'WHERE player.ID = {self.__dbid} '
-                                 'UNION '
-                                 f'SELECT idSkill_Listing FROM {table_prefix}_Player_Skills '
-                                 f'WHERE idPlayer_Listing = {self.__dbid}')
+            type_skills = cur.execute(f'SELECT idSkill_Listing, description FROM {table_prefix}_Player_Listing player '
+                                      f'INNER JOIN {table_prefix}_Player_Type_Skills type_skills '
+                                      'ON player.idPlayer_Types = type_skills.idPlayer_Types '
+                                      f'WHERE player.ID = {self.__dbid} ')
 
-            for skill_row in skills:
+            for skill_row in type_skills:
                 try:
                     self.__skills.append(Skills(skill_row[0]))
                 except ValueError as ex:
-                    raise ValueError(f"Unidentified skill {skill_row[0]} for {self.team.name} player "
+                    raise ValueError(f"Unidentified skill {skill_row[0]} ({skill_row[1]}) for {self.team.name} player "
                                      f"#{self.number} {self.name}") from ex
-            cur.close
+
+            learned_skills = cur.execute(f'SELECT idSkill_Listing FROM {table_prefix}_Player_Skills '
+                                         f'WHERE idPlayer_Listing = {self.__dbid}')
+
+            for skill_row in learned_skills:
+                try:
+                    self.__skills.append(Skills(skill_row[0]))
+                except ValueError as ex:
+                    raise ValueError(f"Unidentified learned skill {skill_row[0]} for {self.team.name} player "
+                                     f"#{self.number} {self.name}") from ex
+            cur.close()
         return self.__skills
 
     def __repr__(self):
