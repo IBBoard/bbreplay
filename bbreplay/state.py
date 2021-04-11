@@ -49,6 +49,5 @@ class GameState:
                 entity = self.__board[y][x]
                 if entity and not isinstance(entity, Ball):
                     entities.append(entity)
-        print(entities)
         return entities
 
