@@ -258,6 +258,9 @@ class Replay:
             elif cmd_type is EndTurnCommand:
                 turn += 1
                 yield EndTurn(cmd.team, turn // 2 + 1, board)
+            else:
+                print(f"No handling for {cmd}")
+                break
 
     def get_commands(self):
         return self.__commands
