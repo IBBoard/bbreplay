@@ -98,7 +98,7 @@ class ActionResultEntry(TeamPlayerEntry):
         self.__name = name
         self.required = required
         self.roll = roll
-        self.result = ActionResult[result.upper()]
+        self.result = ActionResult[result.upper()] if isinstance(result, str) else result
 
     def __repr__(self):
         return f"{self.__name}(team={self.team}, player={self.player}, required={self.required}, "\
@@ -128,6 +128,33 @@ class GoingForItEntry(ActionResultEntry):
 class StupidEntry(ActionResultEntry):
     def __init__(self, team, player, required, roll, result):
         super().__init__("Stupid", team, player, required, roll, result)
+
+
+class TentacleUseEntry(PartialEntry):
+    def __init__(self, team, player):
+        self.team = team
+        self.player = int(player)
+
+    def complete(self, other_event):
+        return TentacledEntry(other_event.team, other_event.player, self.team, self.player,
+                              other_event.required, other_event.roll, other_event.result)
+
+
+class TentacledRollEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("TentacledRoll", team, player, required, roll, result)
+
+
+class TentacledEntry(ActionResultEntry):
+    def __init__(self, team, player, attacking_team, attacking_player, required, roll, result):
+        super().__init__("Tentacled", team, player, required, roll, result)
+        self.attacking_team = attacking_team
+        self.attacking_player = attacking_player
+
+    def __repr__(self):
+        return f"Tentacled(team={self.team}, player={self.player}, " \
+               f"attacking_team={self.attacking_team}, attacking_player={self.attacking_player}, " \
+               f"required={self.required}, roll={self.roll}, result={self.result})"
 
 
 class DodgeSkillEntry:
@@ -162,6 +189,8 @@ def create_other_entry(team, player, action, required, roll, result):
         return StupidEntry(team, player, required, roll, result)
     elif action == "Value":
         return ArmourValueRollEntry(team, player, required, roll, result)
+    elif action == "Tentacles":
+        return TentacledRollEntry(team, player, required, roll, result)
     else:
         return action, team, player, required, roll, result
 
@@ -185,6 +214,7 @@ pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*(
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
 dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
+tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
 turnover_re = re.compile(f"{TEAM} suffer a (TURNOVER!) : (.*)")
@@ -200,6 +230,7 @@ turn_regexes = [
     (reroll_re, RerollEntry),
     (leader_reroll_re, LeaderRerollEntry),
     (turnover_re, None),
+    (tentacle_use_re, TentacleUseEntry),
     (teams_re, MatchLogEntry),
     (coin_toss_re, CoinTossLogEntry),
     (role_re, RoleLogEntry),

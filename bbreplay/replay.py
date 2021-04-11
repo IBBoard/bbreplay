@@ -7,7 +7,7 @@ from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, DodgeSkillEntry, ArmourValueRollEntry, \
-    PickupEntry
+    PickupEntry, TentacledEntry
 from .player import Ball
 from .teams import Team
 
@@ -29,6 +29,7 @@ Dodge = namedtuple('Dodge', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
+Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
 
@@ -280,6 +281,8 @@ class Replay:
                         if isinstance(log_entry, DodgeEntry):
                             validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
                             events.append(Dodge(player, log_entry.result))
+                        elif isinstance(log_entry, TentacledEntry):
+                            validate_log_entry(log_entry, TentacledEntry, player.team.team_type, player.number)
                         else:
                             raise ValueError("Looking for dodge-related log entries but got "
                                              f"{type(log_entry)}")
