@@ -9,6 +9,7 @@ from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, DodgeSkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry
 from .player import Ball
+from .state import GameState
 from .teams import Team
 
 
@@ -109,7 +110,7 @@ class Replay:
 
         cmd = find_next(cmds, SetupCommand)
 
-        board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
+        board = GameState()
         deployments_finished = 0
         team = None
 
@@ -145,20 +146,20 @@ class Replay:
             player = team.get_player(cmd.player_idx)
             if player.is_on_pitch():
                 old_coords = player.position
-                reset_board_position(board, old_coords)
+                board.reset_position(old_coords)
             else:
                 old_coords = None
 
             coords = cmd.position
-            space_contents = get_board_position(board, coords)
+            space_contents = board.get_position(coords)
 
             if space_contents:
                 if old_coords:
-                    set_board_position(board, old_coords, space_contents)
+                    board.set_position(old_coords, space_contents)
                 else:
                     space_contents.position = OFF_PITCH_POSITION
 
-            set_board_position(board, coords, player)
+            board.set_position(coords, player)
             cmd = next(cmds)
 
         kickoff_cmd = find_next(cmds, KickoffCommand)
@@ -170,7 +171,7 @@ class Replay:
         ball = Ball()
         ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)\
                                         .scatter(kickoff_bounce.direction)
-        set_board_position(board, ball_dest, ball)
+        board.set_position(ball_dest, ball)
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
                       [kickoff_bounce.direction], ball, board)
 
@@ -208,7 +209,7 @@ class Replay:
                         yield Reroll(reroll.team)
                         block_dice = next(log_entries)
                         block_choice = next(cmds)
-                    target_by_coords = get_board_position(board, block.position)
+                    target_by_coords = board.get_position(block.position)
                     if target_by_coords != target_by_idx:
                         raise ValueError(f"{target} targetted {target_by_idx} but {block} targetted {target_by_coords}")
                     chosen_block_dice = block_dice.results[block_choice.dice_idx]
@@ -217,15 +218,15 @@ class Replay:
                     block_result = next(cmds)
                     if isinstance(block_result, PushbackCommand):
                         old_coords = block.position
-                        reset_board_position(board, old_coords)
-                        set_board_position(board, block_result.position, target_by_coords)
+                        board.reset_position(old_coords)
+                        board.set_position(block_result.position, target_by_coords)
                         yield Pushback(blocking_player, target_by_idx, old_coords, block_result.position, board)
                         block_result = next(cmds)
                     # Follow-up
                     if block_result.choice:
                         old_coords = blocking_player.position
-                        reset_board_position(board, old_coords)
-                        set_board_position(board, block.position, blocking_player)
+                        board.reset_position(old_coords)
+                        board.set_position(block.position, blocking_player)
                         yield FollowUp(blocking_player, target_by_idx, old_coords, block.position, board)
 
                     if chosen_block_dice == BlockResult.DEFENDER_DOWN \
@@ -237,6 +238,7 @@ class Replay:
                         else:
                             validate_log_entry(armour_entry, ArmourValueRollEntry,
                                                target.target_team, target_by_idx.number)
+                            board.set_prone(target_by_idx)
                             yield PlayerDown(target_by_idx)
                             yield ArmourRoll(target_by_idx, armour_entry.result)
             elif isinstance(cmd, MovementCommand):
@@ -294,7 +296,7 @@ class Replay:
                             failed_movement = True
                             break
 
-            target_contents = get_board_position(board, target_space)
+            target_contents = board.get_position(target_space)
             if target_contents:
                 if isinstance(target_contents, Ball):
                     log_entry = next(log_entries)
@@ -302,13 +304,14 @@ class Replay:
                     pickup_entry = log_entry
                 elif target_contents == player:
                     # It's a stand-up in the same space
+                    board.unset_prone(player)
                     pass
                 else:
                     raise ValueError(f"{player} tried to move to occupied space {target_space}")
 
             if not failed_movement:
-                reset_board_position(board, start_space)
-                set_board_position(board, target_space, player)
+                board.reset_position(start_space)
+                board.set_position(target_space, player)
                 events.append(Movement(player, start_space, target_space, board))
             else:
                 events.append(FailedMovement(player, start_space, target_space))
@@ -337,40 +340,13 @@ def find_next(generator, target_cls):
             break
     return cur
 
-def reset_board_position(board, position):
-    set_board_position(board, position, None)
-
-def set_board_position(board, position, value):
-    board[position.y][position.x] = value
-    if value:
-        value.position = position
-
-def get_board_position(board, position):
-    return board[position.y][position.x]
-
-def get_surrounding_players(board, position):
-    entities = []
-    for i in [-1, 0, 1]:
-        x = position.x + i
-        if x < 0 or x >= PITCH_WIDTH:
-            continue
-        for j in [-1, 0, 1]:
-            y = position.y + j
-            if y < 0 or y >= PITCH_LENGTH:
-                continue
-            if i == 0 and j == 0:
-                continue
-            entity = board[y][x]
-            if entity and not isinstance(entity, Ball):
-                entities.append(entity)
-    return entities
 
 def is_dodge(board, player, destination):
     if player.position == destination:
         return False
     else:
-        entities = get_surrounding_players(board, player.position)
-        return any(entity.team != player.team for entity in entities)
+        entities = board.get_surrounding_players(player.position)
+        return any(entity.team != player.team and board.has_tacklezone(player) for entity in entities)
 
 
 def validate_log_entry(log_entry, expected_type, expected_team, expected_number):
