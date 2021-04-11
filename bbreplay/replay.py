@@ -6,7 +6,7 @@ from collections import namedtuple
 from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeSkillEntry, ArmourValueRollEntry, \
+from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, DodgeSkillEntry, ArmourValueRollEntry, \
     PickupEntry
 from .player import Ball
 from .teams import Team
@@ -18,12 +18,14 @@ TeamSetupComplete = namedtuple('TeamSetupComplete', ['team', 'player_positions']
 SetupComplete = namedtuple('SetupComplete', ['board'])
 Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'bounces', 'ball', 'board'])
 Movement = namedtuple('Movement', ['player', 'source_space', 'target_space', 'board'])
+FailedMovement = namedtuple('FailedMovement', ['player', 'source_space', 'target_space'])
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
 Blitz = namedtuple('Blitz', ['blitzing_player', 'blitzed_player'])
 DodgeBlock = namedtuple('DodgeBlock', ['blocking_player', 'blocked_player'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
+Dodge = namedtuple('Dodge', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
@@ -265,28 +267,53 @@ class Replay:
 
     def __process_movement(self, player, cmd, cmds, log_entries, board):
         events = []
+        failed_movement = False
+        pickup_entry = None
+        start_space = player.position
         while True:
             movement = cmd
-            start_space = player.position
             target_space = movement.position
+            if not failed_movement:
+                if is_dodge(board, player, target_space):
+                    while True:
+                        log_entry = next(log_entries)
+                        if isinstance(log_entry, DodgeEntry):
+                            validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
+                            events.append(Dodge(player, log_entry.result))
+                        else:
+                            raise ValueError("Looking for dodge-related log entries but got "
+                                             f"{type(log_entry)}")
+                        # TODO: Handle dodge failing and going splat
+                        if log_entry.result != ActionResult.SUCCESS:
+                            failed_movement = True
+                            break
 
             target_contents = get_board_position(board, target_space)
             if target_contents:
-                if target_contents == player:
-                        # It's a stand-up in the same space
-                        pass
-                elif isinstance(target_contents, Ball):
+                if isinstance(target_contents, Ball):
                     log_entry = next(log_entries)
-                    if not isinstance(log_entry, PickupEntry):
-                        raise ValueError('Expected PickupEntry when moving into ball space ' \
-                                            f'but got {type(log_entry)}')
-                    events.append(Pickup(player, movement.position, log_entry.result))
+                    validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
+                    pickup_entry = log_entry
+                elif target_contents == player:
+                    # It's a stand-up in the same space
+                    pass
                 else:
                     raise ValueError(f"{player} tried to move to occupied space {target_space}")
 
-            reset_board_position(board, start_space)
-            set_board_position(board, target_space, player)
-            events.append(Movement(player, start_space, target_space, board))
+            if not failed_movement:
+                reset_board_position(board, start_space)
+                set_board_position(board, target_space, player)
+                events.append(Movement(player, start_space, target_space, board))
+            else:
+                events.append(FailedMovement(player, start_space, target_space))
+
+            if pickup_entry:
+                events.append(Pickup(player, movement.position, pickup_entry.result))
+                if pickup_entry.result != ActionResult.SUCCESS:
+                    failed_movement = True
+                pickup_entry = None
+
+            start_space = target_space
 
             if type(cmd) is EndMovementCommand:
                 break

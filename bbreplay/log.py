@@ -182,7 +182,8 @@ block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : "
 gfi_re = re.compile(f"{TEAM} #([0-9]+).* Going for it +\(([0-9]+\+)\) : ([0-9]+) -> .* (Success|Failure)")
 pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? ->"
                        " (Success|Failure)")
-dodge_re = re.compile(f"{TEAM} #([0-9]+).* (Dodge) {{AG}} .* (Success|Failure)")
+dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> "
+                      "(Success|Failure)")
 dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
@@ -193,7 +194,7 @@ other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[
 turn_regexes = [
     (block_re, BlockLogEntry),
     (pickup_re, PickupEntry),
-    (dodge_re, None),
+    (dodge_re, DodgeEntry),
     (dodge_skill_re, DodgeSkillEntry),
     (gfi_re, GoingForItEntry),
     (reroll_re, RerollEntry),
