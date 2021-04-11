@@ -6,6 +6,22 @@ from . import block_string_to_enum
 from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult
 
 
+class PartialEntry:
+    def combine(self, other_entry):
+        raise NotImplementedError()
+
+
+class TeamEntry:
+    def __init__(self, team):
+        self.team = team
+
+
+class TeamPlayerEntry(TeamEntry):
+    def __init__(self, team, player):
+        super().__init__(team)
+        self.player = int(player)
+
+
 class MatchLogEntry:
     def __init__(self, home_name, home_abbrev, away_name, away_abbrev):
         self.home_name = home_name
@@ -17,28 +33,27 @@ class MatchLogEntry:
         return f'MatchEntry(home={self.home_name}({self.home_abbrev}, away={self.away_name}({self.away_abbrev}))'
 
 
-class CoinTossLogEntry:
+class CoinTossLogEntry(TeamEntry):
     def __init__(self, team, choice):
-        self.team = team
+        super().__init__(team)
         self.choice = CoinToss[choice.upper()]
 
     def __repr__(self):
         return f'CoinToss(team={self.team}, choice={self.choice})'
 
 
-class RoleLogEntry:
+class RoleLogEntry(TeamEntry):
     def __init__(self, team, choice):
-        self.team = team
+        super().__init__(team)
         self.choice = Role[choice.upper()]
 
     def __repr__(self):
         return f'Role(team={self.team}, choice={self.choice})'
 
 
-class KickDirectionLogEntry:
+class KickDirectionLogEntry(TeamPlayerEntry):
     def __init__(self, team, player, direction):
-        self.team = team
-        self.player = int(player)
+        super().__init__(team, player)
         self.direction = ScatterDirection(int(direction))
 
     def __repr__(self):
@@ -46,10 +61,9 @@ class KickDirectionLogEntry:
         return f"KickDirection(team={self.team}, player_num={self.player}, direction={self.direction})"
 
 
-class KickDistanceLogEntry:
+class KickDistanceLogEntry(TeamPlayerEntry):
     def __init__(self, team, player, distance):
-        self.team = team
-        self.player = int(player)
+        super().__init__(team, player)
         self.distance = int(distance)
 
     def __repr__(self):
@@ -65,24 +79,23 @@ class BounceLogEntry:
         return f"Bounce(direction={self.direction})"
 
 
-class BlockLogEntry:
+class BlockLogEntry(TeamPlayerEntry, PartialEntry):
     def __init__(self, team, player):
-        self.team = team
-        self.player = int(player)
+        super().__init__(team, player)
         self.results = []
 
-    def set_dice(self, results):
+    def complete(self, results):
         self.results = results
+        return self
 
     def __repr__(self):
         return f"Block(team={self.team}, player={self.player}, results={self.results})"
 
 
-class ActionResultEntry:
+class ActionResultEntry(TeamPlayerEntry):
     def __init__(self, name, team, player, required, roll, result):
+        super().__init__(team, player)
         self.__name = name
-        self.team = team
-        self.player = int(player)
         self.required = required
         self.roll = roll
         self.result = ActionResult[result.upper()]
@@ -199,15 +212,9 @@ def parse_log_entry(log_entry, home_abbrev, away_abbrev):
             return constructor(*groups) if constructor else groups
 
 
-def parse_block_result(block_entry, pending_block):
-    block_results = [block_string_to_enum(block_string.strip(' []')) for block_string in block_entry.split('-')]
-    pending_block.set_dice(block_results)
-    return pending_block
-
-
 def parse_log_entries(log_path):
     log_entries = []
-    pending_block = None
+    partial_entry = None
     home_abbrev = None
     away_abbrev = None
     with open(log_path, 'r') as f:
@@ -219,16 +226,22 @@ def parse_log_entries(log_path):
                 if not log_entry:
                     # Some even we don't care about yet, so skip it
                     continue
-                elif isinstance(log_entry, BlockLogEntry):
-                    pending_block = log_entry
+                elif isinstance(log_entry, PartialEntry):
+                    partial_entry = log_entry
                 else:
                     if not home_abbrev and isinstance(log_entry, MatchLogEntry):
                         home_abbrev = log_entry.home_abbrev
                         away_abbrev = log_entry.away_abbrev
+                    if partial_entry:
+                        log_entry = partial_entry.complete(log_entry)
+                        partial_entry = None
                     log_entries.append(log_entry)
             else:
                 result = block_dice_re.search(line)
                 if result:
-                    block_result = parse_block_result(result.group(0), pending_block)
+                    block_dice = [block_string_to_enum(block_string.strip(' []'))
+                                  for block_string in result.group(0).split('-')]
+                    block_result = partial_entry.complete(block_dice)
                     log_entries.append(block_result)
+                    partial_entry = None
     return log_entries
