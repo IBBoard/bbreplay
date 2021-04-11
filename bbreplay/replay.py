@@ -196,7 +196,7 @@ class Replay:
 
                 cmd = next(cmds)
                 if isinstance(cmd, MovementCommand):
-                    yield Blitz(player, target_by_idx)
+                    yield Blitz(targeting_player, target_by_idx)
                     cmd, actions = self.__process_movement(targeting_player, cmd, cmds, log_entries, board)
                     yield from actions
                 if isinstance(cmd, BlockCommand):
