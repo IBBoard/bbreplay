@@ -139,12 +139,22 @@ class DodgeSkillEntry:
         return f'DodgeSkill(team={self.team}, player={self.player})'
 
 
-class RerollEntry:
+class RerollEntry(TeamEntry):
     def __init__(self, team):
-        self.team = team
+        super().__init__(team)
 
     def __repr__(self):
         return f'Reroll(team={self.team})'
+
+
+# This could be a TeamPlayerEntry but it's more important that we treat it like a RerollEntry
+class LeaderRerollEntry(RerollEntry):
+    def __init__(self, team, player):
+        super().__init__(team)
+        self.player = player
+
+    def __repr__(self):
+        return f'Reroll(team={self.team}, player={self.player})'
 
 
 def create_other_entry(team, player, action, required, roll, result):
@@ -175,6 +185,7 @@ pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*(
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* (Dodge) {{AG}} .* (Success|Failure)")
 dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
+leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
 turnover_re = re.compile(f"{TEAM} suffer a (TURNOVER!) : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
                                       " .* ([0-9]+)(?: Critical)? -> (Success|Failure)")
@@ -186,6 +197,7 @@ turn_regexes = [
     (dodge_skill_re, DodgeSkillEntry),
     (gfi_re, GoingForItEntry),
     (reroll_re, RerollEntry),
+    (leader_reroll_re, LeaderRerollEntry),
     (turnover_re, None),
     (teams_re, MatchLogEntry),
     (coin_toss_re, CoinTossLogEntry),
