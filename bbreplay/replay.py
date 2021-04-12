@@ -256,8 +256,8 @@ class Replay:
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
             elif cmd_type is EndTurnCommand:
-                turn += 1
                 yield EndTurn(cmd.team, turn // 2 + 1, board)
+                turn += 1
             else:
                 print(f"No handling for {cmd}")
                 break
