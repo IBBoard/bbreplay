@@ -247,9 +247,7 @@ class Replay:
                     log_entry = next(log_entries)
                     validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
                     yield ConditionCheck(player, 'Really Stupid', log_entry.result)
-                    if log_entry.result == ActionResult.SUCCESS:
-                        log_entry = next(log_entries)
-                    else:
+                    if log_entry.result != ActionResult.SUCCESS:
                         # The stupid stopped us
                         continue
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
