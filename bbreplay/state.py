@@ -9,7 +9,7 @@ class GameState:
     def __init__(self):
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
         self.__prone = set()
-        self.__stupid = []
+        self.__stupid = set()
 
     def set_position(self, position, contents):
         self.__board[position.y][position.x] = contents
