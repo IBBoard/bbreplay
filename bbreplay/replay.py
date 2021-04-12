@@ -286,6 +286,9 @@ class Replay:
                             events.append(Dodge(player, log_entry.result))
                         elif isinstance(log_entry, TentacledEntry):
                             validate_log_entry(log_entry, TentacledEntry, player.team.team_type, player.number)
+                            attacker = self.get_team(log_entry.attacking_team)\
+                                           .get_player_by_number(log_entry.attacking_player)
+                            events.append(Tentacle(player, attacker, log_entry.result))
                         else:
                             raise ValueError("Looking for dodge-related log entries but got "
                                              f"{type(log_entry)}")
