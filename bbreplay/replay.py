@@ -346,7 +346,7 @@ def is_dodge(board, player, destination):
         return False
     else:
         entities = board.get_surrounding_players(player.position)
-        return any(entity.team != player.team and board.has_tacklezone(player) for entity in entities)
+        return any(entity.team != player.team and board.has_tacklezone(entity) for entity in entities)
 
 
 def validate_log_entry(log_entry, expected_type, expected_team, expected_number):
