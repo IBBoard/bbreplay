@@ -357,10 +357,14 @@ def is_dodge(board, player, destination):
         return any(entity.team != player.team and board.has_tacklezone(entity) for entity in entities)
 
 
-def validate_log_entry(log_entry, expected_type, expected_team, expected_number):
+def validate_log_entry(log_entry, expected_type, expected_team, expected_number=None):
     if not isinstance(log_entry, expected_type):
         raise ValueError(f"Expected {expected_type.__name__} but got {type(armour_entry)}")
-    elif log_entry.team != expected_team or log_entry.player != expected_number:
-        raise ValueError(f"Expected {expected_type.__name__} for "
-                         f"{expected_team} #{expected_number}"
-                         f" but got {log_entry.team} #{log_entry.player}")
+    elif log_entry.team != expected_team or (expected_number is not None and log_entry.player != expected_number):
+        if expected_number is not None:
+            raise ValueError(f"Expected {expected_type.__name__} for "
+                             f"{expected_team} #{expected_number}"
+                             f" but got {log_entry.team} #{log_entry.player}")
+        else:
+            raise ValueError(f"Expected {expected_type.__name__} for "
+                             f"{expected_team} but got {log_entry.team}")
