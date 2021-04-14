@@ -244,11 +244,7 @@ class Replay:
                         if isinstance(armour_entry, DodgeSkillEntry):
                             yield DodgeBlock(blocking_player, target_by_idx)
                         else:
-                            validate_log_entry(armour_entry, ArmourValueRollEntry,
-                                               target.target_team, target_by_idx.number)
-                            board.set_prone(target_by_idx)
-                            yield PlayerDown(target_by_idx)
-                            yield ArmourRoll(target_by_idx, armour_entry.result)
+                            yield from self.__handle_armour_roll(armour_entry, target_by_idx, board)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
@@ -271,6 +267,12 @@ class Replay:
     def get_log_entries(self):
         return self.__log_entries
 
+    def __handle_armour_roll(self, roll_entry, player, board):
+        validate_log_entry(roll_entry, ArmourValueRollEntry,
+                           player.team.team_type, player.number)
+        board.set_prone(player)
+        yield PlayerDown(player)
+        yield ArmourRoll(player, roll_entry.result)
 
     def __process_movement(self, player, cmd, cmds, log_entries, board):
         events = []
@@ -315,18 +317,22 @@ class Replay:
                         else:
                             raise ValueError("Looking for dodge-related log entries but got "
                                              f"{type(log_entry)}")
-                        # TODO: Handle dodge failing and going splat
+
                         if log_entry.result != ActionResult.SUCCESS:
                             print("Failed")
                             failed_movement = True
                             if move_log_idx < len(move_log_entries):
-                                if isinstance(move_log_entries[move_log_idx], RerollEntry):
-                                    log_entry = move_log_entries[move_log_idx]
-                                    move_log_idx += 1
+                                log_entry = move_log_entries[move_log_idx]
+                                move_log_idx += 1
+                                if isinstance(log_entry, RerollEntry):
                                     validate_log_entry(log_entry, RerollEntry, player.team.team_type)
                                     cmd = next(cmds)
                                     if not isinstance(cmd, RerollCommand):
                                         raise ValueError("No RerollCommand to go with RerollEntry")
+                                elif isinstance(log_entry, ArmourValueRollEntry):
+                                    for event in self.__handle_armour_roll(log_entry, player, board):
+                                        events.append(event)
+                                    # TODO: Parse and handle TURNOVER! event
                             else:
                                 cmd = next(cmds)
                                 if not isinstance(cmd, DeclineRerollCommand):
