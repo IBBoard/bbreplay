@@ -296,6 +296,9 @@ class Replay:
                         if log_entry.result != ActionResult.SUCCESS:
                             failed_movement = True
                             break
+                        elif isinstance(log_entry, DodgeEntry):
+                            # Always break after a dodge
+                            break
 
             target_contents = board.get_position(target_space)
             if target_contents:
