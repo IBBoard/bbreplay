@@ -226,6 +226,15 @@ class RerollCommand(Command):
         return f'Reroll?(team={self.team}, data={self._data})'
 
 
+class DeclineRerollCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        # Only ever seen data of [1,0,0,0,0,0,0,0] and TeamType.HOME in online matches or HOTSEAT in local exhibitions
+        super().__init__(id, turn, team, command_type, data)
+
+    def __repr__(self):
+        return f'DeclineReroll?(data={self._data})'
+
+
 class NetworkCommand(SimpleCommand):
     # These commands are only seen in online games and never in local exhibitions
     def __init__(self, id, turn, team, command_type, data):
@@ -265,6 +274,7 @@ MOVE_MAP = {
     33: UnknownVerboseCommand,
     45: FollowUpChoiceCommand,
     46: PushbackCommand,
+    51: DeclineRerollCommand,
     59: AbandonMatchCommand,
     69: NetworkCommand,
     # Block related? After BlockDiceChoice and before PushbackCommand

@@ -176,8 +176,10 @@ class Replay:
                       [kickoff_bounce.direction], ball, board)
 
         turn = 0
+        prev_cmd = None
 
         while True:
+            prev_cmd = cmd
             cmd = next(cmds, None)
             if cmd is None:
                 break
@@ -253,8 +255,10 @@ class Replay:
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
                 _, actions = self.__process_movement(player, cmd, cmds, log_entries, board)
                 yield from actions
-            elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
+            elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
+            elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is DeclineRerollCommand:
+                print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
                 yield EndTurn(cmd.team, turn // 2 + 1, board)
                 turn += 1
