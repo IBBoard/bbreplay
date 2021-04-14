@@ -181,7 +181,7 @@ class LeaderRerollEntry(RerollEntry):
         self.player = player
 
     def __repr__(self):
-        return f'Reroll(team={self.team}, player={self.player})'
+        return f'LeaderReroll(team={self.team}, player={self.player})'
 
 
 def create_other_entry(team, player, action, required, roll, result):
