@@ -261,9 +261,27 @@ def parse_log_entries(log_path):
     partial_entry = None
     home_abbrev = None
     away_abbrev = None
+    event_entries = []
+    match_started = False
+    in_block = False
     with open(log_path, 'r') as f:
         for line in f:
             line = line.strip()
+            if not match_started:
+                if line != "|  +- Enter CStateMatchTossChooseGob":
+                    match_started = True
+                continue
+            elif line.startswith("|  +- Enter CStateMatch"):
+                in_block = True
+            elif line.startswith("|  +- Exit CStateMatch"):
+                if event_entries:
+                    log_entries.append(event_entries)
+                event_entries = []
+                in_block = False
+                continue
+            elif not in_block:
+                continue
+
             result = gamelog_re.search(line)
             if result:
                 log_entry = parse_log_entry(result.group(1), home_abbrev, away_abbrev)
@@ -279,13 +297,13 @@ def parse_log_entries(log_path):
                     if partial_entry:
                         log_entry = partial_entry.complete(log_entry)
                         partial_entry = None
-                    log_entries.append(log_entry)
+                    event_entries.append(log_entry)
             else:
                 result = block_dice_re.search(line)
                 if result:
                     block_dice = [block_string_to_enum(block_string.strip(' []'))
                                   for block_string in result.group(0).split('-')]
                     block_result = partial_entry.complete(block_dice)
-                    log_entries.append(block_result)
+                    event_entries.append(block_result)
                     partial_entry = None
     return log_entries

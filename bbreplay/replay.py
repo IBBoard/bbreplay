@@ -7,7 +7,7 @@ from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, DodgeSkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry
+    PickupEntry, TentacledEntry, RerollEntry
 from .player import Ball
 from .state import GameState
 from .teams import Team
@@ -50,7 +50,7 @@ class Replay:
         cur.close()
         self.__log_entries = parse_log_entries(log_path)
 
-        log_entry = self.__log_entries[0]
+        log_entry = self.__log_entries[0][0]
 
         if type(log_entry) is not MatchLogEntry:
             raise ValueError("Log did not start with MatchLog entry")
@@ -88,13 +88,13 @@ class Replay:
         log_entries = self.__generator(log_entry for log_entry in self.__log_entries)
         cmds = self.__generator(cmd for cmd in self.__commands if not cmd.is_verbose)
 
-        cmd = next(log_entries)
+        match_log_entries = next(log_entries)
         yield MatchEvent()
 
         toss_cmd = find_next(cmds, CoinTossCommand)
-        toss_log = next(log_entries)
+        toss_log = match_log_entries[1]
         role_cmd = find_next(cmds, RoleCommand)
-        role_log = next(log_entries)
+        role_log = next(log_entries)[0]
         if toss_cmd.team != toss_log.team or toss_cmd.choice != toss_log.choice:
             raise ValueError("Mistmatch in toss details")
         if role_cmd.team != role_log.team or role_cmd.choice != role_log.choice:
@@ -163,10 +163,9 @@ class Replay:
             cmd = next(cmds)
 
         kickoff_cmd = find_next(cmds, KickoffCommand)
-        kickoff_direction = next(log_entries)
-        kickoff_scatter = next(log_entries)
+        kickoff_direction, kickoff_scatter = next(log_entries)
         # TODO: Handle no bounce when it gets caught straight away
-        kickoff_bounce = next(log_entries)
+        kickoff_bounce = next(log_entries)[0]
         # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
         ball = Ball()
         ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)\
@@ -188,8 +187,11 @@ class Replay:
                 target = cmd
                 targeting_player = self.get_team(target.team).get_player(target.player_idx)
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
+                target_log_entries = next(log_entries)
+                target_log_idx = 0
                 if Skills.REALLY_STUPID in targeting_player.skills:
-                    log_entry = next(log_entries)
+                    log_entry = target_log_entries[target_log_idx]
+                    target_log_idx += 1
                     validate_log_entry(log_entry, StupidEntry, target.team, targeting_player.number)
                     yield ConditionCheck(targeting_player, 'Really Stupid', log_entry.result)
                     if log_entry.result != ActionResult.SUCCESS:
@@ -204,12 +206,15 @@ class Replay:
                 if isinstance(cmd, BlockCommand):
                     block = cmd
                     blocking_player = targeting_player
-                    block_dice = next(log_entries)
+                    block_dice = target_log_entries[target_log_idx]
+                    target_log_idx += 1
                     block_choice = next(cmds)
                     if isinstance(block_choice, RerollCommand):
-                        reroll = next(log_entries)
+                        reroll = target_log_entries[target_log_idx]
+                        target_log_idx += 1
                         yield Reroll(reroll.team)
-                        block_dice = next(log_entries)
+                        block_dice = target_log_entries[target_log_idx]
+                        target_log_idx += 1
                         block_choice = next(cmds)
                     target_by_coords = board.get_position(block.position)
                     if target_by_coords != target_by_idx:
@@ -234,7 +239,8 @@ class Replay:
                     if chosen_block_dice == BlockResult.DEFENDER_DOWN \
                         or chosen_block_dice == BlockResult.DEFENDER_STUMBLES \
                         or chosen_block_dice == BlockResult.BOTH_DOWN:
-                        armour_entry = next(log_entries)
+                        armour_entry = target_log_entries[target_log_idx]
+                        target_log_idx += 1
                         if isinstance(armour_entry, DodgeSkillEntry):
                             yield DodgeBlock(blocking_player, target_by_idx)
                         else:
@@ -245,19 +251,12 @@ class Replay:
                             yield ArmourRoll(target_by_idx, armour_entry.result)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
-                if Skills.REALLY_STUPID in player.skills:
-                    log_entry = next(log_entries)
-                    validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
-                    yield ConditionCheck(player, 'Really Stupid', log_entry.result)
-                    if log_entry.result != ActionResult.SUCCESS:
-                        # The stupid stopped us
-                        continue
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
                 _, actions = self.__process_movement(player, cmd, cmds, log_entries, board)
                 yield from actions
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
-            elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is DeclineRerollCommand:
+            elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
                 print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
                 yield EndTurn(cmd.team, turn // 2 + 1, board)
@@ -278,13 +277,33 @@ class Replay:
         failed_movement = False
         pickup_entry = None
         start_space = player.position
-        while True:
-            movement = cmd
+        move_log_entries = None
+        move_log_idx = 0
+        if Skills.REALLY_STUPID in player.skills:
+            move_log_entries = next(log_entries)
+            log_entry = move_log_entries[move_log_idx]
+            move_log_idx += 1
+            validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
+            events.append(ConditionCheck(player, 'Really Stupid', log_entry.result))
+
+        moves = []
+        # We can't just use "while true" and check for EndMovementCommand because a blitz is
+        # movement followed by a Block without an EndMovementCommand
+        while isinstance(cmd, MovementCommand):
+            moves.append(cmd)
+            if isinstance(cmd, EndMovementCommand):
+                break
+            cmd = next(cmds)
+
+        for movement in moves:
             target_space = movement.position
             if not failed_movement:
                 if is_dodge(board, player, target_space):
+                    if not move_log_entries:
+                        move_log_entries = next(log_entries)
                     while True:
-                        log_entry = next(log_entries)
+                        log_entry = move_log_entries[move_log_idx]
+                        move_log_idx += 1
                         if isinstance(log_entry, DodgeEntry):
                             validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
                             events.append(Dodge(player, log_entry.result))
@@ -298,8 +317,25 @@ class Replay:
                                              f"{type(log_entry)}")
                         # TODO: Handle dodge failing and going splat
                         if log_entry.result != ActionResult.SUCCESS:
+                            print("Failed")
                             failed_movement = True
-                            break
+                            if move_log_idx < len(move_log_entries):
+                                if isinstance(move_log_entries[move_log_idx], RerollEntry):
+                                    log_entry = move_log_entries[move_log_idx]
+                                    move_log_idx += 1
+                                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                                    cmd = next(cmds)
+                                    if not isinstance(cmd, RerollCommand):
+                                        raise ValueError("No RerollCommand to go with RerollEntry")
+                            else:
+                                cmd = next(cmds)
+                                if not isinstance(cmd, DeclineRerollCommand):
+                                    raise ValueError("No DeclineRerollCommand to go with failed movement action")
+                                cmd = next(cmds)
+                                if not isinstance(cmd, BlockDiceChoiceCommand):
+                                    raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
+                                break
+
                         elif isinstance(log_entry, DodgeEntry):
                             # Always break after a dodge
                             break
@@ -307,7 +343,10 @@ class Replay:
             target_contents = board.get_position(target_space)
             if target_contents:
                 if isinstance(target_contents, Ball):
-                    log_entry = next(log_entries)
+                    if not move_log_entries:
+                        move_log_entries = next(log_entries)
+                    log_entry = move_log_entries[move_log_idx]
+                    move_log_idx += 1
                     validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
                     pickup_entry = log_entry
                 elif target_contents == player:
@@ -332,12 +371,6 @@ class Replay:
 
             start_space = target_space
 
-            if type(cmd) is EndMovementCommand:
-                break
-            cmd = next(cmds)
-            if not isinstance(cmd, MovementCommand):
-                break
-
         return cmd, events
 
 
@@ -359,7 +392,7 @@ def is_dodge(board, player, destination):
 
 def validate_log_entry(log_entry, expected_type, expected_team, expected_number=None):
     if not isinstance(log_entry, expected_type):
-        raise ValueError(f"Expected {expected_type.__name__} but got {type(armour_entry)}")
+        raise ValueError(f"Expected {expected_type.__name__} but got {type(log_entry)}")
     elif log_entry.team != expected_team or (expected_number is not None and log_entry.player != expected_number):
         if expected_number is not None:
             raise ValueError(f"Expected {expected_type.__name__} for "
