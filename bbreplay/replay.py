@@ -234,7 +234,7 @@ class Replay:
                         block_result = next(cmds)
                         if not isinstance(block_result, PushbackCommand):
                             raise ValueError("Expected PushbackCommand after "
-                                             f"{chosen_block_dice} but got {type(block_result).__name}")
+                                             f"{chosen_block_dice} but got {type(block_result).__name__}")
                         old_coords = block.position
                         board.reset_position(old_coords)
                         board.set_position(block_result.position, target_by_coords)
