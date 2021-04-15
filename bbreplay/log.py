@@ -268,10 +268,11 @@ def parse_log_entries(log_path):
         for line in f:
             line = line.strip()
             if not match_started:
-                if line != "|  +- Enter CStateMatchTossChooseGob":
+                if line == "|  +- Enter CStateMatchTossChooseGob":
                     match_started = True
-                continue
-            elif line.startswith("|  +- Enter CStateMatch"):
+                else:
+                    continue
+            if line.startswith("|  +- Enter CStateMatch"):
                 in_block = True
             elif line.startswith("|  +- Exit CStateMatch"):
                 if event_entries:
