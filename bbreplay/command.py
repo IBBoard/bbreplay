@@ -225,6 +225,14 @@ class RerollCommand(Command):
     def __repr__(self):
         return f'Reroll?(team={self.team}, data={self._data})'
 
+class ProRerollCommand(SimpleTeamOverrideCommand):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__('ProReroll', id, turn, team, command_type, data)
+        self.player = data[1]
+
+    def __repr__(self):
+        return f'ProReroll?(team={self.team}, player?={self.player}, data={self._data})'
+
 
 class DeclineRerollCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
@@ -269,6 +277,7 @@ MOVE_MAP = {
     17: EndTurnCommand,
     19: BlockDiceChoiceCommand,
     20: RerollCommand,
+    21: ProRerollCommand,
     25: create_player_command,
     26: TargetPlayerCommand,
     33: UnknownVerboseCommand,

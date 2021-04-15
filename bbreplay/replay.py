@@ -31,7 +31,7 @@ Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
-Reroll = namedtuple('Reroll', ['team'])
+Reroll = namedtuple('Reroll', ['team', 'type'])
 
 
 class Replay:
@@ -208,10 +208,17 @@ class Replay:
                     block_dice = target_log_entries[target_log_idx]
                     target_log_idx += 1
                     block_choice = next(cmds)
-                    if isinstance(block_choice, RerollCommand):
+                    if isinstance(block_choice, ProRerollCommand):
                         reroll = target_log_entries[target_log_idx]
                         target_log_idx += 1
-                        yield Reroll(reroll.team)
+                        yield Reroll(reroll.team, 'Pro')
+                        block_dice = target_log_entries[target_log_idx]
+                        target_log_idx += 1
+                        block_choice = next(cmds)
+                    elif isinstance(block_choice, RerollCommand):
+                        reroll = target_log_entries[target_log_idx]
+                        target_log_idx += 1
+                        yield Reroll(reroll.team, 'Team Reroll')
                         block_dice = target_log_entries[target_log_idx]
                         target_log_idx += 1
                         block_choice = next(cmds)
@@ -348,6 +355,8 @@ class Replay:
                                 cmd = next(cmds)
                                 if not isinstance(cmd, RerollCommand):
                                     raise ValueError("No RerollCommand to go with RerollEntry")
+                                else:
+                                    yield Reroll(cmd.team, 'Team Reroll')
                             elif isinstance(log_entry, ArmourValueRollEntry):
                                 yield from self.__handle_armour_roll(log_entry, player, board)
                         else:
