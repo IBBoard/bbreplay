@@ -9,7 +9,7 @@ from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, DodgeSkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry
 from .player import Ball
-from .state import GameState
+from .state import GameState, EndTurn
 from .teams import Team
 
 
@@ -32,8 +32,6 @@ PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team'])
-EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
-TurnOver = namedtuple('TurnOver', ['team', 'reason'])
 
 
 class Replay:
@@ -175,7 +173,6 @@ class Replay:
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
                       [kickoff_bounce.direction], ball, board)
 
-        turn = 0
         prev_cmd = None
 
         while True:
@@ -261,7 +258,7 @@ class Replay:
                         turnover_entry = target_log_entries[target_log_idx]
                         target_log_idx += 1
                         validate_log_entry(turnover_entry, TurnOverEntry, blocking_player.team.team_type)
-                        yield TurnOver(turnover_entry.team, turnover_entry.reason)
+                        yield board.end_turn(turnover_entry.team, turnover_entry.reason)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
@@ -271,8 +268,7 @@ class Replay:
             elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
                 print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
-                yield EndTurn(cmd.team, turn // 2 + 1, board)
-                turn += 1
+                yield board.end_turn(cmd.team, 'End Turn')
             else:
                 print(f"No handling for {cmd}")
                 break
@@ -296,6 +292,7 @@ class Replay:
         start_space = player.position
         move_log_entries = None
         move_log_idx = 0
+        turnover = None
         if Skills.REALLY_STUPID in player.skills:
             move_log_entries = next(log_entries)
             log_entry = move_log_entries[move_log_idx]
@@ -334,7 +331,7 @@ class Replay:
                             yield Tentacle(player, attacker, log_entry.result)
                         elif isinstance(log_entry, TurnOverEntry):
                             validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                            yield TurnOver(log_entry.team, log_entry.reason)
+                            turnover = log_entry.reason
                         else:
                             raise ValueError("Looking for dodge-related log entries but got "
                                              f"{type(log_entry).__name__}")
@@ -394,6 +391,9 @@ class Replay:
                 pickup_entry = None
 
             start_space = target_space
+
+        if turnover:
+            yield board.end_turn(player.team.team_type, turnover)
 
 
 def find_next(generator, target_cls):

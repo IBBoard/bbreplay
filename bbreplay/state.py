@@ -1,15 +1,26 @@
 # Copyright © 2021, IBBoard
 # Licensed under GPLv3 or later - see COPYING
 
+from collections import namedtuple
 from . import PITCH_LENGTH, PITCH_WIDTH
 from .player import Ball
 
+EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
 
 class GameState:
     def __init__(self):
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
+        self.__turn = 0
         self.__prone = set()
         self.__stupid = set()
+
+    @property
+    def turn(self):
+        return self.__turn // 2 + 1
+
+    def end_turn(self, team, reason):
+        self.__turn += 1
+        return EndTurn(team, self.turn, reason, self)
 
     def set_position(self, position, contents):
         self.__board[position.y][position.x] = contents
