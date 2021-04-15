@@ -161,6 +161,9 @@ class Position:
 
         return Position(new_x, new_y)
 
+    def add(self, dx, dy):
+        return Position(self.x + dx, self.y + dy)
+
     def __eq__(self, other):
         if not other:
             return False

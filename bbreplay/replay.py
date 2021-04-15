@@ -232,14 +232,21 @@ class Replay:
                     if chosen_block_dice == BlockResult.PUSHED or chosen_block_dice == BlockResult.DEFENDER_DOWN \
                         or chosen_block_dice == BlockResult.DEFENDER_STUMBLES:
                         block_result = next(cmds)
-                        if not isinstance(block_result, PushbackCommand):
+                        old_coords = block.position
+                        if isinstance(block_result, PushbackCommand):
+                            board.reset_position(old_coords)
+                            board.set_position(block_result.position, target_by_coords)
+                            yield Pushback(blocking_player, target_by_idx, old_coords, block_result.position, board)
+                            block_result = next(cmds)
+                        elif isinstance(block_result, FollowUpChoiceCommand):
+                            # FollowUp without Pushback means they only had one space to go to
+                            new_coords = calculate_pushback(blocking_player.position, old_coords, board)
+                            board.reset_position(old_coords)
+                            board.set_position(new_coords, target_by_coords)
+                            yield Pushback(blocking_player, target_by_idx, old_coords, new_coords, board)
+                        else:
                             raise ValueError("Expected PushbackCommand after "
                                              f"{chosen_block_dice} but got {type(block_result).__name__}")
-                        old_coords = block.position
-                        board.reset_position(old_coords)
-                        board.set_position(block_result.position, target_by_coords)
-                        yield Pushback(blocking_player, target_by_idx, old_coords, block_result.position, board)
-                        block_result = next(cmds)
                         # Follow-up
                         if block_result.choice:
                             old_coords = blocking_player.position
@@ -434,3 +441,20 @@ def validate_log_entry(log_entry, expected_type, expected_team, expected_number=
         else:
             raise ValueError(f"Expected {expected_type.__name__} for "
                              f"{expected_team} but got {log_entry.team}")
+
+
+def calculate_pushback(blocker_coords, old_coords, board):
+    # Note: We invert the calculation so that we can avoid multiplying by -1 later
+    x_diff = old_coords.x - blocker_coords.x
+    y_diff = old_coords.y - blocker_coords.y
+    if x_diff != 0:
+        if y_diff != 0:
+            possible_coords = [old_coords.add(x_diff, y_diff), old_coords.add(x_diff, 0), old_coords.add(0, y_diff)]
+        else:
+            possible_coords = [old_coords.add(x_diff, -1), old_coords.add(x_diff, 0), old_coords.add(x_diff, 1)]
+    else:
+        possible_coords = [old_coords.add(-1, y_diff), old_coords.add(0, y_diff), old_coords.add(1, y_diff)]
+
+    for possible_coord in possible_coords:
+        if not board.get_position(possible_coord):
+            return possible_coord
