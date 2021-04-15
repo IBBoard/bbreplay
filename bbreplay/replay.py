@@ -314,52 +314,50 @@ class Replay:
 
         for movement in moves:
             target_space = movement.position
-            if not failed_movement:
-                if is_dodge(board, player, target_space):
-                    if not move_log_entries:
-                        move_log_entries = next(log_entries)
-                    while True:
-                        log_entry = move_log_entries[move_log_idx]
-                        move_log_idx += 1
-                        if isinstance(log_entry, DodgeEntry):
-                            validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
-                            yield Dodge(player, log_entry.result)
-                        elif isinstance(log_entry, TentacledEntry):
-                            validate_log_entry(log_entry, TentacledEntry, player.team.team_type, player.number)
-                            attacker = self.get_team(log_entry.attacking_team)\
-                                           .get_player_by_number(log_entry.attacking_player)
-                            yield Tentacle(player, attacker, log_entry.result)
-                        elif isinstance(log_entry, TurnOverEntry):
-                            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                            turnover = log_entry.reason
-                        else:
-                            raise ValueError("Looking for dodge-related log entries but got "
-                                             f"{type(log_entry).__name__}")
+            if not failed_movement and is_dodge(board, player, target_space):
+                if not move_log_entries:
+                    move_log_entries = next(log_entries)
+                while True:
+                    log_entry = move_log_entries[move_log_idx]
+                    move_log_idx += 1
+                    if isinstance(log_entry, DodgeEntry):
+                        validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
+                        yield Dodge(player, log_entry.result)
+                    elif isinstance(log_entry, TentacledEntry):
+                        validate_log_entry(log_entry, TentacledEntry, player.team.team_type, player.number)
+                        attacker = self.get_team(log_entry.attacking_team)\
+                                       .get_player_by_number(log_entry.attacking_player)
+                        yield Tentacle(player, attacker, log_entry.result)
+                    elif isinstance(log_entry, TurnOverEntry):
+                        validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                        turnover = log_entry.reason
+                    else:
+                        raise ValueError("Looking for dodge-related log entries but got "
+                                         f"{type(log_entry).__name__}")
 
-                        if (isinstance(log_entry, DodgeEntry) and log_entry.result == ActionResult.SUCCESS) or \
-                            isinstance(log_entry, TurnOverEntry):
+                    if (isinstance(log_entry, DodgeEntry) and log_entry.result == ActionResult.SUCCESS) or \
+                        isinstance(log_entry, TurnOverEntry):
+                        break
+                    if log_entry.result != ActionResult.SUCCESS:
+                        failed_movement = True
+                        if move_log_idx < len(move_log_entries):
+                            log_entry = move_log_entries[move_log_idx]
+                            move_log_idx += 1
+                            if isinstance(log_entry, RerollEntry):
+                                validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                                cmd = next(cmds)
+                                if not isinstance(cmd, RerollCommand):
+                                    raise ValueError("No RerollCommand to go with RerollEntry")
+                            elif isinstance(log_entry, ArmourValueRollEntry):
+                                yield from self.__handle_armour_roll(log_entry, player, board)
+                        else:
+                            cmd = next(cmds)
+                            if not isinstance(cmd, DeclineRerollCommand):
+                                raise ValueError("No DeclineRerollCommand to go with failed movement action")
+                            cmd = next(cmds)
+                            if not isinstance(cmd, BlockDiceChoiceCommand):
+                                raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
                             break
-                        if log_entry.result != ActionResult.SUCCESS:
-                            failed_movement = True
-                            if move_log_idx < len(move_log_entries):
-                                log_entry = move_log_entries[move_log_idx]
-                                move_log_idx += 1
-                                if isinstance(log_entry, RerollEntry):
-                                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
-                                    cmd = next(cmds)
-                                    if not isinstance(cmd, RerollCommand):
-                                        raise ValueError("No RerollCommand to go with RerollEntry")
-                                elif isinstance(log_entry, ArmourValueRollEntry):
-                                    yield from self.__handle_armour_roll(log_entry, player, board)
-                                    # TODO: Parse and handle TURNOVER! event
-                            else:
-                                cmd = next(cmds)
-                                if not isinstance(cmd, DeclineRerollCommand):
-                                    raise ValueError("No DeclineRerollCommand to go with failed movement action")
-                                cmd = next(cmds)
-                                if not isinstance(cmd, BlockDiceChoiceCommand):
-                                    raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
-                                break
 
             target_contents = board.get_position(target_space)
             if target_contents:
