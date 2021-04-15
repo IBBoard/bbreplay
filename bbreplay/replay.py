@@ -201,8 +201,9 @@ class Replay:
                 cmd = next(cmds)
                 if isinstance(cmd, MovementCommand):
                     yield Blitz(targeting_player, target_by_idx)
-                    cmd, actions = self.__process_movement(targeting_player, cmd, cmds, log_entries, board)
-                    yield from actions
+                    unused_commands = []
+                    yield from self.__process_movement(targeting_player, cmd, cmds, log_entries, board, unused_commands)
+                    cmd = unused_commands[0]
                 if isinstance(cmd, BlockCommand):
                     block = cmd
                     blocking_player = targeting_player
@@ -248,8 +249,7 @@ class Replay:
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
-                _, actions = self.__process_movement(player, cmd, cmds, log_entries, board)
-                yield from actions
+                yield from self.__process_movement(player, cmd, cmds, log_entries, board)
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
             elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
@@ -274,8 +274,7 @@ class Replay:
         yield PlayerDown(player)
         yield ArmourRoll(player, roll_entry.result)
 
-    def __process_movement(self, player, cmd, cmds, log_entries, board):
-        events = []
+    def __process_movement(self, player, cmd, cmds, log_entries, board, unused_commands=[]):
         failed_movement = False
         pickup_entry = None
         start_space = player.position
@@ -286,7 +285,7 @@ class Replay:
             log_entry = move_log_entries[move_log_idx]
             move_log_idx += 1
             validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
-            events.append(ConditionCheck(player, 'Really Stupid', log_entry.result))
+            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
 
         moves = []
         # We can't just use "while true" and check for EndMovementCommand because a blitz is
@@ -296,6 +295,9 @@ class Replay:
             if isinstance(cmd, EndMovementCommand):
                 break
             cmd = next(cmds)
+
+        if not isinstance(cmd, MovementCommand):
+            unused_commands.append(cmd)
 
         for movement in moves:
             target_space = movement.position
@@ -308,12 +310,12 @@ class Replay:
                         move_log_idx += 1
                         if isinstance(log_entry, DodgeEntry):
                             validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
-                            events.append(Dodge(player, log_entry.result))
+                            yield Dodge(player, log_entry.result)
                         elif isinstance(log_entry, TentacledEntry):
                             validate_log_entry(log_entry, TentacledEntry, player.team.team_type, player.number)
                             attacker = self.get_team(log_entry.attacking_team)\
                                            .get_player_by_number(log_entry.attacking_player)
-                            events.append(Tentacle(player, attacker, log_entry.result))
+                            yield Tentacle(player, attacker, log_entry.result)
                         else:
                             raise ValueError("Looking for dodge-related log entries but got "
                                              f"{type(log_entry)}")
@@ -330,8 +332,7 @@ class Replay:
                                     if not isinstance(cmd, RerollCommand):
                                         raise ValueError("No RerollCommand to go with RerollEntry")
                                 elif isinstance(log_entry, ArmourValueRollEntry):
-                                    for event in self.__handle_armour_roll(log_entry, player, board):
-                                        events.append(event)
+                                    yield from self.__handle_armour_roll(log_entry, player, board)
                                     # TODO: Parse and handle TURNOVER! event
                             else:
                                 cmd = next(cmds)
@@ -365,19 +366,17 @@ class Replay:
             if not failed_movement:
                 board.reset_position(start_space)
                 board.set_position(target_space, player)
-                events.append(Movement(player, start_space, target_space, board))
+                yield Movement(player, start_space, target_space, board)
             else:
-                events.append(FailedMovement(player, start_space, target_space))
+                yield FailedMovement(player, start_space, target_space)
 
             if pickup_entry:
-                events.append(Pickup(player, movement.position, pickup_entry.result))
+                yield Pickup(player, movement.position, pickup_entry.result)
                 if pickup_entry.result != ActionResult.SUCCESS:
                     failed_movement = True
                 pickup_entry = None
 
             start_space = target_space
-
-        return cmd, events
 
 
 def find_next(generator, target_cls):
