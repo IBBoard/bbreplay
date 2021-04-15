@@ -381,6 +381,10 @@ class Replay:
                 board.reset_position(start_space)
                 board.set_position(target_space, player)
                 yield Movement(player, start_space, target_space, board)
+            elif isinstance(log_entry, TurnOverEntry):
+                board.reset_position(start_space)
+                board.set_position(target_space, player)
+                yield FailedMovement(player, start_space, target_space)
             else:
                 yield FailedMovement(player, start_space, target_space)
 
