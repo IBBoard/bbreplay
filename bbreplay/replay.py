@@ -7,7 +7,7 @@ from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, DodgeSkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry, RerollEntry
+    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry
 from .player import Ball
 from .state import GameState
 from .teams import Team
@@ -33,6 +33,7 @@ ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'board'])
+TurnOver = namedtuple('TurnOver', ['team', 'reason'])
 
 
 class Replay:
@@ -223,20 +224,30 @@ class Replay:
                     chosen_block_dice = block_dice.results[block_choice.dice_idx]
                     yield Block(blocking_player, target_by_idx,
                                 block_dice.results, chosen_block_dice)
-                    block_result = next(cmds)
-                    if isinstance(block_result, PushbackCommand):
+
+                    if chosen_block_dice == BlockResult.PUSHED or chosen_block_dice == BlockResult.DEFENDER_DOWN \
+                        or chosen_block_dice == BlockResult.DEFENDER_STUMBLES:
+                        block_result = next(cmds)
+                        if not isinstance(block_result, PushbackCommand):
+                            raise ValueError("Expected PushbackCommand after "
+                                             f"{chosen_block_dice} but got {type(block_result).__name}")
                         old_coords = block.position
                         board.reset_position(old_coords)
                         board.set_position(block_result.position, target_by_coords)
                         yield Pushback(blocking_player, target_by_idx, old_coords, block_result.position, board)
                         block_result = next(cmds)
-                    # Follow-up
-                    if block_result.choice:
-                        old_coords = blocking_player.position
-                        board.reset_position(old_coords)
-                        board.set_position(block.position, blocking_player)
-                        yield FollowUp(blocking_player, target_by_idx, old_coords, block.position, board)
+                        # Follow-up
+                        if block_result.choice:
+                            old_coords = blocking_player.position
+                            board.reset_position(old_coords)
+                            board.set_position(block.position, blocking_player)
+                            yield FollowUp(blocking_player, target_by_idx, old_coords, block.position, board)
 
+                    if chosen_block_dice == BlockResult.ATTACKER_DOWN \
+                        or chosen_block_dice == BlockResult.BOTH_DOWN:
+                        armour_entry = target_log_entries[target_log_idx]
+                        target_log_idx += 1
+                        yield from self.__handle_armour_roll(armour_entry, blocking_player, board)
                     if chosen_block_dice == BlockResult.DEFENDER_DOWN \
                         or chosen_block_dice == BlockResult.DEFENDER_STUMBLES \
                         or chosen_block_dice == BlockResult.BOTH_DOWN:
@@ -246,6 +257,11 @@ class Replay:
                             yield DodgeBlock(blocking_player, target_by_idx)
                         else:
                             yield from self.__handle_armour_roll(armour_entry, target_by_idx, board)
+                    if target_log_idx < len(target_log_entries):
+                        turnover_entry = target_log_entries[target_log_idx]
+                        target_log_idx += 1
+                        validate_log_entry(turnover_entry, TurnOverEntry, blocking_player.team.team_type)
+                        yield TurnOver(turnover_entry.team, turnover_entry.reason)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
@@ -316,12 +332,17 @@ class Replay:
                             attacker = self.get_team(log_entry.attacking_team)\
                                            .get_player_by_number(log_entry.attacking_player)
                             yield Tentacle(player, attacker, log_entry.result)
+                        elif isinstance(log_entry, TurnOverEntry):
+                            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                            yield TurnOver(log_entry.team, log_entry.reason)
                         else:
                             raise ValueError("Looking for dodge-related log entries but got "
-                                             f"{type(log_entry)}")
+                                             f"{type(log_entry).__name__}")
 
+                        if (isinstance(log_entry, DodgeEntry) and log_entry.result == ActionResult.SUCCESS) or \
+                            isinstance(log_entry, TurnOverEntry):
+                            break
                         if log_entry.result != ActionResult.SUCCESS:
-                            print("Failed")
                             failed_movement = True
                             if move_log_idx < len(move_log_entries):
                                 log_entry = move_log_entries[move_log_idx]
@@ -342,10 +363,6 @@ class Replay:
                                 if not isinstance(cmd, BlockDiceChoiceCommand):
                                     raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
                                 break
-
-                        elif isinstance(log_entry, DodgeEntry):
-                            # Always break after a dodge
-                            break
 
             target_contents = board.get_position(target_space)
             if target_contents:

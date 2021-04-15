@@ -184,6 +184,15 @@ class LeaderRerollEntry(RerollEntry):
         return f'LeaderReroll(team={self.team}, player={self.player})'
 
 
+class TurnOverEntry(TeamEntry):
+    def __init__(self, team, reason):
+        super().__init__(team)
+        self.reason = reason
+
+    def __repr__(self):
+        return f'TurnOver(team={self.team}, reason={self.reason})'
+
+
 def create_other_entry(team, player, action, required, roll, result):
     if action == "Stupid":
         return StupidEntry(team, player, required, roll, result)
@@ -217,7 +226,7 @@ dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
 tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
-turnover_re = re.compile(f"{TEAM} suffer a (TURNOVER!) : (.*)")
+turnover_re = re.compile(f"{TEAM} suffer a TURNOVER! : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
                                       " .* ([0-9]+)(?: Critical)? -> (Success|Failure)")
 
@@ -229,7 +238,7 @@ turn_regexes = [
     (gfi_re, GoingForItEntry),
     (reroll_re, RerollEntry),
     (leader_reroll_re, LeaderRerollEntry),
-    (turnover_re, None),
+    (turnover_re, TurnOverEntry),
     (tentacle_use_re, TentacleUseEntry),
     (teams_re, MatchLogEntry),
     (coin_toss_re, CoinTossLogEntry),
