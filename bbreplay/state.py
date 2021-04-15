@@ -19,8 +19,9 @@ class GameState:
         return self.__turn // 2 + 1
 
     def end_turn(self, team, reason):
+        end_turn = EndTurn(team, self.turn, reason, self)
         self.__turn += 1
-        return EndTurn(team, self.turn, reason, self)
+        return end_turn
 
     def set_position(self, position, contents):
         self.__board[position.y][position.x] = contents
