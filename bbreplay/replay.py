@@ -349,10 +349,12 @@ class Replay:
                         raise ValueError("Looking for dodge-related log entries but got "
                                          f"{type(log_entry).__name__}")
 
-                    if (isinstance(log_entry, DodgeEntry) and log_entry.result == ActionResult.SUCCESS) or \
-                        isinstance(log_entry, TurnOverEntry):
+                    if isinstance(log_entry, DodgeEntry) and log_entry.result == ActionResult.SUCCESS:
+                        failed_movement = False
                         break
-                    if log_entry.result != ActionResult.SUCCESS:
+                    elif isinstance(log_entry, TurnOverEntry):
+                        break
+                    elif log_entry.result != ActionResult.SUCCESS:
                         failed_movement = True
                         if move_log_idx < len(move_log_entries):
                             log_entry = move_log_entries[move_log_idx]
