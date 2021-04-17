@@ -3,7 +3,7 @@
 
 import re
 from . import block_string_to_enum, skill_name_to_enum
-from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult
+from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult
 
 
 class PartialEntry:
@@ -204,6 +204,16 @@ class ProRerollEntry(RerollEntry):
                f"roll={self.roll}, result={self.result})"
 
 
+class InjuryRollEntry(TeamPlayerEntry):
+    def __init__(self, team, player, roll, result):
+        super().__init__(team, player)
+        self.roll = roll
+        self.result = InjuryRollResult[result.upper()]
+
+    def __repr__(self):
+        return f"InjuryRoll(team={self.team}, player={self.player}, roll={self.roll}, result={self.result})"
+
+
 class TurnOverEntry(TeamEntry):
     def __init__(self, team, reason):
         super().__init__(team)
@@ -252,6 +262,7 @@ leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
 turnover_re = re.compile(f"{TEAM} suffer a TURNOVER! : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
                                       ".* ([0-9]+)(?: Critical)? -> (Success|Failure)")
+injury_roll_re = re.compile(f"{TEAM} #([0-9]+) .* = ([0-9]+) -> (Stunned|KO|Injured)")
 
 turn_regexes = [
     (block_re, BlockLogEntry),
@@ -262,6 +273,7 @@ turn_regexes = [
     (reroll_re, RerollEntry),
     (leader_reroll_re, LeaderRerollEntry),
     (pro_reroll_re, ProRerollEntry),
+    (injury_roll_re, InjuryRollEntry),
     (turnover_re, TurnOverEntry),
     (tentacle_use_re, TentacleUseEntry),
     (teams_re, MatchLogEntry),

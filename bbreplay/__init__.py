@@ -66,6 +66,12 @@ class PlayerStatus(Enum):
     STUPID = auto()
 
 
+class InjuryRollResult(Enum):
+    STUNNED = auto()
+    KO = auto()
+    INJURED = auto()
+
+
 # Based on dmchale's BBRR list from https://github.com/dmchale/BBRR/blob/master/classes/BBRRSkills.php
 # and extended as new skills are found in replays
 class Skills(Enum):

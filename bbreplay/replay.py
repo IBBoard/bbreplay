@@ -27,6 +27,7 @@ BlockBothDown = namedtuple('BlockBothDown', ['player'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
+InjuryRoll = namedtuple('InjuryRoll', ['player', 'result'])
 Dodge = namedtuple('Dodge', ['player', 'result'])
 Pro = namedtuple('Pro', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
@@ -317,13 +318,13 @@ class Replay:
                         or chosen_block_dice == BlockResult.BOTH_DOWN) \
                             and not attacker_avoided:
                         armour_entry = next(target_log_entries)
-                        yield from self.__handle_armour_roll(armour_entry, blocking_player, board)
+                        yield from self.__handle_armour_roll(armour_entry, target_log_entries, blocking_player, board)
                     if (chosen_block_dice == BlockResult.DEFENDER_DOWN \
                         or chosen_block_dice == BlockResult.DEFENDER_STUMBLES \
                         or chosen_block_dice == BlockResult.BOTH_DOWN) \
                         and not defender_avoided:
                         armour_entry = next(target_log_entries)
-                        yield from self.__handle_armour_roll(armour_entry, target_by_idx, board)
+                        yield from self.__handle_armour_roll(armour_entry, target_log_entries, target_by_idx, board)
                     log_entry = next(target_log_entries, None)
                     if isinstance(log_entry, TurnOverEntry):
                         validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
@@ -351,12 +352,16 @@ class Replay:
     def get_log_entries(self):
         return self.__log_entries
 
-    def __handle_armour_roll(self, roll_entry, player, board):
+    def __handle_armour_roll(self, roll_entry, log_entries, player, board):
         validate_log_entry(roll_entry, ArmourValueRollEntry,
                            player.team.team_type, player.number)
         board.set_prone(player)
         yield PlayerDown(player)
         yield ArmourRoll(player, roll_entry.result)
+        if roll_entry.result == ActionResult.SUCCESS:
+            injury_roll = next(log_entries)
+            yield InjuryRoll(player, injury_roll.result)
+
 
     def __process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         failed_movement = False
@@ -446,7 +451,7 @@ class Replay:
                             else:
                                 yield Reroll(cmd.team, 'Team Reroll')
                         elif isinstance(log_entry, ArmourValueRollEntry):
-                            yield from self.__handle_armour_roll(log_entry, player, board)
+                            yield from self.__handle_armour_roll(log_entry, move_log_entries, player, board)
                         else:
                             cmd = next(cmds)
                             if not isinstance(cmd, DeclineRerollCommand):
