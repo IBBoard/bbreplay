@@ -222,6 +222,9 @@ class Replay:
                                                        target_log_entries, log_entries, board, unused)
                     cmd = unused.command
                     target_log_entries = unused.log_entries
+                elif board.is_prone(targeting_player):
+                    board.unset_prone(targeting_player)
+                    yield Blitz(targeting_player, target_by_idx)
                 if not target_log_entries:
                     target_log_entries = self.__next_generator(log_entries)
                 if isinstance(cmd, BlockCommand):
@@ -363,6 +366,8 @@ class Replay:
         turnover = None
         move_log_entries = cur_log_entries
         moves = []
+        is_prone = board.is_prone(player)
+
         # We can't just use "while true" and check for EndMovementCommand because a blitz is
         # movement followed by a Block without an EndMovementCommand
         while isinstance(cmd, MovementCommand):
@@ -461,12 +466,14 @@ class Replay:
                     pickup_entry = log_entry
                 elif target_contents == player:
                     # It's a stand-up in the same space
-                    board.unset_prone(player)
                     pass
                 else:
                     raise ValueError(f"{player} tried to move to occupied space {target_space}")
 
             if not failed_movement:
+                if is_prone:
+                    board.unset_prone(player)
+                    is_prone = False
                 board.reset_position(start_space)
                 board.set_position(target_space, player)
                 yield Movement(player, start_space, target_space, board)
