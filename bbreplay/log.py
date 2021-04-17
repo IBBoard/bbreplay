@@ -244,7 +244,7 @@ reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
 turnover_re = re.compile(f"{TEAM} suffer a TURNOVER! : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
-                                      " .* ([0-9]+)(?: Critical)? -> (Success|Failure)")
+                                      " .*([0-9]+)(?: Critical)? -> (Success|Failure)")
 
 turn_regexes = [
     (block_re, BlockLogEntry),
