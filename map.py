@@ -132,18 +132,20 @@ if __name__ == '__main__':
     turn = 0
     board = None
 
-    for event in replay.events():
-        event_type = type(event)
-        if hasattr(event, 'board'):
-            board = event.board
-        if event_type is SetupComplete:
-            print("\nSetup")
-            print(draw_map(event.board, args.pretty))
-        elif event_type is Kickoff:
-            print("\nKickoff")
-            print(draw_map(event.board, args.pretty))
-        elif event_type is EndTurn:
-            print(f'\nEnd of Turn {event.number} - {replay.get_team(event.team).name}')
-            print(draw_map(event.board, args.pretty))
-    print("\nEnd")
-    print(draw_map(board, args.pretty))
+    try:
+        for event in replay.events():
+            event_type = type(event)
+            if hasattr(event, 'board'):
+                board = event.board
+            if event_type is SetupComplete:
+                print("\nSetup")
+                print(draw_map(event.board, args.pretty))
+            elif event_type is Kickoff:
+                print("\nKickoff")
+                print(draw_map(event.board, args.pretty))
+            elif event_type is EndTurn:
+                print(f'\nEnd of Turn {event.number} - {replay.get_team(event.team).name}')
+                print(draw_map(event.board, args.pretty))
+    finally:
+        print("\nEnd")
+        print(draw_map(board, args.pretty))
