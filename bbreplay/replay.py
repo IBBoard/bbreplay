@@ -7,7 +7,7 @@ from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry
+    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry
 from .player import Ball
 from .state import GameState, EndTurn
 from .teams import Team
@@ -28,6 +28,7 @@ Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_sp
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
 Dodge = namedtuple('Dodge', ['player', 'result'])
+Pro = namedtuple('Pro', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
@@ -208,7 +209,12 @@ class Replay:
                     block_choice = next(cmds)
                     if isinstance(block_choice, ProRerollCommand):
                         reroll = next(target_log_entries)
-                        yield Reroll(reroll.team, 'Pro')
+                        yield Pro(blocking_player, reroll.result)
+                        if reroll.result == ActionResult.SUCCESS:
+                            yield Reroll(reroll.team, 'Pro')
+                            _ = next(target_log_entries)  # Burn the random duplication
+                        else:
+                            _ = next(cmds)  # Burn the reroll prompt that shows as a block dice choice
                         block_dice = next(target_log_entries)
                         block_choice = next(cmds)
                     elif isinstance(block_choice, RerollCommand):

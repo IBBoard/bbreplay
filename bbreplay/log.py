@@ -179,10 +179,24 @@ class RerollEntry(TeamEntry):
 class LeaderRerollEntry(RerollEntry):
     def __init__(self, team, player):
         super().__init__(team)
-        self.player = player
+        self.player = int(player)
 
     def __repr__(self):
         return f'LeaderReroll(team={self.team}, player={self.player})'
+
+
+# This could be a ActionResultEntry but it's more important that we treat it like a RerollEntry
+class ProRerollEntry(RerollEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__(team)
+        self.player = int(player)
+        self.required = required
+        self.roll = roll
+        self.result = ActionResult[result.upper()]
+
+    def __repr__(self):
+        return f"ProReroll(team={self.team}, player={self.player}, required={self.required}, "\
+               f"roll={self.roll}, result={self.result})"
 
 
 class TurnOverEntry(TeamEntry):
@@ -224,6 +238,7 @@ pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*(
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
 skill_re = re.compile(f"{TEAM} #([0-9]+).* uses (Dodge|Block)")
+pro_reroll_re = re.compile(f"{TEAM} #([0-9]+).* Pro +\(([0-9]+\+)\) : ([0-9]+) -> (Success|Failure)")
 tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
@@ -239,6 +254,7 @@ turn_regexes = [
     (gfi_re, GoingForItEntry),
     (reroll_re, RerollEntry),
     (leader_reroll_re, LeaderRerollEntry),
+    (pro_reroll_re, ProRerollEntry),
     (turnover_re, TurnOverEntry),
     (tentacle_use_re, TentacleUseEntry),
     (teams_re, MatchLogEntry),
