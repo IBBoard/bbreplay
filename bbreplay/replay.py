@@ -186,11 +186,9 @@ class Replay:
                 target = cmd
                 targeting_player = self.get_team(target.team).get_player(target.player_idx)
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
-                target_log_entries = next(log_entries)
-                target_log_idx = 0
+                target_log_entries = next_generator(log_entries)
                 if Skills.REALLY_STUPID in targeting_player.skills:
-                    log_entry = target_log_entries[target_log_idx]
-                    target_log_idx += 1
+                    log_entry = next(target_log_entries)
                     validate_log_entry(log_entry, StupidEntry, target.team, targeting_player.number)
                     yield ConditionCheck(targeting_player, 'Really Stupid', log_entry.result)
                     if log_entry.result != ActionResult.SUCCESS:
@@ -206,22 +204,17 @@ class Replay:
                 if isinstance(cmd, BlockCommand):
                     block = cmd
                     blocking_player = targeting_player
-                    block_dice = target_log_entries[target_log_idx]
-                    target_log_idx += 1
+                    block_dice = next(target_log_entries)
                     block_choice = next(cmds)
                     if isinstance(block_choice, ProRerollCommand):
-                        reroll = target_log_entries[target_log_idx]
-                        target_log_idx += 1
+                        reroll = next(target_log_entries)
                         yield Reroll(reroll.team, 'Pro')
-                        block_dice = target_log_entries[target_log_idx]
-                        target_log_idx += 1
+                        block_dice = next(target_log_entries)
                         block_choice = next(cmds)
                     elif isinstance(block_choice, RerollCommand):
-                        reroll = target_log_entries[target_log_idx]
-                        target_log_idx += 1
+                        reroll = next(target_log_entries)
                         yield Reroll(reroll.team, 'Team Reroll')
-                        block_dice = target_log_entries[target_log_idx]
-                        target_log_idx += 1
+                        block_dice = next(target_log_entries)
                         block_choice = next(cmds)
                     target_by_coords = board.get_position(block.position)
                     if target_by_coords != target_by_idx:
@@ -259,21 +252,18 @@ class Replay:
                     defender_avoided = False
 
                     if chosen_block_dice == BlockResult.DEFENDER_STUMBLES and Skills.DODGE in target_by_idx.skills:
-                        skill_entry = target_log_entries[target_log_idx]
-                        target_log_idx += 1
+                        skill_entry = next(target_log_entries)
                         validate_skill_log_entry(skill_entry, target_by_idx, Skills.DODGE)
                         yield DodgeBlock(blocking_player, target_by_idx)
                         defender_avoided = True
                     elif chosen_block_dice == BlockResult.BOTH_DOWN:
                         if Skills.BLOCK in blocking_player.skills:
-                            skill_entry = target_log_entries[target_log_idx]
-                            target_log_idx += 1
+                            skill_entry = next(target_log_entries)
                             validate_skill_log_entry(skill_entry, blocking_player, Skills.BLOCK)
                             yield BlockBothDown(blocking_player)
                             attacker_avoided = True
                         if Skills.BLOCK in target_by_idx.skills:
-                            skill_entry = target_log_entries[target_log_idx]
-                            target_log_idx += 1
+                            skill_entry = next(target_log_entries)
                             validate_skill_log_entry(skill_entry, target_by_idx, Skills.BLOCK)
                             yield BlockBothDown(target_by_idx)
                             defender_avoided = True
@@ -282,21 +272,18 @@ class Replay:
                     if (chosen_block_dice == BlockResult.ATTACKER_DOWN \
                         or chosen_block_dice == BlockResult.BOTH_DOWN) \
                             and not attacker_avoided:
-                        armour_entry = target_log_entries[target_log_idx]
-                        target_log_idx += 1
+                        armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, blocking_player, board)
                     if (chosen_block_dice == BlockResult.DEFENDER_DOWN \
                         or chosen_block_dice == BlockResult.DEFENDER_STUMBLES \
                         or chosen_block_dice == BlockResult.BOTH_DOWN) \
                         and not defender_avoided:
-                        armour_entry = target_log_entries[target_log_idx]
-                        target_log_idx += 1
+                        armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, target_by_idx, board)
-                    if target_log_idx < len(target_log_entries):
-                        turnover_entry = target_log_entries[target_log_idx]
-                        target_log_idx += 1
-                        validate_log_entry(turnover_entry, TurnOverEntry, blocking_player.team.team_type)
-                        yield board.end_turn(turnover_entry.team, turnover_entry.reason)
+                    log_entry = next(target_log_entries, None)
+                    if log_entry:
+                        validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
+                        yield board.end_turn(log_entry.team, log_entry.reason)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
@@ -329,12 +316,10 @@ class Replay:
         pickup_entry = None
         start_space = player.position
         move_log_entries = None
-        move_log_idx = 0
         turnover = None
         if Skills.REALLY_STUPID in player.skills:
-            move_log_entries = next(log_entries)
-            log_entry = move_log_entries[move_log_idx]
-            move_log_idx += 1
+            move_log_entries = next_generator(log_entries)
+            log_entry = next(move_log_entries)
             validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
             yield ConditionCheck(player, 'Really Stupid', log_entry.result)
 
@@ -354,10 +339,9 @@ class Replay:
             target_space = movement.position
             if not failed_movement and is_dodge(board, player, target_space):
                 if not move_log_entries:
-                    move_log_entries = next(log_entries)
+                    move_log_entries = next_generator(log_entries)
                 while True:
-                    log_entry = move_log_entries[move_log_idx]
-                    move_log_idx += 1
+                    log_entry = next(move_log_entries)
                     if isinstance(log_entry, DodgeEntry):
                         validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
                         yield Dodge(player, log_entry.result)
@@ -380,18 +364,16 @@ class Replay:
                         break
                     elif log_entry.result != ActionResult.SUCCESS:
                         failed_movement = True
-                        if move_log_idx < len(move_log_entries):
-                            log_entry = move_log_entries[move_log_idx]
-                            move_log_idx += 1
-                            if isinstance(log_entry, RerollEntry):
-                                validate_log_entry(log_entry, RerollEntry, player.team.team_type)
-                                cmd = next(cmds)
-                                if not isinstance(cmd, RerollCommand):
-                                    raise ValueError("No RerollCommand to go with RerollEntry")
-                                else:
-                                    yield Reroll(cmd.team, 'Team Reroll')
-                            elif isinstance(log_entry, ArmourValueRollEntry):
-                                yield from self.__handle_armour_roll(log_entry, player, board)
+                        log_entry = next(move_log_entries, None)
+                        if isinstance(log_entry, RerollEntry):
+                            validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                            cmd = next(cmds)
+                            if not isinstance(cmd, RerollCommand):
+                                raise ValueError("No RerollCommand to go with RerollEntry")
+                            else:
+                                yield Reroll(cmd.team, 'Team Reroll')
+                        elif isinstance(log_entry, ArmourValueRollEntry):
+                            yield from self.__handle_armour_roll(log_entry, player, board)
                         else:
                             cmd = next(cmds)
                             if not isinstance(cmd, DeclineRerollCommand):
@@ -405,9 +387,8 @@ class Replay:
             if target_contents:
                 if isinstance(target_contents, Ball):
                     if not move_log_entries:
-                        move_log_entries = next(log_entries)
-                    log_entry = move_log_entries[move_log_idx]
-                    move_log_idx += 1
+                        move_log_entries = next_generator(log_entries)
+                    log_entry = next(move_log_entries)
                     validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
                     pickup_entry = log_entry
                 elif target_contents == player:
@@ -490,3 +471,6 @@ def calculate_pushback(blocker_coords, old_coords, board):
     for possible_coord in possible_coords:
         if not board.get_position(possible_coord):
             return possible_coord
+
+def next_generator(log_entries):
+    return (log_entry for log_entry in next(log_entries))
