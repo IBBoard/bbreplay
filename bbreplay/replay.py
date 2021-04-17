@@ -254,21 +254,34 @@ class Replay:
                     if chosen_block_dice == BlockResult.PUSHED or chosen_block_dice == BlockResult.DEFENDER_DOWN \
                         or chosen_block_dice == BlockResult.DEFENDER_STUMBLES:
                         block_result = next(cmds)
-                        old_coords = block.position
-                        if isinstance(block_result, PushbackCommand):
-                            board.reset_position(old_coords)
-                            board.set_position(block_result.position, target_by_coords)
-                            yield Pushback(blocking_player, target_by_idx, old_coords, block_result.position, board)
-                            block_result = next(cmds)
-                        elif isinstance(block_result, FollowUpChoiceCommand):
-                            # FollowUp without Pushback means they only had one space to go to
-                            new_coords = calculate_pushback(blocking_player.position, old_coords, board)
-                            board.reset_position(old_coords)
-                            board.set_position(new_coords, target_by_coords)
-                            yield Pushback(blocking_player, target_by_idx, old_coords, new_coords, board)
-                        else:
-                            raise ValueError("Expected PushbackCommand after "
-                                             f"{chosen_block_dice} but got {type(block_result).__name__}")
+                        old_coords = target_by_idx.position
+                        origin_coords = blocking_player.position
+                        board.reset_position(old_coords)
+                        pushing_player = blocking_player
+                        pushed_player = target_by_coords
+                        while True:
+                            if isinstance(block_result, PushbackCommand):
+                                new_coords = block_result.position
+                                dest_content = board.get_position(new_coords)
+                                origin_coords = pushed_player.position
+                                board.set_position(new_coords, pushed_player)
+                                yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
+                                block_result = next(cmds)
+                                if not dest_content:
+                                    break
+                                pushing_player = pushed_player
+                                pushed_player = dest_content
+                                old_coords = new_coords
+                            elif isinstance(block_result, FollowUpChoiceCommand):
+                                # FollowUp without Pushback means they only had one space to go to
+                                new_coords = calculate_pushback(origin_coords, old_coords, board)
+                                board.set_position(new_coords, pushed_player)
+                                yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
+                                break
+                            else:
+                                raise ValueError("Expected PushbackCommand after "
+                                                 f"{chosen_block_dice} but got {type(block_result).__name__}")
+
                         # Follow-up
                         if block_result.choice:
                             old_coords = blocking_player.position
