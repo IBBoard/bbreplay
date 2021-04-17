@@ -254,7 +254,7 @@ pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*(
                        " (Success|Failure)")
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
-skill_re = re.compile(f"{TEAM} #([0-9]+).* uses (Dodge|Block)")
+skill_re = re.compile(f"{TEAM} #([0-9]+).* uses (Dodge|Block|Diving Tackle)")
 pro_reroll_re = re.compile(f"{TEAM} #([0-9]+).* Pro +\(([0-9]+\+)\) : ([0-9]+) -> (Success|Failure)")
 tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")

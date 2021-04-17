@@ -29,6 +29,7 @@ FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'sourc
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
 InjuryRoll = namedtuple('InjuryRoll', ['player', 'result'])
 Dodge = namedtuple('Dodge', ['player', 'result'])
+DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pro = namedtuple('Pro', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
@@ -366,6 +367,7 @@ class Replay:
     def __process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         failed_movement = False
         pickup_entry = None
+        diving_tackle_entry = None
         start_space = player.position
         move_log_entries = None
         turnover = None
@@ -431,6 +433,9 @@ class Replay:
                     elif isinstance(log_entry, TurnOverEntry):
                         validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                         turnover = log_entry.reason
+                    elif isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.DIVING_TACKLE:
+                        diving_tackle_entry = log_entry
+                        continue
                     else:
                         raise ValueError("Looking for dodge-related log entries but got "
                                          f"{type(log_entry).__name__}")
@@ -488,6 +493,14 @@ class Replay:
                 yield FailedMovement(player, start_space, target_space)
             else:
                 yield FailedMovement(player, start_space, target_space)
+
+            if diving_tackle_entry:
+                team = self.get_team(diving_tackle_entry.team)
+                diving_player = team.get_player_by_number(diving_tackle_entry.player)
+                board.reset_position(diving_player.position)
+                board.set_position(start_space, diving_player)
+                board.set_prone(diving_player)
+                yield DivingTackle(diving_player, start_space)
 
             if pickup_entry:
                 yield Pickup(player, movement.position, pickup_entry.result)
