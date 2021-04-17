@@ -351,8 +351,13 @@ class Replay:
                 if not move_log_entries:
                     move_log_entries = next_generator(log_entries)
                 while True:
-                    log_entry = next(move_log_entries)
-                    if isinstance(log_entry, DodgeEntry):
+                    log_entry = next(move_log_entries, None)
+                    if not log_entry:
+                        break
+                    elif isinstance(log_entry, PickupEntry):
+                        validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
+                        pickup_entry = log_entry
+                    elif isinstance(log_entry, DodgeEntry):
                         validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
                         yield Dodge(player, log_entry.result)
                     elif isinstance(log_entry, TentacledEntry):
@@ -394,7 +399,7 @@ class Replay:
                             break
 
             target_contents = board.get_position(target_space)
-            if target_contents:
+            if target_contents and not pickup_entry:
                 if isinstance(target_contents, Ball):
                     if not move_log_entries:
                         move_log_entries = next_generator(log_entries)
