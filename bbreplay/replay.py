@@ -343,13 +343,6 @@ class Replay:
         move_log_entries = None
         turnover = None
         move_log_entries = cur_log_entries
-        if Skills.REALLY_STUPID in player.skills:
-            if not move_log_entries:
-                move_log_entries = self.__next_generator(log_entries)
-            log_entry = next(move_log_entries)
-            validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
-            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
-
         moves = []
         # We can't just use "while true" and check for EndMovementCommand because a blitz is
         # movement followed by a Block without an EndMovementCommand
@@ -361,6 +354,30 @@ class Replay:
 
         if not isinstance(cmd, MovementCommand) and unused:
             unused.command = cmd
+
+        if Skills.REALLY_STUPID in player.skills:
+            if not move_log_entries:
+                move_log_entries = self.__next_generator(log_entries)
+            log_entry = next(move_log_entries)
+            validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
+            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
+            if log_entry.result != ActionResult.SUCCESS:
+                failed_movement = True
+                log_entry = next(move_log_entries, None)
+                if log_entry:
+                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                    cmd = next(cmds)
+                    if isinstance(cmd, ProRerollCommand):
+                        if log_entry.result == ActionResult.SUCCESS:
+                            yield Reroll(log_entry.team, 'Pro')
+                            log_entry = next(move_log_entries)
+                            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
+                            if log_entry.result == ActionResult.SUCCESS:
+                                failed_movement = False
+                    elif isinstance(cmd, RerollEntry):
+                        yield Reroll(cmd.team, 'Team Reroll')
+                    else:
+                        raise ValueError("No RerollCommand to go with RerollEntry")
 
         for movement in moves:
             target_space = movement.position
