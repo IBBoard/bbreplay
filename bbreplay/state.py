@@ -38,13 +38,16 @@ class GameState:
         return self.__board[idx]
 
     def has_tacklezone(self, player):
-        return player not in self.__prone and player not in self.__stupid
+        return not self.is_prone(player) and player not in self.__stupid
 
     def set_prone(self, player):
         self.__prone.add(player)
 
     def unset_prone(self, player):
         self.__prone.remove(player)
+
+    def is_prone(self, player):
+        return player in self.__prone
 
     def get_surrounding_players(self, position):
         entities = []

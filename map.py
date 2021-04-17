@@ -47,7 +47,7 @@ def draw_filler_row(chars, pretty):
     return row
 
 
-def object_to_text(obj, pretty):
+def object_to_text(obj, pretty, board=None):
     if not obj:
         return ROW[1] * 3
     elif isinstance(obj, Ball):
@@ -55,12 +55,17 @@ def object_to_text(obj, pretty):
         return ball if not pretty else BALL_COLOUR + ball + PIECE_RESET
     else:
         # TODO: Put the ball in the first space if it's being carried!
-        return player_to_text(obj, pretty)
+        return player_to_text(obj, pretty, board)
 
 
-def player_to_text(player, pretty):
+def player_to_text(player, pretty, board=None):
     team_type = player.team.team_type
-    player_str = ROW[1] + chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1) + ROW[1]
+    if board and board.is_prone(player):
+        player_str = "⤓"
+    #elif board and has ball
+    else:
+        player_str = ROW[1]
+    player_str += chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1) + ROW[1]
     if pretty:
         # TODO: Can we pull this from the team? Relies on 24-bit terminals
         colour = HOME_TEAM_COLOUR if team_type == TeamType.HOME else AWAY_TEAM_COLOUR
@@ -89,7 +94,7 @@ def draw_map(board, pretty):
         map += ROW[0]
         for col in range(PITCH_WIDTH):
             contents = row_data[col]
-            map += object_to_text(contents, pretty)
+            map += object_to_text(contents, pretty, board)
             if col == LEFT_WIDEZONE_IDX or col == RIGHT_WIDEZONE_IDX - 1:
                 map += ROW[3]
             elif col == LAST_COLUMN_IDX:
