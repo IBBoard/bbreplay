@@ -130,6 +130,11 @@ class StupidEntry(ActionResultEntry):
         super().__init__("Stupid", team, player, required, roll, result)
 
 
+class FoulAppearanceEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("FoulAppearance", team, player, required, roll, result)
+
+
 class TentacleUseEntry(PartialEntry):
     def __init__(self, team, player):
         self.team = team
@@ -215,6 +220,8 @@ def create_other_entry(team, player, action, required, roll, result):
         return ArmourValueRollEntry(team, player, required, roll, result)
     elif action == "Tentacles":
         return TentacledRollEntry(team, player, required, roll, result)
+    elif action == "Appearance":
+        return FoulAppearanceEntry(team, player, required, roll, result)
     else:
         return action, team, player, required, roll, result
 

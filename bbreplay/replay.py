@@ -7,7 +7,7 @@ from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry
+    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry
 from .player import Ball
 from .state import GameState, EndTurn
 from .teams import Team
@@ -207,6 +207,12 @@ class Replay:
                     if log_entry.result != ActionResult.SUCCESS:
                         # The stupid stopped us
                         continue
+                if Skills.FOUL_APPEARANCE in target_by_idx.skills:
+                    if not target_log_entries:
+                        target_log_entries = self.__next_generator(log_entries)
+                    log_entry = next(target_log_entries)
+                    validate_log_entry(log_entry, FoulAppearanceEntry, target.team, targeting_player.number)
+                    yield ConditionCheck(targeting_player, 'Foul Appearance', log_entry.result)
 
                 cmd = next(cmds)
                 if isinstance(cmd, MovementCommand):
