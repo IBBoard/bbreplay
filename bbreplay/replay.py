@@ -6,7 +6,7 @@ from collections import namedtuple
 from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, DodgeSkillEntry, ArmourValueRollEntry, \
+from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry
 from .player import Ball
 from .state import GameState, EndTurn
@@ -23,6 +23,7 @@ FailedMovement = namedtuple('FailedMovement', ['player', 'source_space', 'target
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
 Blitz = namedtuple('Blitz', ['blitzing_player', 'blitzed_player'])
 DodgeBlock = namedtuple('DodgeBlock', ['blocking_player', 'blocked_player'])
+BlockBothDown = namedtuple('BlockBothDown', ['player'])
 Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_space', 'taget_space', 'board'])
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
@@ -254,20 +255,43 @@ class Replay:
                             board.set_position(block.position, blocking_player)
                             yield FollowUp(blocking_player, target_by_idx, old_coords, block.position, board)
 
-                    if chosen_block_dice == BlockResult.ATTACKER_DOWN \
-                        or chosen_block_dice == BlockResult.BOTH_DOWN:
+                    attacker_avoided = False
+                    defender_avoided = False
+
+                    if chosen_block_dice == BlockResult.DEFENDER_STUMBLES and Skills.DODGE in target_by_idx.skills:
+                        skill_entry = target_log_entries[target_log_idx]
+                        target_log_idx += 1
+                        validate_skill_log_entry(skill_entry, target_by_idx, Skills.DODGE)
+                        yield DodgeBlock(blocking_player, target_by_idx)
+                        defender_avoided = True
+                    elif chosen_block_dice == BlockResult.BOTH_DOWN:
+                        if Skills.BLOCK in blocking_player.skills:
+                            skill_entry = target_log_entries[target_log_idx]
+                            target_log_idx += 1
+                            validate_skill_log_entry(skill_entry, blocking_player, Skills.BLOCK)
+                            yield BlockBothDown(blocking_player)
+                            attacker_avoided = True
+                        if Skills.BLOCK in target_by_idx.skills:
+                            skill_entry = target_log_entries[target_log_idx]
+                            target_log_idx += 1
+                            validate_skill_log_entry(skill_entry, target_by_idx, Skills.BLOCK)
+                            yield BlockBothDown(target_by_idx)
+                            defender_avoided = True
+
+
+                    if (chosen_block_dice == BlockResult.ATTACKER_DOWN \
+                        or chosen_block_dice == BlockResult.BOTH_DOWN) \
+                            and not attacker_avoided:
                         armour_entry = target_log_entries[target_log_idx]
                         target_log_idx += 1
                         yield from self.__handle_armour_roll(armour_entry, blocking_player, board)
-                    if chosen_block_dice == BlockResult.DEFENDER_DOWN \
+                    if (chosen_block_dice == BlockResult.DEFENDER_DOWN \
                         or chosen_block_dice == BlockResult.DEFENDER_STUMBLES \
-                        or chosen_block_dice == BlockResult.BOTH_DOWN:
+                        or chosen_block_dice == BlockResult.BOTH_DOWN) \
+                        and not defender_avoided:
                         armour_entry = target_log_entries[target_log_idx]
                         target_log_idx += 1
-                        if isinstance(armour_entry, DodgeSkillEntry):
-                            yield DodgeBlock(blocking_player, target_by_idx)
-                        else:
-                            yield from self.__handle_armour_roll(armour_entry, target_by_idx, board)
+                        yield from self.__handle_armour_roll(armour_entry, target_by_idx, board)
                     if target_log_idx < len(target_log_entries):
                         turnover_entry = target_log_entries[target_log_idx]
                         target_log_idx += 1
@@ -443,6 +467,12 @@ def validate_log_entry(log_entry, expected_type, expected_team, expected_number=
         else:
             raise ValueError(f"Expected {expected_type.__name__} for "
                              f"{expected_team} but got {log_entry.team}")
+
+
+def validate_skill_log_entry(log_entry, player, skill):
+    validate_log_entry(log_entry, SkillEntry, player.team.team_type, player.number)
+    if skill not in player.skills:
+        raise ValueError(f"Got skill entry for {skill} but player has {player.skills}")
 
 
 def calculate_pushback(blocker_coords, old_coords, board):

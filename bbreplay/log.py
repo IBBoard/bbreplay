@@ -2,7 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 import re
-from . import block_string_to_enum
+from . import block_string_to_enum, skill_name_to_enum
 from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult
 
 
@@ -157,13 +157,14 @@ class TentacledEntry(ActionResultEntry):
                f"required={self.required}, roll={self.roll}, result={self.result})"
 
 
-class DodgeSkillEntry:
-    def __init__(self, team, player):
+class SkillEntry:
+    def __init__(self, team, player, skill):
         self.team = team
-        self.player = player
+        self.player = int(player)
+        self.skill = skill_name_to_enum(skill)
 
     def __repr__(self):
-        return f'DodgeSkill(team={self.team}, player={self.player})'
+        return f'Skill(team={self.team}, player={self.player}, skill={self.skill})'
 
 
 class RerollEntry(TeamEntry):
@@ -222,7 +223,7 @@ pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*(
                        " (Success|Failure)")
 dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
-dodge_skill_re = re.compile(f"{TEAM} #([0-9]+).* uses Dodge")
+skill_re = re.compile(f"{TEAM} #([0-9]+).* uses (Dodge|Block)")
 tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
@@ -234,7 +235,7 @@ turn_regexes = [
     (block_re, BlockLogEntry),
     (pickup_re, PickupEntry),
     (dodge_re, DodgeEntry),
-    (dodge_skill_re, DodgeSkillEntry),
+    (skill_re, SkillEntry),
     (gfi_re, GoingForItEntry),
     (reroll_re, RerollEntry),
     (leader_reroll_re, LeaderRerollEntry),
