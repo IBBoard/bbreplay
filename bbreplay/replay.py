@@ -37,6 +37,13 @@ Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'ball', 'board'])
 
 
+class ReturnWrapper:
+    # Ugly work-around class to let us pass back unused objects and still "yield from"
+    def __init__(self):
+        self.command = None
+        self.log_entries = None
+
+
 class Replay:
     def __init__(self, db_path, log_path):
         self.__db = sqlite3.connect(db_path)
@@ -85,6 +92,9 @@ class Replay:
             self.__generator = generator
         else:
             self.__generator = self.__default_generator
+
+    def __next_generator(self, log_entries):
+        return self.__generator(next(log_entries))
 
     def events(self):
         log_entries = self.__generator(log_entry for log_entry in self.__log_entries)
@@ -188,8 +198,9 @@ class Replay:
                 target = cmd
                 targeting_player = self.get_team(target.team).get_player(target.player_idx)
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
-                target_log_entries = next_generator(log_entries)
+                target_log_entries = None
                 if Skills.REALLY_STUPID in targeting_player.skills:
+                    target_log_entries = self.__next_generator(log_entries)
                     log_entry = next(target_log_entries)
                     validate_log_entry(log_entry, StupidEntry, target.team, targeting_player.number)
                     yield ConditionCheck(targeting_player, 'Really Stupid', log_entry.result)
@@ -200,9 +211,13 @@ class Replay:
                 cmd = next(cmds)
                 if isinstance(cmd, MovementCommand):
                     yield Blitz(targeting_player, target_by_idx)
-                    unused_commands = []
-                    yield from self.__process_movement(targeting_player, cmd, cmds, log_entries, board, unused_commands)
-                    cmd = unused_commands[0]
+                    unused = ReturnWrapper()
+                    yield from self.__process_movement(targeting_player, cmd, cmds,
+                                                       target_log_entries, log_entries, board, unused)
+                    cmd = unused.command
+                    target_log_entries = unused.log_entries
+                if not target_log_entries:
+                    target_log_entries = self.__next_generator(log_entries)
                 if isinstance(cmd, BlockCommand):
                     block = cmd
                     blocking_player = targeting_player
@@ -297,7 +312,7 @@ class Replay:
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
-                yield from self.__process_movement(player, cmd, cmds, log_entries, board)
+                yield from self.__process_movement(player, cmd, cmds, None, log_entries, board)
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
             elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
@@ -321,14 +336,16 @@ class Replay:
         yield PlayerDown(player)
         yield ArmourRoll(player, roll_entry.result)
 
-    def __process_movement(self, player, cmd, cmds, log_entries, board, unused_commands=[]):
+    def __process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         failed_movement = False
         pickup_entry = None
         start_space = player.position
         move_log_entries = None
         turnover = None
+        move_log_entries = cur_log_entries
         if Skills.REALLY_STUPID in player.skills:
-            move_log_entries = next_generator(log_entries)
+            if not move_log_entries:
+                move_log_entries = self.__next_generator(log_entries)
             log_entry = next(move_log_entries)
             validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
             yield ConditionCheck(player, 'Really Stupid', log_entry.result)
@@ -342,14 +359,14 @@ class Replay:
                 break
             cmd = next(cmds)
 
-        if not isinstance(cmd, MovementCommand):
-            unused_commands.append(cmd)
+        if not isinstance(cmd, MovementCommand) and unused:
+            unused.command = cmd
 
         for movement in moves:
             target_space = movement.position
             if not failed_movement and is_dodge(board, player, target_space):
                 if not move_log_entries:
-                    move_log_entries = next_generator(log_entries)
+                    move_log_entries = self.__next_generator(log_entries)
                 while True:
                     log_entry = next(move_log_entries, None)
                     if not log_entry:
@@ -402,7 +419,7 @@ class Replay:
             if target_contents and not pickup_entry:
                 if isinstance(target_contents, Ball):
                     if not move_log_entries:
-                        move_log_entries = next_generator(log_entries)
+                        move_log_entries = self.__next_generator(log_entries)
                     log_entry = next(move_log_entries)
                     validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
                     pickup_entry = log_entry
@@ -434,6 +451,9 @@ class Replay:
 
         if turnover:
             yield board.end_turn(player.team.team_type, turnover)
+
+        if unused:
+            unused.log_entries = move_log_entries
 
 
 def find_next(generator, target_cls):
@@ -486,6 +506,3 @@ def calculate_pushback(blocker_coords, old_coords, board):
     for possible_coord in possible_coords:
         if not board.get_position(possible_coord):
             return possible_coord
-
-def next_generator(log_entries):
-    yield from next(log_entries)
