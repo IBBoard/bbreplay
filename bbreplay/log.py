@@ -214,6 +214,15 @@ class InjuryRollEntry(TeamPlayerEntry):
         return f"InjuryRoll(team={self.team}, player={self.player}, roll={self.roll}, result={self.result})"
 
 
+class CasualtyRollEntry(TeamPlayerEntry):
+    def __init__(self, team, player, result):
+        super().__init__(team, player)
+        self.injury = result
+
+    def __repr__(self):
+        return f"CasualtyRoll(team={self.team}, player={self.player}, injury={self.injury})"
+
+
 class TurnOverEntry(TeamEntry):
     def __init__(self, team, reason):
         super().__init__(team)
@@ -263,6 +272,7 @@ turnover_re = re.compile(f"{TEAM} suffer a TURNOVER! : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
                                       ".* ([0-9]+)(?: Critical)? -> (Success|Failure)")
 injury_roll_re = re.compile(f"{TEAM} #([0-9]+) .* = ([0-9]+) -> (Stunned|KO|Injured)")
+casualty_roll_re = re.compile(f"{TEAM} #([0-9]+) .* Casualty  : (.*) -> .*")
 
 turn_regexes = [
     (block_re, BlockLogEntry),
@@ -274,6 +284,7 @@ turn_regexes = [
     (leader_reroll_re, LeaderRerollEntry),
     (pro_reroll_re, ProRerollEntry),
     (injury_roll_re, InjuryRollEntry),
+    (casualty_roll_re, CasualtyRollEntry),
     (turnover_re, TurnOverEntry),
     (tentacle_use_re, TentacleUseEntry),
     (teams_re, MatchLogEntry),

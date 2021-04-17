@@ -3,7 +3,7 @@
 
 import sqlite3
 from collections import namedtuple
-from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
+from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
@@ -28,6 +28,7 @@ Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_sp
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
 InjuryRoll = namedtuple('InjuryRoll', ['player', 'result'])
+Casualty = namedtuple('Casualty', ['player', 'injury'])
 Dodge = namedtuple('Dodge', ['player', 'result'])
 DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pro = namedtuple('Pro', ['player', 'result'])
@@ -362,6 +363,14 @@ class Replay:
         if roll_entry.result == ActionResult.SUCCESS:
             injury_roll = next(log_entries)
             yield InjuryRoll(player, injury_roll.result)
+            if injury_roll.result == InjuryRollResult.KO:
+                # Remove the player from the pitch
+                board.reset_position(player.position)
+            elif injury_roll.result == InjuryRollResult.INJURED:
+                # Remove the player from the pitch
+                board.reset_position(player.position)
+                casualty_roll = next(log_entries)
+                yield Casualty(player, casualty_roll.injury)
 
 
     def __process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
