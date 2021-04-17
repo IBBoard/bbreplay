@@ -2,8 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple
-from . import PITCH_LENGTH, PITCH_WIDTH
-from .player import Ball
+from . import PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
 
@@ -13,6 +12,8 @@ class GameState:
         self.__turn = 0
         self.__prone = set()
         self.__stupid = set()
+        self.__ball_position = OFF_PITCH_POSITION
+        self.__ball_carrier = None
 
     @property
     def turn(self):
@@ -33,6 +34,22 @@ class GameState:
 
     def get_position(self, position):
         return self.__board[position.y][position.x]
+
+    def set_ball_position(self, position):
+        self.__ball_carrier = None
+        self.__ball_position = position
+
+    def set_ball_carrier(self, player):
+        self.__ball_carrier = player
+
+    def get_ball_position(self):
+        if self.__ball_carrier:
+            return self.__ball_carrier.position
+        else:
+            return self.__ball_position
+
+    def get_ball_carrier(self):
+        return self.__ball_carrier
 
     def __getitem__(self, idx):
         return self.__board[idx]
@@ -62,7 +79,7 @@ class GameState:
                 if i == 0 and j == 0:
                     continue
                 entity = self.__board[y][x]
-                if entity and not isinstance(entity, Ball):
+                if entity:
                     entities.append(entity)
         return entities
 

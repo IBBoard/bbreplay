@@ -12,14 +12,6 @@ class Positionable:
         return self.position != OFF_PITCH_POSITION
 
 
-class Ball(Positionable):
-    def __init__(self):
-        super().__init__()
-
-    def __repr__(self):
-        return f"Ball({self.position})"
-
-
 class Player(Positionable):
     def __init__(self, team, db_id, number, name, move, strength, agility, armour_value, level, spp, value, db):
         super().__init__()

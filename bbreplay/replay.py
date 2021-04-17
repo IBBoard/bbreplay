@@ -8,7 +8,6 @@ from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollR
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry
-from .player import Ball
 from .state import GameState, EndTurn
 from .teams import Team
 
@@ -17,7 +16,7 @@ MatchEvent = namedtuple('Match', [])
 CoinTossEvent = namedtuple('CoinToss', ['toss_team', 'toss_choice', 'toss_result', 'role_team', 'role_choice'])
 TeamSetupComplete = namedtuple('TeamSetupComplete', ['team', 'player_positions'])
 SetupComplete = namedtuple('SetupComplete', ['board'])
-Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'bounces', 'ball', 'board'])
+Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'bounces', 'board'])
 Movement = namedtuple('Movement', ['player', 'source_space', 'target_space', 'board'])
 FailedMovement = namedtuple('FailedMovement', ['player', 'source_space', 'target_space'])
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
@@ -37,7 +36,7 @@ PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team', 'type'])
-Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'ball', 'board'])
+Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
 
 
 class ReturnWrapper:
@@ -182,12 +181,11 @@ class Replay:
         # TODO: Handle no bounce when it gets caught straight away
         kickoff_bounce = next(log_entries)[0]
         # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
-        ball = Ball()
         ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)\
                                         .scatter(kickoff_bounce.direction)
-        board.set_position(ball_dest, ball)
+        board.set_ball_position(ball_dest)
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
-                      [kickoff_bounce.direction], ball, board)
+                      [kickoff_bounce.direction], board)
 
         prev_cmd = None
 
@@ -332,8 +330,9 @@ class Replay:
                         validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
                         yield board.end_turn(log_entry.team, log_entry.reason)
                     elif isinstance(log_entry, BounceLogEntry):
-                        ball.position = block.position.scatter(log_entry.direction)
-                        yield Bounce(block.position, ball.position, log_entry.direction, ball, board)
+                        ball_position = target_by_coords.position.scatter(log_entry.direction)
+                        board.set_ball_position(ball_position)
+                        yield Bounce(block.position, ball_position, log_entry.direction, board)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
@@ -475,18 +474,15 @@ class Replay:
                                 raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
                             break
 
-            target_contents = board.get_position(target_space)
-            if target_contents and not pickup_entry:
-                if isinstance(target_contents, Ball):
-                    if not move_log_entries:
-                        move_log_entries = self.__next_generator(log_entries)
-                    log_entry = next(move_log_entries)
-                    validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
-                    pickup_entry = log_entry
-                elif target_contents == player:
-                    # It's a stand-up in the same space
-                    pass
-                else:
+            if target_space == board.get_ball_position() and not pickup_entry:
+                if not move_log_entries:
+                    move_log_entries = self.__next_generator(log_entries)
+                log_entry = next(move_log_entries)
+                validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
+                pickup_entry = log_entry
+            else:
+                target_contents = board.get_position(target_space)
+                if target_contents and target_contents != player:
                     raise ValueError(f"{player} tried to move to occupied space {target_space}")
 
             if not failed_movement:
@@ -515,6 +511,8 @@ class Replay:
                 yield Pickup(player, movement.position, pickup_entry.result)
                 if pickup_entry.result != ActionResult.SUCCESS:
                     failed_movement = True
+                else:
+                    board.set_ball_carrier(player)
                 pickup_entry = None
 
             start_space = target_space

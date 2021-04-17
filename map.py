@@ -4,10 +4,9 @@
 
 import argparse
 import os.path
-from bbreplay import TeamType, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, \
+from bbreplay import TeamType, Position, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, \
     LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, BEFORE_HALFWAY_IDX
 from bbreplay.replay import Replay, SetupComplete, Kickoff, EndTurn
-from bbreplay.player import Ball
 
 
 TOPLINE =      "╔═╤╤╗"
@@ -47,28 +46,20 @@ def draw_filler_row(chars, pretty):
     return row
 
 
-def object_to_text(obj, pretty, board=None):
-    if not obj:
-        return ROW[1] * 3
-    elif isinstance(obj, Ball):
-        ball = ROW[1] + "●" + ROW[1]  # "🏈" is too wide to align properly☹
-        return ball if not pretty else BALL_COLOUR + ball + PIECE_RESET
-    else:
-        # TODO: Put the ball in the first space if it's being carried!
-        return player_to_text(obj, pretty, board)
-
-
 def player_to_text(player, pretty, board=None):
     team_type = player.team.team_type
+    if pretty:
+        # TODO: Can we pull this from the team? Relies on 24-bit terminals
+        colour = HOME_TEAM_COLOUR if team_type == TeamType.HOME else AWAY_TEAM_COLOUR
     if board and board.is_prone(player):
         player_str = "⤓"
-    #elif board and has ball
+    elif board and board.get_ball_carrier() == player:
+        if pretty:
+            player_str = BALL_COLOUR + "●" + colour
     else:
         player_str = ROW[1]
     player_str += chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1) + ROW[1]
     if pretty:
-        # TODO: Can we pull this from the team? Relies on 24-bit terminals
-        colour = HOME_TEAM_COLOUR if team_type == TeamType.HOME else AWAY_TEAM_COLOUR
         player_str = colour + player_str + PIECE_RESET
     return player_str
 
@@ -93,8 +84,15 @@ def draw_map(board, pretty):
             map += BOARD_COLOUR
         map += ROW[0]
         for col in range(PITCH_WIDTH):
-            contents = row_data[col]
-            map += object_to_text(contents, pretty, board)
+            player = row_data[col]
+            if player:
+                map += player_to_text(player, pretty, board)
+            elif not board.get_ball_carrier() and board.get_ball_position() == Position(col, row):
+                ball = ROW[1] + "●" + ROW[1]  # "🏈" is too wide to align properly☹
+                map += ball if not pretty else BALL_COLOUR + ball + PIECE_RESET
+            else:
+                map += ROW[1] * 3
+
             if col == LEFT_WIDEZONE_IDX or col == RIGHT_WIDEZONE_IDX - 1:
                 map += ROW[3]
             elif col == LAST_COLUMN_IDX:
