@@ -473,4 +473,4 @@ def calculate_pushback(blocker_coords, old_coords, board):
             return possible_coord
 
 def next_generator(log_entries):
-    return (log_entry for log_entry in next(log_entries))
+    yield from next(log_entries)
