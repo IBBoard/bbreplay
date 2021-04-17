@@ -7,7 +7,7 @@ from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry
+    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry
 from .player import Ball
 from .state import GameState, EndTurn
 from .teams import Team
@@ -34,6 +34,7 @@ PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team', 'type'])
+Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'ball', 'board'])
 
 
 class Replay:
@@ -287,9 +288,12 @@ class Replay:
                         armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, target_by_idx, board)
                     log_entry = next(target_log_entries, None)
-                    if log_entry:
+                    if isinstance(log_entry, TurnOverEntry):
                         validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
                         yield board.end_turn(log_entry.team, log_entry.reason)
+                    elif isinstance(log_entry, BounceLogEntry):
+                        ball.position = block.position.scatter(log_entry.direction)
+                        yield Bounce(block.position, ball.position, log_entry.direction, ball, board)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
