@@ -174,33 +174,14 @@ class Position:
         return Position(new_x, new_y)
 
     def throwin(self, direction, distance):
-        if self.x == 0:
-            if self.y == 0:
-                x_mul = 1 if direction != ThrowInDirection.LEFT else 0
-                y_mul = 1 if direction != ThrowInDirection.RIGHT else 0
-            elif self.y == FAR_ENDZONE_IDX:
-                x_mul = 1 if direction != ThrowInDirection.RIGHT else 0
-                y_mul = -1 if direction != ThrowInDirection.LEFT else 0
-            else:
-                x_mul = 1
-                y_mul = (direction.value - 2) * -1
-        elif self.x == LAST_COLUMN_IDX:
-            if self.y == 0:
-                x_mul = -1 if direction != ThrowInDirection.RIGHT else 0
-                y_mul = 1 if direction != ThrowInDirection.LEFT else 0
-            elif self.y == FAR_ENDZONE_IDX:
-                x_mul = -1 if direction != ThrowInDirection.LEFT else 0
-                y_mul = 1 if direction != ThrowInDirection.LEFT else 0
-            else:
-                x_mul = -1
-                y_mul = direction.value - 2
-        elif self.y == FAR_ENDZONE_IDX:
-            x_mul = (direction.value - 2) * -1
-            y_mul = -1
-        else:
-            x_mul = direction.value - 2
-            y_mul = 1
-        return Position(self.x + x_mul * distance, self.y + y_mul * distance)
+        new_x = None
+        new_y = None
+        if self.x == LAST_COLUMN_IDX and self.y < AFTER_HALFWAY_IDX:
+            new_x = 14 - distance
+            new_y = 7 - (direction.value - 2) * distance
+        if new_x is None or new_y is None:
+            raise ValueError(f'Not seen an example of throw-in {self}, {direction}, {distance}')
+        return Position(new_x, new_y)
 
 
     def add(self, dx, dy):
