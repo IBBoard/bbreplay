@@ -327,14 +327,28 @@ class Replay:
                         and not defender_avoided:
                         armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, target_log_entries, target_by_idx, board)
-                    log_entry = next(target_log_entries, None)
-                    if isinstance(log_entry, TurnOverEntry):
-                        validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
-                        yield from board.end_turn(log_entry.team, log_entry.reason)
-                    elif isinstance(log_entry, BounceLogEntry):
-                        ball_position = target_by_coords.position.scatter(log_entry.direction)
-                        board.set_ball_position(ball_position)
-                        yield Bounce(block.position, ball_position, log_entry.direction, board)
+                    log_entry = None
+                    previous_entry = None
+                    previous_ball_position = board.get_ball_position()
+                    while True:
+                        previous_entry = log_entry
+                        log_entry = next(target_log_entries, None)
+                        if isinstance(log_entry, TurnOverEntry):
+                            validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
+                            yield from board.end_turn(log_entry.team, log_entry.reason)
+                        elif isinstance(log_entry, BounceLogEntry):
+                            old_ball_position = board.get_ball_position()
+                            if isinstance(previous_entry, BounceLogEntry) and board.get_position(old_ball_position) \
+                                and not board.get_ball_carrier():
+                                # We sometimes get odd double results where there's two bounces but no catch attempt
+                                # but actually the ball just did the second bounce
+                                old_ball_position = previous_ball_position
+                            ball_position = old_ball_position.scatter(log_entry.direction)
+                            board.set_ball_position(ball_position)
+                            yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
+                            previous_ball_position = old_ball_position
+                        else:
+                            break
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
