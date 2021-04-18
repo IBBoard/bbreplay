@@ -24,7 +24,7 @@ BALL_COLOUR = "\u001b[38:5:94m"
 PIECE_RESET = "\u001b[38:5:255m"
 ROW_RESET = "\u001b[0m"
 
-SLEEP_TIME = 0.5
+SLEEP_TIME = 0.2
 
 
 def draw_filler_row(chars, pretty):
