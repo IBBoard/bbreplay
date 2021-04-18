@@ -39,6 +39,7 @@ Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'
 Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
 ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'board'])
+Touchdown = namedtuple('Touchdown', ['player', 'board'])
 
 
 class ReturnWrapper:
@@ -360,6 +361,11 @@ class Replay:
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
                 yield from self.__process_movement(player, cmd, cmds, None, log_entries, board)
+                if board.get_ball_carrier() == player and \
+                    (player.position.y == NEAR_ENDZONE_IDX or player.position.y == FAR_ENDZONE_IDX):
+                    board.score[player.team.team_type.value] += 1
+                    yield Touchdown(player, board)
+                    yield from board.end_turn(player.team.team_type, 'Touchdown')
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
             elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:

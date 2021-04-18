@@ -10,6 +10,7 @@ StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
 class GameState:
     def __init__(self, home_team, away_team):
         self.__teams = [home_team, away_team]
+        self.score = [0, 0]
         self.turn_team = None
         self.rerolls = [home_team.rerolls, away_team.rerolls]
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
