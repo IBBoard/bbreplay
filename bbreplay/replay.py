@@ -8,7 +8,7 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry
-from .state import GameState
+from .state import GameState, StartTurn, EndTurn
 from .teams import Team
 
 
