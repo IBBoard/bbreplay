@@ -206,5 +206,10 @@ def player_idx_to_type(idx):
 def block_string_to_enum(block_string):
     return BlockResult[block_string.upper().replace(' ', '_')]
 
+
 def skill_name_to_enum(skill_name):
     return Skills[skill_name.upper().replace(' ', '_')]
+
+
+def other_team(team):
+    return TeamType.AWAY if team == TeamType.HOME else TeamType.HOME

@@ -2,12 +2,15 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple
-from . import PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
+from . import other_team, Role, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
+StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
 
 class GameState:
-    def __init__(self):
+    def __init__(self, home_team, away_team):
+        self.__teams = [home_team, away_team]
+        self.turn_team = None
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
         self.__turn = 0
         self.__prone = set()
@@ -19,10 +22,17 @@ class GameState:
     def turn(self):
         return self.__turn // 2 + 1
 
+    def start_match(self, role_team, role_choice):
+        starting_team = role_team if role_choice == Role.RECEIVE else other_team(role_team)
+        self.turn_team = self.__teams[starting_team.value]
+        return StartTurn(starting_team, self.turn, self)
+
     def end_turn(self, team, reason):
-        end_turn = EndTurn(team, self.turn, reason, self)
+        yield EndTurn(team, self.turn, reason, self)
         self.__turn += 1
-        return end_turn
+        next_team = other_team(team)
+        self.turn_team = self.__teams[next_team.value]
+        yield StartTurn(next_team, self.turn, self)
 
     def set_position(self, position, contents):
         self.__board[position.y][position.x] = contents

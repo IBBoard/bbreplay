@@ -3,12 +3,12 @@
 
 import sqlite3
 from collections import namedtuple
-from . import CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
+from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry
-from .state import GameState, EndTurn
+from .state import GameState
 from .teams import Team
 
 
@@ -124,7 +124,7 @@ class Replay:
 
         cmd = find_next(cmds, SetupCommand)
 
-        board = GameState()
+        board = GameState(self.home_team, self.away_team)
         deployments_finished = 0
         team = None
 
@@ -186,6 +186,8 @@ class Replay:
         board.set_ball_position(ball_dest)
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
                       [kickoff_bounce.direction], board)
+
+        yield board.start_match(role_cmd.team, role_cmd.choice)
 
         prev_cmd = None
 
@@ -328,7 +330,7 @@ class Replay:
                     log_entry = next(target_log_entries, None)
                     if isinstance(log_entry, TurnOverEntry):
                         validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
-                        yield board.end_turn(log_entry.team, log_entry.reason)
+                        yield from board.end_turn(log_entry.team, log_entry.reason)
                     elif isinstance(log_entry, BounceLogEntry):
                         ball_position = target_by_coords.position.scatter(log_entry.direction)
                         board.set_ball_position(ball_position)
@@ -342,7 +344,7 @@ class Replay:
             elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
                 print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
-                yield board.end_turn(cmd.team, 'End Turn')
+                yield from board.end_turn(cmd.team, 'End Turn')
             else:
                 print(f"No handling for {cmd}")
                 break
@@ -518,7 +520,7 @@ class Replay:
             start_space = target_space
 
         if turnover:
-            yield board.end_turn(player.team.team_type, turnover)
+            yield from board.end_turn(player.team.team_type, turnover)
 
         if unused:
             unused.log_entries = move_log_entries
