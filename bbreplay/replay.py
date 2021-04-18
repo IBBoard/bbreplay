@@ -8,7 +8,7 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry, \
-    ThrowInDirectionLogEntry, ThrowInDistanceLogEntry
+    ThrowInDirectionLogEntry, ThrowInDistanceLogEntry, CatchEntry
 from .state import GameState, StartTurn, EndTurn
 from .teams import Team
 
@@ -211,6 +211,7 @@ class Replay:
                 targeting_player = self.get_team(target.team).get_player(target.player_idx)
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
                 target_log_entries = None
+                is_block = targeting_player.team != target_by_idx.team
                 if Skills.REALLY_STUPID in targeting_player.skills:
                     target_log_entries = self.__next_generator(log_entries)
                     log_entry = next(target_log_entries)
@@ -219,7 +220,7 @@ class Replay:
                     if log_entry.result != ActionResult.SUCCESS:
                         # The stupid stopped us
                         continue
-                if Skills.FOUL_APPEARANCE in target_by_idx.skills:
+                if is_block and Skills.FOUL_APPEARANCE in target_by_idx.skills:
                     if not target_log_entries:
                         target_log_entries = self.__next_generator(log_entries)
                     log_entry = next(target_log_entries)
@@ -228,7 +229,8 @@ class Replay:
 
                 cmd = next(cmds)
                 if isinstance(cmd, MovementCommand):
-                    yield Blitz(targeting_player, target_by_idx)
+                    if is_block:
+                        yield Blitz(targeting_player, target_by_idx)
                     unused = ReturnWrapper()
                     yield from self.__process_movement(targeting_player, cmd, cmds,
                                                        target_log_entries, log_entries, board, unused)
@@ -236,10 +238,11 @@ class Replay:
                     target_log_entries = unused.log_entries
                 elif board.is_prone(targeting_player):
                     board.unset_prone(targeting_player)
-                    yield Blitz(targeting_player, target_by_idx)
+                    if is_block:
+                        yield Blitz(targeting_player, target_by_idx)
                 if not target_log_entries:
                     target_log_entries = self.__next_generator(log_entries)
-                if isinstance(cmd, BlockCommand):
+                if isinstance(cmd, TargetSpaceCommand) and is_block:
                     block = cmd
                     blocking_player = targeting_player
                     block_dice = next(target_log_entries)
@@ -338,6 +341,21 @@ class Replay:
                         armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, target_log_entries, target_by_idx, board)
                     yield from self.__process_ball_movement(target_log_entries, blocking_player, board)
+                elif isinstance(cmd, TargetSpaceCommand) and not is_block:
+                    pass_cmd = cmd
+                    player_pos = targeting_player.position
+                    if abs(pass_cmd.x - player_pos.x) > 1 or pass_cmd.y - player_pos.y > 1:
+                        # Pass (Launch)
+                        raise NotImplementedError("Not handling passes yet")
+                    # Else hand-off - doesn't have the pass part, just the catch
+                    catch_entry = next(target_log_entries)
+                    target_by_coords = board.get_position(pass_cmd.position)
+                    validate_log_entry(catch_entry, CatchEntry, pass_cmd.team, target_by_coords.number)
+                    if catch_entry.result == ActionResult.SUCCESS:
+                        board.set_ball_carrier(target_by_idx)
+
+                else:
+                    raise ValueError(f"Unexpected post-target command {cmd}")
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand

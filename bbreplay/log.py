@@ -135,6 +135,11 @@ class PickupEntry(ActionResultEntry):
         super().__init__("Pickup", team, player, required, roll, result)
 
 
+class CatchEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Catch", team, player, required, roll, result)
+
+
 class DodgeEntry(ActionResultEntry):
     def __init__(self, team, player, required, roll, result):
         super().__init__("Dodge", team, player, required, roll, result)
@@ -266,6 +271,8 @@ def create_other_entry(team, player, action, required, roll, result):
         return TentacledRollEntry(team, player, required, roll, result)
     elif action == "Appearance":
         return FoulAppearanceEntry(team, player, required, roll, result)
+    elif action == "Catch":
+        return CatchEntry(team, player, required, roll, result)
     else:
         return action, team, player, required, roll, result
 

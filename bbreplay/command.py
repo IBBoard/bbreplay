@@ -130,7 +130,7 @@ class EndMovementCommand(MovementCommand):
             f'move_to={self.x},{self.y}, data={self._data})'
 
 
-class BlockCommand(PlayerCommand):
+class TargetSpaceCommand(PlayerCommand):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
 
@@ -260,7 +260,7 @@ def create_player_command(id, turn, team, command_type, data):
     if action_type == 25:
         return MovementCommand(id, turn, team, command_type, data)
     elif action_type == 26:
-        return BlockCommand(id, turn, team, command_type, data)
+        return TargetSpaceCommand(id, turn, team, command_type, data)
     elif action_type == 24:
         return EndMovementCommand(id, turn, team, command_type, data)
     else:
