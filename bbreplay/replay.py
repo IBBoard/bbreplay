@@ -4,7 +4,7 @@
 import sqlite3
 from collections import namedtuple
 from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
-    PITCH_LENGTH, PITCH_WIDTH, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
+    PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry, \
@@ -642,5 +642,8 @@ def calculate_pushback(blocker_coords, old_coords, board):
         possible_coords = [old_coords.add(-1, y_diff), old_coords.add(0, y_diff), old_coords.add(1, y_diff)]
 
     for possible_coord in possible_coords:
+        if possible_coord.x < 0 or possible_coord.x > LAST_COLUMN_IDX \
+            or possible_coord.y < 0 or possible_coord.y > FAR_ENDZONE_IDX:
+            continue
         if not board.get_position(possible_coord):
             return possible_coord
