@@ -52,10 +52,10 @@ class Replay:
     def __init__(self, db_path, log_path):
         self.__db = sqlite3.connect(db_path)
         cur = self.__db.cursor()
-        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity '
+        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity, iRerolls '
                     'FROM Home_Team_Listing team INNER JOIN Home_Races race ON idRaces = race.ID')
         self.home_team = Team(*cur.fetchone(), TeamType.HOME, self.__db)
-        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity '
+        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity, iRerolls '
                     'FROM Away_Team_Listing team INNER JOIN Away_Races race ON idRaces = race.ID')
         self.away_team = Team(*cur.fetchone(), TeamType.AWAY, self.__db)
         self.__commands = [create_command(self, row)
@@ -248,6 +248,7 @@ class Replay:
                         block_dice = next(target_log_entries)
                         block_choice = next(cmds)
                     elif isinstance(block_choice, RerollCommand):
+                        board.use_reroll(blocking_player.team.team_type)
                         reroll = next(target_log_entries)
                         yield Reroll(reroll.team, 'Team Reroll')
                         block_dice = next(target_log_entries)
@@ -411,6 +412,7 @@ class Replay:
                             if log_entry.result == ActionResult.SUCCESS:
                                 failed_movement = False
                     elif isinstance(cmd, RerollEntry):
+                        board.use_reroll(player.team.team_type)
                         yield Reroll(cmd.team, 'Team Reroll')
                     else:
                         raise ValueError("No RerollCommand to go with RerollEntry")
@@ -459,6 +461,7 @@ class Replay:
                             if not isinstance(cmd, RerollCommand):
                                 raise ValueError("No RerollCommand to go with RerollEntry")
                             else:
+                                board.use_reroll(player.team.team_type)
                                 yield Reroll(cmd.team, 'Team Reroll')
                         elif isinstance(log_entry, ArmourValueRollEntry):
                             yield from self.__handle_armour_roll(log_entry, move_log_entries, player, board)
@@ -466,9 +469,10 @@ class Replay:
                             cmd = next(cmds)
                             if not isinstance(cmd, DeclineRerollCommand):
                                 raise ValueError("No DeclineRerollCommand to go with failed movement action")
-                            cmd = next(cmds)
-                            if not isinstance(cmd, BlockDiceChoiceCommand):
-                                raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
+                            if board.rerolls[player.team.team_type.value] > 0:
+                                cmd = next(cmds)
+                                if not isinstance(cmd, BlockDiceChoiceCommand):
+                                    raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
                             break
 
             if target_space == board.get_ball_position() and not pickup_entry:

@@ -7,11 +7,12 @@ from .player import Player
 
 
 class Team:
-    def __init__(self, name, race, team_value, fame, team_type, db):
+    def __init__(self, name, race, team_value, fame, rerolls, team_type, db):
         self.name = name
         self.race = race
         self.team_value = team_value
         self.fame = fame
+        self.rerolls = rerolls
         self.team_type = team_type
         self._db = db
         self._players = []
