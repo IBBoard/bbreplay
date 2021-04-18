@@ -59,6 +59,12 @@ _norths = [ScatterDirection.NW, ScatterDirection.N, ScatterDirection.NE]
 _souths = [ScatterDirection.SW, ScatterDirection.S, ScatterDirection.SE]
 
 
+class ThrowInDirection(Enum):
+    LEFT = 1
+    CENTER = 2
+    RIGHT = 3
+
+
 class PlayerStatus(Enum):
     OKAY = auto()
     PRONE = auto()
@@ -166,6 +172,36 @@ class Position:
             new_y -= distance
 
         return Position(new_x, new_y)
+
+    def throwin(self, direction, distance):
+        if self.x == 0:
+            if self.y == 0:
+                x_mul = 1 if direction != ThrowInDirection.LEFT else 0
+                y_mul = 1 if direction != ThrowInDirection.RIGHT else 0
+            elif self.y == BOTTOM_ENDZONE_IDX:
+                x_mul = 1 if direction != ThrowInDirection.RIGHT else 0
+                y_mul = -1 if direction != ThrowInDirection.LEFT else 0
+            else:
+                x_mul = 1
+                y_mul = (direction.value - 2) * -1
+        elif self.x == LAST_COLUMN_IDX:
+            if self.y == 0:
+                x_mul = -1 if direction != ThrowInDirection.RIGHT else 0
+                y_mul = 1 if direction != ThrowInDirection.LEFT else 0
+            elif self.y == BOTTOM_ENDZONE_IDX:
+                x_mul = -1 if direction != ThrowInDirection.LEFT else 0
+                y_mul = 1 if direction != ThrowInDirection.LEFT else 0
+            else:
+                x_mul = -1
+                y_mul = direction.value - 2
+        elif self.y == BOTTOM_ENDZONE_IDX:
+            x_mul = (direction.value - 2) * -1
+            y_mul = -1
+        else:
+            x_mul = direction.value - 2
+            y_mul = 1
+        return Position(self.x + x_mul * distance, self.y + y_mul * distance)
+
 
     def add(self, dx, dy):
         return Position(self.x + dx, self.y + dy)

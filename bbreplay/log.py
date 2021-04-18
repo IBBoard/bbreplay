@@ -3,7 +3,7 @@
 
 import re
 from . import block_string_to_enum, skill_name_to_enum
-from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult
+from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult, ThrowInDirection
 
 
 class PartialEntry:
@@ -68,6 +68,22 @@ class KickDistanceLogEntry(TeamPlayerEntry):
 
     def __repr__(self):
         return f"KickDistance(team={self.team}, player_num={self.player}, distance={self.distance})"
+
+
+class ThrowInDirectionLogEntry:
+    def __init__(self, direction):
+        self.direction = ThrowInDirection(int(direction) // 2)
+
+    def __repr__(self):
+        return f"ThrowInDirection(direction={self.direction})"
+
+
+class ThrowInDistanceLogEntry(TeamPlayerEntry):
+    def __init__(self, distance):
+        self.distance = int(distance)
+
+    def __repr__(self):
+        return f"ThrowInDistance(distance={self.distance})"
 
 
 class BounceLogEntry:
@@ -273,6 +289,8 @@ other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[
                                       ".* ([0-9]+)(?: Critical)? -> (Success|Failure)")
 injury_roll_re = re.compile(f"{TEAM} #([0-9]+) .* = ([0-9]+) -> (Stunned|KO|Injured)")
 casualty_roll_re = re.compile(f"{TEAM} #([0-9]+) .* Casualty  : (.*) -> .*")
+throw_in_direction_re = re.compile("Throw-in Direction \(D6\) : ([1-6]+)")
+throw_in_distance_re = re.compile("Throw-in Distance \(2D6\) : ([0-9]+)")
 
 turn_regexes = [
     (block_re, BlockLogEntry),
@@ -292,6 +310,8 @@ turn_regexes = [
     (role_re, RoleLogEntry),
     (kick_direction_re, KickDirectionLogEntry),
     (kick_distance_re, KickDistanceLogEntry),
+    (throw_in_direction_re, ThrowInDirectionLogEntry),
+    (throw_in_distance_re, ThrowInDistanceLogEntry),
     (ball_bounce_re, BounceLogEntry),
     (other_success_failure_re, create_other_entry)
 ]

@@ -7,7 +7,8 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
     PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry
+    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry, \
+    ThrowInDirectionLogEntry, ThrowInDistanceLogEntry
 from .state import GameState, StartTurn, EndTurn
 from .teams import Team
 
@@ -37,6 +38,7 @@ ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
+ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'board'])
 
 
 class ReturnWrapper:
@@ -327,28 +329,7 @@ class Replay:
                         and not defender_avoided:
                         armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, target_log_entries, target_by_idx, board)
-                    log_entry = None
-                    previous_entry = None
-                    previous_ball_position = board.get_ball_position()
-                    while True:
-                        previous_entry = log_entry
-                        log_entry = next(target_log_entries, None)
-                        if isinstance(log_entry, TurnOverEntry):
-                            validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
-                            yield from board.end_turn(log_entry.team, log_entry.reason)
-                        elif isinstance(log_entry, BounceLogEntry):
-                            old_ball_position = board.get_ball_position()
-                            if isinstance(previous_entry, BounceLogEntry) and board.get_position(old_ball_position) \
-                                and not board.get_ball_carrier():
-                                # We sometimes get odd double results where there's two bounces but no catch attempt
-                                # but actually the ball just did the second bounce
-                                old_ball_position = previous_ball_position
-                            ball_position = old_ball_position.scatter(log_entry.direction)
-                            board.set_ball_position(ball_position)
-                            yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
-                            previous_ball_position = old_ball_position
-                        else:
-                            break
+                    yield from self.__process_ball_movement(target_log_entries, blocking_player, board)
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
@@ -531,6 +512,7 @@ class Replay:
                 yield Pickup(player, movement.position, pickup_entry.result)
                 if pickup_entry.result != ActionResult.SUCCESS:
                     failed_movement = True
+                    yield from self.__process_ball_movement(move_log_entries, player, board)
                 else:
                     board.set_ball_carrier(player)
                 pickup_entry = None
@@ -542,6 +524,42 @@ class Replay:
 
         if unused:
             unused.log_entries = move_log_entries
+
+    def __process_ball_movement(self, log_entries, player, board):
+        log_entry = None
+        previous_entry = None
+        previous_ball_position = board.get_ball_position()
+        turn_over = None
+        while True:
+            previous_entry = log_entry
+            log_entry = next(log_entries, None)
+            if isinstance(log_entry, TurnOverEntry):
+                validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                turn_over = board.end_turn(log_entry.team, log_entry.reason)
+            elif isinstance(log_entry, BounceLogEntry):
+                old_ball_position = board.get_ball_position()
+                if isinstance(previous_entry, BounceLogEntry) and board.get_position(old_ball_position) \
+                    and not board.get_ball_carrier():
+                    # We sometimes get odd double results where there's two bounces but no catch attempt
+                    # but actually the ball just did the second bounce
+                    old_ball_position = previous_ball_position
+                ball_position = old_ball_position.scatter(log_entry.direction)
+                if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH \
+                    or ball_position.y < 0 or ball_position.y >= PITCH_LENGTH:
+                    ball_position = OFF_PITCH_POSITION
+                else:
+                    board.set_ball_position(ball_position)
+                yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
+                previous_ball_position = old_ball_position
+            elif isinstance(log_entry, ThrowInDirectionLogEntry):
+                distance_entry = next(log_entries)
+                ball_position = previous_ball_position.throwin(log_entry.direction, distance_entry.distance)
+                board.set_ball_position(ball_position)
+                yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance)
+            else:
+                break
+        if turn_over:
+            yield from turn_over
 
 
 def find_next(generator, target_cls):
