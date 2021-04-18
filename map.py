@@ -4,6 +4,7 @@
 
 import argparse
 import os.path
+import time
 from bbreplay import TeamType, Position, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, \
     LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, BEFORE_HALFWAY_IDX
 from bbreplay.replay import Replay, SetupComplete, Kickoff, EndTurn
@@ -22,6 +23,8 @@ AWAY_TEAM_COLOUR = "\u001b[38:5:196m"
 BALL_COLOUR = "\u001b[38:5:94m"
 PIECE_RESET = "\u001b[38:5:255m"
 ROW_RESET = "\u001b[0m"
+
+SLEEP_TIME = 0.2
 
 
 def draw_filler_row(chars, pretty):
@@ -116,11 +119,18 @@ def print_team(team, pretty):
         print(f"\t{BOARD_COLOUR} {player_to_text(player, pretty)} {ROW_RESET}- {player.name}")
 
 
+def reset_console():
+    # Add the rows for the lines, the numbers, and the title
+    print(f"\u001b[1000D\u001b[{PITCH_LENGTH*2+4}A", end="")
+
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Map the player positions in a Blood Bowl replay file.')
+    parser = argparse.ArgumentParser(description='Map the player positions in a Blood Bowl replay file each turn.')
     parser.add_argument('replay_file', metavar='replay-file', help='the replay database to parse')
     parser.add_argument('log_file', metavar='log-file', help='the replay log to parse')
     parser.add_argument('--pretty', action='store_true', help='Use ANSII colours for the map')
+    parser.add_argument('--animate', action='store_true',
+                        help='Use ANSII commands to animate move-by-move. Requires --pretty')
     args = parser.parse_args()
 
     print(f"{os.path.basename(args.replay_file)}")
@@ -135,20 +145,41 @@ if __name__ == '__main__':
     turn = 0
     board = None
 
+    max_title_length = len("End of turn 16 - ") + max(len(home_team.name), len(away_team.name))
+
+    def print_title(text):
+        if args.pretty and args.animate:
+            print(text, end="")
+            print(" " * (max_title_length - len(text)))
+        else:
+            print("\n", text)
+
     try:
         for event in replay.events():
             event_type = type(event)
+            if args.pretty and args.animate and board:
+                time.sleep(SLEEP_TIME)
+                reset_console()
             if hasattr(event, 'board'):
                 board = event.board
             if event_type is SetupComplete:
-                print("\nSetup")
+                print_title("Setup")
                 print(draw_map(event.board, args.pretty))
+                if args.pretty and args.animate:
+                    time.sleep(SLEEP_TIME * 10)
             elif event_type is Kickoff:
-                print("\nKickoff")
+                print_title("Kickoff")
                 print(draw_map(event.board, args.pretty))
+                if args.pretty and args.animate:
+                    time.sleep(SLEEP_TIME * 10)
             elif event_type is EndTurn:
-                print(f'\nEnd of Turn {event.number} - {replay.get_team(event.team).name}')
+                print_title(f'End of Turn {event.number} - {replay.get_team(event.team).name}')
                 print(draw_map(event.board, args.pretty))
+                if args.pretty and args.animate:
+                    time.sleep(SLEEP_TIME * 10)
+            elif args.pretty and args.animate and board:
+                print_title(f"Turn {board.turn} - {board.turn_team.name}")
+                print(draw_map(board, args.pretty))
     finally:
         print("\nEnd")
         print(draw_map(board, args.pretty))
