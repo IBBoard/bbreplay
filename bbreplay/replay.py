@@ -485,7 +485,7 @@ class Replay:
                                     raise ValueError("No BlockDiceChoiceCommand? to go with DeclineRerollCommand")
                             break
 
-            if target_space == board.get_ball_position() and not pickup_entry:
+            if target_space == board.get_ball_position() and not pickup_entry and not failed_movement:
                 if not move_log_entries:
                     move_log_entries = self.__next_generator(log_entries)
                 log_entry = next(move_log_entries)
