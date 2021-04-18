@@ -253,7 +253,7 @@ class Replay:
                         if reroll.result == ActionResult.SUCCESS:
                             yield Reroll(reroll.team, 'Pro')
                             _ = next(target_log_entries)  # Burn the random duplication
-                        else:
+                        elif len(block_dice.results) == 2 and block_dice.results[0] == block_dice.results[1]:
                             _ = next(cmds)  # Burn the reroll prompt that shows as a block dice choice
                         block_dice = next(target_log_entries)
                         block_choice = next(cmds)
