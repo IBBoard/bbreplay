@@ -22,6 +22,15 @@ class TeamPlayerEntry(TeamEntry):
         self.player = int(player)
 
 
+class TossRandomisationEntry:
+    def __init__(self):
+        self.team = None
+        self.result = None
+
+    def __repr__(self):
+        return f"TossRandomisation(team={self.team}, result={self.result})"
+
+
 class MatchLogEntry:
     def __init__(self, home_name, home_abbrev, away_name, away_abbrev):
         self.home_name = home_name
@@ -263,6 +272,8 @@ def create_other_entry(team, player, action, required, roll, result):
 
 TEAM = "([A-Z0-9]+)"
 
+toss_randomisation_team_re = re.compile('Team   : ([01])')
+toss_randomisation_result_re = re.compile('Result : ([01])')
 gamelog_re = re.compile('GameLog\\(-?[0-9]+\\): (.*)')
 block_dice_re = re.compile('^\\[[^\\]]+\\]( - \\[[^\\]]+\\])*')
 teams_re = re.compile(f"([^\\()]+)\\({TEAM}\\) vs ([^\\)]+)\\({TEAM}\\)")
@@ -340,11 +351,13 @@ def parse_log_entries(log_path):
     event_entries = []
     match_started = False
     in_block = False
+    toss_randomisation = TossRandomisationEntry()
+
     with open(log_path, 'r') as f:
         for line in f:
             line = line.strip()
             if not match_started:
-                if line == "|  +- Enter CStateMatchTossChooseGob":
+                if line == "|  +- Enter CStateMatchTossCreateResults":
                     match_started = True
                 else:
                     continue
@@ -383,4 +396,14 @@ def parse_log_entries(log_path):
                     block_result = partial_entry.complete(block_dice)
                     event_entries.append(block_result)
                     partial_entry = None
+                    continue
+                result = toss_randomisation_team_re.search(line)
+                if result:
+                    toss_randomisation.team = TeamType(int(result.group(1)))
+                    continue
+                result = toss_randomisation_result_re.search(line)
+                if result:
+                    toss_randomisation.result = CoinToss(int(result.group(1)))
+                    log_entries.append([toss_randomisation])
+                    continue
     return log_entries

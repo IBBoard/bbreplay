@@ -63,7 +63,7 @@ class Replay:
         cur.close()
         self.__log_entries = parse_log_entries(log_path)
 
-        log_entry = self.__log_entries[0][0]
+        log_entry = self.__log_entries[1][0]
 
         if type(log_entry) is not MatchLogEntry:
             raise ValueError("Log did not start with MatchLog entry")
@@ -104,6 +104,7 @@ class Replay:
         log_entries = self.__generator(log_entry for log_entry in self.__log_entries)
         cmds = self.__generator(cmd for cmd in self.__commands if not cmd.is_verbose)
 
+        randomisation = next(log_entries)[0]
         match_log_entries = next(log_entries)
         yield MatchEvent()
 
@@ -111,18 +112,24 @@ class Replay:
         toss_log = match_log_entries[1]
         role_cmd = find_next(cmds, RoleCommand)
         role_log = next(log_entries)[0]
-        if toss_cmd.team != toss_log.team or toss_cmd.choice != toss_log.choice:
+        toss_team = toss_cmd.team if toss_cmd.team != TeamType.HOTSEAT else randomisation.team
+        if toss_team != toss_log.team or toss_cmd.choice != toss_log.choice:
             raise ValueError("Mismatch in toss details")
-        if role_cmd.team != role_log.team or role_cmd.choice != role_log.choice:
+        if role_cmd.team == TeamType.HOTSEAT:
+            role_team = randomisation.team if toss_log.choice == randomisation.result \
+                else other_team(randomisation.result)
+        else:
+            role_team = role_cmd.team
+        if role_team != role_log.team or role_cmd.choice != role_log.choice:
             raise ValueError("Mismatch in role details")
         toss_choice = toss_cmd.choice
-        if toss_cmd.team == role_cmd.team:
+        if toss_team == role_team:
             toss_result = toss_choice
         elif toss_choice == CoinToss.HEADS:
             toss_result = CoinToss.TAILS
         else:
             toss_result = CoinToss.HEADS
-        yield CoinTossEvent(toss_cmd.team, toss_choice, toss_result, role_cmd.team, role_cmd.choice)
+        yield CoinTossEvent(toss_team, toss_choice, toss_result, role_team, role_cmd.choice)
 
         cmd = find_next(cmds, SetupCommand)
 
@@ -143,7 +150,7 @@ class Replay:
                     if endzone_contents:
                         board[FAR_ENDZONE_IDX][i] = None
                         endzone_contents.position = OFF_PITCH_POSITION
-                yield TeamSetupComplete(cmd.team, team.get_players())
+                yield TeamSetupComplete(team.team_type, team.get_players())
                 team = None
                 if deployments_finished == 2:
                     yield SetupComplete(board)
@@ -341,6 +348,9 @@ class Replay:
                 print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
                 yield from board.end_turn(cmd.team, 'End Turn')
+            elif cmd_type is AbandonMatchCommand:
+                yield from board.end_turn(cmd.team, 'Abandon Match')
+                break
             else:
                 print(f"No handling for {cmd}")
                 break
