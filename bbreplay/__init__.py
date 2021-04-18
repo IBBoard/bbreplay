@@ -178,7 +178,7 @@ class Position:
             if self.y == 0:
                 x_mul = 1 if direction != ThrowInDirection.LEFT else 0
                 y_mul = 1 if direction != ThrowInDirection.RIGHT else 0
-            elif self.y == BOTTOM_ENDZONE_IDX:
+            elif self.y == FAR_ENDZONE_IDX:
                 x_mul = 1 if direction != ThrowInDirection.RIGHT else 0
                 y_mul = -1 if direction != ThrowInDirection.LEFT else 0
             else:
@@ -188,13 +188,13 @@ class Position:
             if self.y == 0:
                 x_mul = -1 if direction != ThrowInDirection.RIGHT else 0
                 y_mul = 1 if direction != ThrowInDirection.LEFT else 0
-            elif self.y == BOTTOM_ENDZONE_IDX:
+            elif self.y == FAR_ENDZONE_IDX:
                 x_mul = -1 if direction != ThrowInDirection.LEFT else 0
                 y_mul = 1 if direction != ThrowInDirection.LEFT else 0
             else:
                 x_mul = -1
                 y_mul = direction.value - 2
-        elif self.y == BOTTOM_ENDZONE_IDX:
+        elif self.y == FAR_ENDZONE_IDX:
             x_mul = (direction.value - 2) * -1
             y_mul = -1
         else:
@@ -223,8 +223,8 @@ OFF_PITCH_POSITION = Position(-1, -1)
 PITCH_LENGTH = 26
 PITCH_WIDTH = 15
 WIDEZONE_WIDTH = 4
-TOP_ENDZONE_IDX = 0
-BOTTOM_ENDZONE_IDX = PITCH_LENGTH - 1
+NEAR_ENDZONE_IDX = 0
+FAR_ENDZONE_IDX = PITCH_LENGTH - 1
 LAST_COLUMN_IDX = PITCH_WIDTH - 1
 LEFT_WIDEZONE_IDX = WIDEZONE_WIDTH - 1
 RIGHT_WIDEZONE_IDX = PITCH_WIDTH - WIDEZONE_WIDTH

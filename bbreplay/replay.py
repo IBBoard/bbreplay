@@ -4,7 +4,7 @@
 import sqlite3
 from collections import namedtuple
 from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
-    PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, OFF_PITCH_POSITION
+    PITCH_LENGTH, PITCH_WIDTH, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry, \
@@ -135,13 +135,13 @@ class Replay:
             if cmd_type is SetupCompleteCommand:
                 deployments_finished += 1
                 for i in range(PITCH_WIDTH):
-                    endzone_contents = board[TOP_ENDZONE_IDX][i]
+                    endzone_contents = board[NEAR_ENDZONE_IDX][i]
                     if endzone_contents:
-                        board[TOP_ENDZONE_IDX][i] = None
+                        board[NEAR_ENDZONE_IDX][i] = None
                         endzone_contents.position = OFF_PITCH_POSITION
-                    endzone_contents = board[BOTTOM_ENDZONE_IDX][i]
+                    endzone_contents = board[FAR_ENDZONE_IDX][i]
                     if endzone_contents:
-                        board[BOTTOM_ENDZONE_IDX][i] = None
+                        board[FAR_ENDZONE_IDX][i] = None
                         endzone_contents.position = OFF_PITCH_POSITION
                 yield TeamSetupComplete(cmd.team, team.get_players())
                 team = None

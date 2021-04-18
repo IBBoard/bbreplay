@@ -5,7 +5,7 @@
 import argparse
 import os.path
 import time
-from bbreplay import TeamType, Position, PITCH_LENGTH, PITCH_WIDTH, TOP_ENDZONE_IDX, BOTTOM_ENDZONE_IDX, \
+from bbreplay import TeamType, Position, PITCH_LENGTH, PITCH_WIDTH, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, \
     LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, BEFORE_HALFWAY_IDX
 from bbreplay.replay import Replay, SetupComplete, Kickoff, EndTurn
 
@@ -24,7 +24,7 @@ BALL_COLOUR = "\u001b[38:5:94m"
 PIECE_RESET = "\u001b[38:5:255m"
 ROW_RESET = "\u001b[0m"
 
-SLEEP_TIME = 0.2
+SLEEP_TIME = 0.5
 
 
 def draw_filler_row(chars, pretty):
@@ -72,13 +72,13 @@ def draw_map(board, pretty):
     map = ""
     for row in range(PITCH_LENGTH - 1, -1, -1):
         row_data = board[row]
-        if row == TOP_ENDZONE_IDX:
+        if row == NEAR_ENDZONE_IDX:
             map += draw_filler_row(ENDZONE, pretty)
         elif row == BEFORE_HALFWAY_IDX:
             map += draw_filler_row(HALFWAY_LINE, pretty)
-        elif row == BOTTOM_ENDZONE_IDX:
+        elif row == FAR_ENDZONE_IDX:
             map += draw_filler_row(TOPLINE, pretty)
-        elif row == BOTTOM_ENDZONE_IDX - 1:
+        elif row == FAR_ENDZONE_IDX - 1:
             map += draw_filler_row(ENDZONE, pretty)
         else:
             map += draw_filler_row(ROW_AFTER, pretty)
