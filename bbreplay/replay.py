@@ -112,9 +112,9 @@ class Replay:
         role_cmd = find_next(cmds, RoleCommand)
         role_log = next(log_entries)[0]
         if toss_cmd.team != toss_log.team or toss_cmd.choice != toss_log.choice:
-            raise ValueError("Mistmatch in toss details")
+            raise ValueError("Mismatch in toss details")
         if role_cmd.team != role_log.team or role_cmd.choice != role_log.choice:
-            raise ValueError("Mistmatch in role details")
+            raise ValueError("Mismatch in role details")
         toss_choice = toss_cmd.choice
         if toss_cmd.team == role_cmd.team:
             toss_result = toss_choice
