@@ -30,7 +30,7 @@ class MatchLogEntry:
         self.away_abbrev = away_abbrev
 
     def __repr__(self):
-        return f'MatchEntry(home={self.home_name}({self.home_abbrev}, away={self.away_name}({self.away_abbrev}))'
+        return f'MatchEntry(home={self.home_name} ({self.home_abbrev}), away={self.away_name} ({self.away_abbrev}))'
 
 
 class CoinTossLogEntry(TeamEntry):
