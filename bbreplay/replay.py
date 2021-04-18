@@ -499,6 +499,10 @@ class Replay:
                 board.set_position(target_space, player)
                 yield FailedMovement(player, start_space, target_space)
             else:
+                # Failure due to Tentacles etc
+                if is_prone:
+                    board.unset_prone(player)
+                    is_prone = False
                 yield FailedMovement(player, start_space, target_space)
 
             if diving_tackle_entry:
