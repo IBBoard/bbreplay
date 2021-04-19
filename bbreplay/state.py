@@ -36,11 +36,18 @@ class GameState:
         return StartTurn(starting_team, self.turn, self)
 
     def end_turn(self, team, reason):
-        yield EndTurn(team, self.turn, reason, self)
+        if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
+            raise ValueError(f'Out of order end turn - expected {self.turn_team.team_type} but got {team}')
+        yield EndTurn(self.turn_team.team_type, self.turn, reason, self)
         self.__turn += 1
         next_team = other_team(team)
         self.turn_team = self.__teams[next_team.value]
         yield StartTurn(next_team, self.turn, self)
+
+    def abandon_match(self, team):
+        if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
+            raise ValueError(f'Out of order match abandonment - expected {self.turn_team.team_type} but got {team}')
+        yield EndTurn(self.turn_team.team_type, self.turn, 'Abandon match', self)
 
     def set_position(self, position, contents):
         self.__board[position.y][position.x] = contents

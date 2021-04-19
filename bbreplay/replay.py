@@ -197,7 +197,7 @@ class Replay:
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
                       [kickoff_bounce.direction], board)
 
-        yield board.start_match(role_cmd.team, role_cmd.choice)
+        yield board.start_match(role_team, role_cmd.choice)
 
         prev_cmd = None
 
@@ -369,11 +369,12 @@ class Replay:
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
             elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
+                # On at least one occasion this has followed a dodge and has the tackling player's team & index
                 print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
                 yield from board.end_turn(cmd.team, 'End Turn')
             elif cmd_type is AbandonMatchCommand:
-                yield from board.end_turn(cmd.team, 'Abandon Match')
+                yield from board.abandon_match(cmd.team)
                 break
             else:
                 print(f"No handling for {cmd}")
@@ -472,6 +473,11 @@ class Replay:
                                        .get_player_by_number(log_entry.attacking_player)
                         yield Tentacle(player, attacker, log_entry.result)
                     elif isinstance(log_entry, TurnOverEntry):
+                        if log_entry.team != player.team.team_type:
+                            # We have a timeout and play changed - which we have no other way of finding!
+                            yield from board.end_turn(log_entry.team, log_entry.reason)
+                            move_log_entries = self.__next_generator(log_entries)
+                            continue
                         validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                         turnover = log_entry.reason
                     elif isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.DIVING_TACKLE:
