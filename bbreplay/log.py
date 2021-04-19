@@ -3,7 +3,8 @@
 
 import re
 from . import block_string_to_enum, skill_name_to_enum
-from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult, ThrowInDirection
+from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult, ThrowInDirection, \
+    KickoffEvent, Weather
 
 
 class PartialEntry:
@@ -60,6 +61,14 @@ class RoleLogEntry(TeamEntry):
         return f'Role(team={self.team}, choice={self.choice})'
 
 
+class WeatherLogEntry:
+    def __init__(self, result):
+        self.result = Weather[result.upper().replace(' ', '_')]
+
+    def __repr__(self):
+        return f'Weather(result={self.result})'
+
+
 class KickDirectionLogEntry(TeamPlayerEntry):
     def __init__(self, team, player, direction):
         super().__init__(team, player)
@@ -77,6 +86,14 @@ class KickDistanceLogEntry(TeamPlayerEntry):
 
     def __repr__(self):
         return f"KickDistance(team={self.team}, player_num={self.player}, distance={self.distance})"
+
+
+class KickoffEventLogEntry:
+    def __init__(self, result):
+        self.result = KickoffEvent(int(result))
+
+    def __repr__(self):
+        return f'KickoffEvent(result={self.result})'
 
 
 class ThrowInDirectionLogEntry:
@@ -309,6 +326,8 @@ injury_roll_re = re.compile(f"{TEAM} #([0-9]+) .* = ([0-9]+) -> (Stunned|KO|Inju
 casualty_roll_re = re.compile(f"{TEAM} #([0-9]+) .* Casualty  : (.*) -> .*")
 throw_in_direction_re = re.compile("Throw-in Direction \(D6\) : ([1-6]+)")
 throw_in_distance_re = re.compile("Throw-in Distance \(2D6\) : ([0-9]+)")
+kickoff_event_re = re.compile("Kick-Off Table: ([0-9]+)\. .*")
+weather_re = re.compile("Weather Table: [1-6] \+ [1-6] = [0-9]+\. (.*)")
 
 turn_regexes = [
     (block_re, BlockLogEntry),
@@ -331,7 +350,9 @@ turn_regexes = [
     (throw_in_direction_re, ThrowInDirectionLogEntry),
     (throw_in_distance_re, ThrowInDistanceLogEntry),
     (ball_bounce_re, BounceLogEntry),
-    (other_success_failure_re, create_other_entry)
+    (other_success_failure_re, create_other_entry),
+    (kickoff_event_re, KickoffEventLogEntry),
+    (weather_re, WeatherLogEntry)
 ]
 
 

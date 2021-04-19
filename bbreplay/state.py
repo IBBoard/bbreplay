@@ -2,10 +2,13 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple
-from . import other_team, Role, Skills, TeamType, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
+from . import other_team, Role, Skills, TeamType, Weather, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
+
+WeatherTuple = namedtuple('Weather', ['result'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
 StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
+
 
 class GameState:
     def __init__(self, home_team, away_team):
@@ -19,13 +22,22 @@ class GameState:
         self.__stupid = set()
         self.__ball_position = OFF_PITCH_POSITION
         self.__ball_carrier = None
+        self.__double_nice_weather = False
+        self.weather = None
 
     @property
     def turn(self):
         return self.__turn // 2 + 1
 
-    def start_match(self, role_team, role_choice):
+    def set_weather(self, weather):
+        self.weather = weather if not self.weather or weather != Weather.NICE else Weather.NICE_BOUNCY
+        return WeatherTuple(self.weather)
+
+    def start_match(self, role_team, role_choice, is_blitz=False):
         starting_team = role_team if role_choice == Role.RECEIVE else other_team(role_team)
+        if is_blitz:
+            starting_team = other_team(starting_team)
+            self.__turn -= 1
         self.turn_team = self.__teams[starting_team.value]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.__teams[TeamType.HOME.value].get_players()):

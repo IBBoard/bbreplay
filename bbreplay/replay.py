@@ -4,6 +4,7 @@
 import sqlite3
 from collections import namedtuple
 from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
+    KickoffEvent, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
@@ -17,7 +18,8 @@ MatchEvent = namedtuple('Match', [])
 CoinTossEvent = namedtuple('CoinToss', ['toss_team', 'toss_choice', 'toss_result', 'role_team', 'role_choice'])
 TeamSetupComplete = namedtuple('TeamSetupComplete', ['team', 'player_positions'])
 SetupComplete = namedtuple('SetupComplete', ['board'])
-Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'bounces', 'board'])
+Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distance', 'board'])
+KickoffEventTuple = namedtuple('KickoffEvent', ['result'])
 Movement = namedtuple('Movement', ['player', 'source_space', 'target_space', 'board'])
 FailedMovement = namedtuple('FailedMovement', ['player', 'source_space', 'target_space'])
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
@@ -132,11 +134,14 @@ class Replay:
             toss_result = CoinToss.HEADS
         yield CoinTossEvent(toss_team, toss_choice, toss_result, role_team, role_cmd.choice)
 
-        cmd = find_next(cmds, SetupCommand)
-
         board = GameState(self.home_team, self.away_team)
+        weather = next(log_entries)[0]
+        yield board.set_weather(weather.result)
+
         deployments_finished = 0
         team = None
+
+        cmd = find_next(cmds, SetupCommand)
 
         while True:
             cmd_type = type(cmd)
@@ -188,16 +193,26 @@ class Replay:
 
         kickoff_cmd = find_next(cmds, KickoffCommand)
         kickoff_direction, kickoff_scatter = next(log_entries)
+        ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)
+        board.set_ball_position(ball_dest)
+        yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
+
+        kickoff_event = next(log_entries)[0]
+        is_blitz = False
+        yield KickoffEventTuple(kickoff_event.result)
+        if kickoff_event.result == KickoffEvent.BLITZ:
+            is_blitz = True
+        elif kickoff_event.result == KickoffEvent.CHANGING_WEATHER:
+            weather = next(log_entries)[0]  # Sometimes this duplicates, but we don't care
+            yield board.set_weather(weather.result)
+
+        yield board.start_match(role_team, role_cmd.choice, is_blitz)
+
         # TODO: Handle no bounce when it gets caught straight away
         kickoff_bounce = next(log_entries)[0]
         # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
-        ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)\
-                                        .scatter(kickoff_bounce.direction)
+        ball_dest = ball_dest.scatter(kickoff_bounce.direction)
         board.set_ball_position(ball_dest)
-        yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance,
-                      [kickoff_bounce.direction], board)
-
-        yield board.start_match(role_team, role_cmd.choice)
 
         prev_cmd = None
 

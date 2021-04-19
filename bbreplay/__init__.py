@@ -78,6 +78,29 @@ class InjuryRollResult(Enum):
     INJURED = auto()
 
 
+class KickoffEvent(Enum):
+    GET_THE_REF = 2
+    RIOT = 3
+    PERFECT_DEFENCE = 4
+    HIGH_KICK = 5
+    CHEERING_FANS = 6
+    CHANGING_WEATHER = 7
+    BRILLIANT_COACHING = 8
+    QUICK_SNAP = 9
+    BLITZ = 10
+    THROW_A_ROCK = 11
+    PITCH_INVASION = 12
+
+
+class Weather(Enum):
+    SWELTERING_HEAT = auto()
+    VERY_SUNNY = auto()
+    NICE = auto()
+    NICE_BOUNCY = auto()  # Nice from a "Changing Weather" roll
+    POURING_RAIN = auto()
+    BLIZZARD = auto()
+
+
 # Based on dmchale's BBRR list from https://github.com/dmchale/BBRR/blob/master/classes/BBRRSkills.php
 # and extended as new skills are found in replays
 class Skills(Enum):
