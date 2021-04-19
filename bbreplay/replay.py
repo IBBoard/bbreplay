@@ -38,7 +38,7 @@ ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
-ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'board'])
+ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'distance', 'board'])
 Touchdown = namedtuple('Touchdown', ['player', 'board'])
 
 
@@ -593,7 +593,8 @@ class Replay:
                 distance_entry = next(log_entries)
                 ball_position = previous_ball_position.throwin(log_entry.direction, distance_entry.distance)
                 board.set_ball_position(ball_position)
-                yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance)
+                yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance,
+                              board)
             else:
                 break
         if turn_over:
