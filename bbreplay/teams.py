@@ -2,7 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 import xml.etree.ElementTree as ET
-from . import TeamType, prefix_for_teamtype
+from . import prefix_for_teamtype
 from .player import Player
 
 

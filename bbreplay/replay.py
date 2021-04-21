@@ -8,9 +8,10 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BlockLogEntry, BounceLogEntry, FoulAppearanceEntry, \
-    ThrowInDirectionLogEntry, ThrowInDistanceLogEntry, CatchEntry
-from .state import GameState, StartTurn, EndTurn
+    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
+    ThrowInDirectionLogEntry, CatchEntry
+from .state import GameState
+from .state import StartTurn, EndTurn  # noqa: F401 - these are for export
 from .teams import Team
 
 
@@ -287,7 +288,7 @@ class Replay:
                                 block_dice.results, chosen_block_dice)
 
                     if chosen_block_dice == BlockResult.PUSHED or chosen_block_dice == BlockResult.DEFENDER_DOWN \
-                        or chosen_block_dice == BlockResult.DEFENDER_STUMBLES:
+                       or chosen_block_dice == BlockResult.DEFENDER_STUMBLES:
                         block_result = next(cmds)
                         old_coords = target_by_idx.position
                         origin_coords = blocking_player.position
@@ -344,16 +345,15 @@ class Replay:
                             yield BlockBothDown(target_by_idx)
                             defender_avoided = True
 
-
-                    if (chosen_block_dice == BlockResult.ATTACKER_DOWN \
+                    if (chosen_block_dice == BlockResult.ATTACKER_DOWN
                         or chosen_block_dice == BlockResult.BOTH_DOWN) \
                             and not attacker_avoided:
                         armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, target_log_entries, blocking_player, board)
-                    if (chosen_block_dice == BlockResult.DEFENDER_DOWN \
-                        or chosen_block_dice == BlockResult.DEFENDER_STUMBLES \
-                        or chosen_block_dice == BlockResult.BOTH_DOWN) \
-                        and not defender_avoided:
+                    if (chosen_block_dice == BlockResult.DEFENDER_DOWN
+                       or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
+                       or chosen_block_dice == BlockResult.BOTH_DOWN) \
+                       and not defender_avoided:
                         armour_entry = next(target_log_entries)
                         yield from self.__handle_armour_roll(armour_entry, target_log_entries, target_by_idx, board)
                     yield from self.__process_ball_movement(target_log_entries, blocking_player, board)
@@ -377,7 +377,7 @@ class Replay:
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
                 yield from self.__process_movement(player, cmd, cmds, None, log_entries, board)
                 if board.get_ball_carrier() == player and \
-                    (player.position.y == NEAR_ENDZONE_IDX or player.position.y == FAR_ENDZONE_IDX):
+                   (player.position.y == NEAR_ENDZONE_IDX or player.position.y == FAR_ENDZONE_IDX):
                     board.score[player.team.team_type.value] += 1
                     yield Touchdown(player, board)
                     yield from board.end_turn(player.team.team_type, 'Touchdown')
@@ -418,7 +418,6 @@ class Replay:
                 board.reset_position(player.position)
                 casualty_roll = next(log_entries)
                 yield Casualty(player, casualty_roll.injury)
-
 
     def __process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         failed_movement = False
@@ -598,13 +597,13 @@ class Replay:
             elif isinstance(log_entry, BounceLogEntry):
                 old_ball_position = board.get_ball_position()
                 if isinstance(previous_entry, BounceLogEntry) and board.get_position(old_ball_position) \
-                    and not board.get_ball_carrier():
+                   and not board.get_ball_carrier():
                     # We sometimes get odd double results where there's two bounces but no catch attempt
                     # but actually the ball just did the second bounce
                     old_ball_position = previous_ball_position
                 ball_position = old_ball_position.scatter(log_entry.direction)
                 if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH \
-                    or ball_position.y < 0 or ball_position.y >= PITCH_LENGTH:
+                   or ball_position.y < 0 or ball_position.y >= PITCH_LENGTH:
                     ball_position = OFF_PITCH_POSITION
                 else:
                     board.set_ball_position(ball_position)
@@ -671,7 +670,7 @@ def calculate_pushback(blocker_coords, old_coords, board):
 
     for possible_coord in possible_coords:
         if possible_coord.x < 0 or possible_coord.x > LAST_COLUMN_IDX \
-            or possible_coord.y < 0 or possible_coord.y > FAR_ENDZONE_IDX:
+           or possible_coord.y < 0 or possible_coord.y > FAR_ENDZONE_IDX:
             continue
         if not board.get_position(possible_coord):
             return possible_coord

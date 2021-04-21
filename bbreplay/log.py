@@ -309,13 +309,13 @@ ball_bounce_re = re.compile("Bounce \\(D8\\) : ([1-8])")
 block_re = re.compile(f"{TEAM} \\(([0-9]+)\\).*Block  Result:")
 block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : "
                                   "(Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
-gfi_re = re.compile(f"{TEAM} #([0-9]+).* Going for it +\(([0-9]+\+)\) : ([0-9]+) -> .* (Success|Failure)")
-pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? ->"
+gfi_re = re.compile(f"{TEAM} #([0-9]+).* Going for it +\\(([0-9]+\\+)\\) : ([0-9]+) -> .* (Success|Failure)")
+pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
                        " (Success|Failure)")
-dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\(([0-9]+\+)\) : .*([0-9]+)(?: Critical)? -> "
+dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
 skill_re = re.compile(f"{TEAM} #([0-9]+).* uses (Dodge|Block|Diving Tackle)")
-pro_reroll_re = re.compile(f"{TEAM} #([0-9]+).* Pro +\(([0-9]+\+)\) : ([0-9]+) -> (Success|Failure)")
+pro_reroll_re = re.compile(f"{TEAM} #([0-9]+).* Pro +\\(([0-9]+\\+)\\) : ([0-9]+) -> (Success|Failure)")
 tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
@@ -324,10 +324,10 @@ other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[
                                       ".* ([0-9]+)(?: Critical)? -> (Success|Failure)")
 injury_roll_re = re.compile(f"{TEAM} #([0-9]+) .* = ([0-9]+) -> (Stunned|KO|Injured)")
 casualty_roll_re = re.compile(f"{TEAM} #([0-9]+) .* Casualty  : (.*) -> .*")
-throw_in_direction_re = re.compile("Throw-in Direction \(D6\) : ([1-6]+)")
-throw_in_distance_re = re.compile("Throw-in Distance \(2D6\) : ([0-9]+)")
-kickoff_event_re = re.compile("Kick-Off Table: ([0-9]+)\. .*")
-weather_re = re.compile("Weather Table: [1-6] \+ [1-6] = [0-9]+\. (.*)")
+throw_in_direction_re = re.compile("Throw-in Direction \\(D6\\) : ([1-6]+)")
+throw_in_distance_re = re.compile("Throw-in Distance \\(2D6\\) : ([0-9]+)")
+kickoff_event_re = re.compile("Kick-Off Table: ([0-9]+)\\. .*")
+weather_re = re.compile("Weather Table: [1-6] \\+ [1-6] = [0-9]+\\. (.*)")
 
 turn_regexes = [
     (block_re, BlockLogEntry),

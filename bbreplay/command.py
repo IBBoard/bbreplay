@@ -225,6 +225,7 @@ class RerollCommand(Command):
     def __repr__(self):
         return f'Reroll?(team={self.team}, data={self._data})'
 
+
 class ProRerollCommand(SimpleTeamOverrideCommand):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__('ProReroll', id, turn, team, command_type, data)

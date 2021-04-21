@@ -206,7 +206,6 @@ class Position:
             raise ValueError(f'Not seen an example of throw-in {self}, {direction}, {distance}')
         return Position(new_x, new_y)
 
-
     def add(self, dx, dy):
         return Position(self.x + dx, self.y + dy)
 
