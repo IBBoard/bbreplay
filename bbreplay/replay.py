@@ -11,7 +11,7 @@ from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, Skil
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
     ThrowInDirectionLogEntry, CatchEntry
 from .state import GameState
-from .state import StartTurn, EndTurn  # noqa: F401 - these are for export
+from .state import StartTurn, EndTurn, WeatherTuple  # noqa: F401 - these are for export
 from .teams import Team
 
 

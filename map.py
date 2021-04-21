@@ -7,7 +7,7 @@ import os.path
 import time
 from bbreplay import TeamType, Position, PITCH_LENGTH, PITCH_WIDTH, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, \
     LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, BEFORE_HALFWAY_IDX
-from bbreplay.replay import Replay, SetupComplete, Kickoff, EndTurn
+from bbreplay.replay import Replay, SetupComplete, Kickoff, EndTurn, KickoffEventTuple, WeatherTuple
 
 
 TOPLINE =      "╔═╤╤╗"
@@ -157,6 +157,8 @@ if __name__ == '__main__':
     try:
         for event in replay.events():
             event_type = type(event)
+            if event_type in [KickoffEventTuple, WeatherTuple]:
+                continue
             if args.pretty and args.animate and board:
                 time.sleep(SLEEP_TIME)
                 reset_console()
