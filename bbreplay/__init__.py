@@ -209,6 +209,12 @@ class Position:
     def add(self, dx, dy):
         return Position(self.x + dx, self.y + dy)
 
+    def invert(self):
+        if self == OFF_PITCH_POSITION:
+            return OFF_PITCH_POSITION
+        else:
+            return Position(LAST_COLUMN_IDX - self.x, FAR_ENDZONE_IDX - self.y)
+
     def __eq__(self, other):
         if not other:
             return False

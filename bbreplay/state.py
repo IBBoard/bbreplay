@@ -10,6 +10,8 @@ EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
 StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
 AbandonMatch = namedtuple('AbandonMatch', ['team', 'board'])
 
+HALF_TIME_TURN = 8
+
 
 class GameState:
     def __init__(self, home_team, away_team, receiving_team):
@@ -21,11 +23,14 @@ class GameState:
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
         self.__turn = 0
         self.__prone = set()
+        self.__injured = set()
         self.__stupid = set()
         self.__ball_position = OFF_PITCH_POSITION
         self.__ball_carrier = None
         self.__double_nice_weather = False
         self.weather = None
+        self.__setups = [[], []]
+        self.__last_setup_turn = 0
 
     @property
     def turn(self):
@@ -38,6 +43,19 @@ class GameState:
     def blitz(self):
         self.__turn -= 1
 
+    def prepare_setup(self):
+        crossed_half_time = (self.turn <= HALF_TIME_TURN) != (self.__last_setup_turn <= HALF_TIME_TURN)
+        for team_setup in self.__setups:
+            for player, position in team_setup:
+                if self.is_prone(player):
+                    self.unset_prone(player)
+                self.reset_position(player.position)
+                if not self.is_injured(player):
+                    if crossed_half_time:
+                        self.set_position(position.invert(), player)
+                    else:
+                        self.set_position(position, player)
+
     def kickoff(self):
         self.turn_team = self.__teams[self.__receiving_team.value]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
@@ -46,6 +64,12 @@ class GameState:
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.__teams[TeamType.AWAY.value].get_players()):
             self.add_reroll(TeamType.AWAY)
+        for team in self.__teams:
+            team_setup = []
+            for player in team.get_players():
+                team_setup.append((player, player.position))
+            self.__setups[team.team_type.value] = team_setup
+        self.__last_setup_turn = self.turn
         return StartTurn(self.__receiving_team, self.turn, self)
 
     def change_turn(self, ending_team, reason):
@@ -112,6 +136,9 @@ class GameState:
 
     def is_prone(self, player):
         return player in self.__prone
+
+    def is_injured(self, player):
+        return player in self.__injured
 
     def get_surrounding_players(self, position):
         entities = []

@@ -168,6 +168,8 @@ class Replay:
         deployments_finished = 0
         team = None
 
+        board.prepare_setup()
+
         while True:
             cmd_type = type(cmd)
             if cmd_type is SetupCompleteCommand:
