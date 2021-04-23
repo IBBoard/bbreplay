@@ -36,6 +36,7 @@ Dodge = namedtuple('Dodge', ['player', 'result'])
 DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pro = namedtuple('Pro', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
+Catch = namedtuple('Catch', ['player', 'result', 'board'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
@@ -223,20 +224,35 @@ class Replay:
 
         kickoff_event = next(log_entries)[0]
         yield KickoffEventTuple(kickoff_event.result)
+        ball_bounces = True
         if kickoff_event.result == KickoffEvent.BLITZ:
             board.blitz()
             yield from self.__process_turn(cmds, log_entries, board)
         elif kickoff_event.result == KickoffEvent.CHANGING_WEATHER:
             weather = next(log_entries)[0]  # Sometimes this duplicates, but we don't care
             yield board.set_weather(weather.result)
+        elif kickoff_event.result == KickoffEvent.HIGH_KICK:
+            high_kick_log = next(log_entries)
+            high_kick_catch = high_kick_log[0]
+            catcher = self.get_team(high_kick_catch.team).get_player_by_number(high_kick_catch.player)
+            old_position = catcher.position
+            new_position = board.get_ball_position()
+            board.reset_position(old_position)
+            board.set_position(new_position, catcher)
+            if high_kick_catch.result == ActionResult.SUCCESS:
+                board.set_ball_carrier(catcher)
+                ball_bounces = False
+            yield Movement(catcher, old_position, new_position, board)
+            yield Catch(catcher, high_kick_catch.result, board)
 
         yield board.kickoff()
 
-        # TODO: Handle no bounce when it gets caught straight away
-        kickoff_bounce = next(log_entries)[0]
-        # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
-        ball_dest = ball_dest.scatter(kickoff_bounce.direction)
-        board.set_ball_position(ball_dest)
+        if ball_bounces:
+            # TODO: Handle no bounce when it gets caught straight away
+            kickoff_bounce = next(log_entries)[0]
+            # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
+            ball_dest = ball_dest.scatter(kickoff_bounce.direction)
+            board.set_ball_position(ball_dest)
 
     def __process_turn(self, cmds, log_entries, board):
         cmd = None
