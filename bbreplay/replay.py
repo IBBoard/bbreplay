@@ -4,14 +4,14 @@
 import sqlite3
 from collections import namedtuple
 from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
-    KickoffEvent, \
+    KickoffEvent, Role, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
     ThrowInDirectionLogEntry, CatchEntry
 from .state import GameState
-from .state import StartTurn, EndTurn, WeatherTuple  # noqa: F401 - these are for export
+from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch  # noqa: F401 - these are for export
 from .teams import Team
 
 
@@ -43,6 +43,9 @@ Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
 ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'distance', 'board'])
 Touchdown = namedtuple('Touchdown', ['player', 'board'])
+
+END_REASON_TOUCHDOWN = 'Touchdown!'
+END_REASON_ABANDON = 'Abandon Match'
 
 
 class ReturnWrapper:
@@ -134,15 +137,35 @@ class Replay:
         else:
             toss_result = CoinToss.HEADS
         yield CoinTossEvent(toss_team, toss_choice, toss_result, role_team, role_cmd.choice)
-
-        board = GameState(self.home_team, self.away_team)
+        receiver = role_team if role_cmd.choice == Role.RECEIVE else other_team(role_team)
+        board = GameState(self.home_team, self.away_team, receiver)
         weather = next(log_entries)[0]
         yield board.set_weather(weather.result)
 
+        cmd = find_next(cmds, SetupCommand)
+        yield from self.__process_kickoff(cmd, cmds, log_entries, board, True)
+
+        while True:
+            drive_ended = False
+            while not drive_ended:
+                for event in self.__process_turn(cmds, log_entries, board):
+                    event_type = type(event)
+                    if event_type in [Touchdown]:
+                        drive_ended = True
+                    elif event_type is AbandonMatch:
+                        return
+                    yield event
+            yield from self.__process_kickoff(cmd, cmds, log_entries, board, False)
+
+    def get_commands(self):
+        return self.__commands
+
+    def get_log_entries(self):
+        return self.__log_entries
+
+    def __process_kickoff(self, cmd, cmds, log_entries, board, is_match_start):
         deployments_finished = 0
         team = None
-
-        cmd = find_next(cmds, SetupCommand)
 
         while True:
             cmd_type = type(cmd)
@@ -199,15 +222,15 @@ class Replay:
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
 
         kickoff_event = next(log_entries)[0]
-        is_blitz = False
         yield KickoffEventTuple(kickoff_event.result)
         if kickoff_event.result == KickoffEvent.BLITZ:
-            is_blitz = True
+            board.blitz()
+            yield from self.__process_turn(cmds, log_entries, board)
         elif kickoff_event.result == KickoffEvent.CHANGING_WEATHER:
             weather = next(log_entries)[0]  # Sometimes this duplicates, but we don't care
             yield board.set_weather(weather.result)
 
-        yield board.start_match(role_team, role_cmd.choice, is_blitz)
+        yield board.kickoff()
 
         # TODO: Handle no bounce when it gets caught straight away
         kickoff_bounce = next(log_entries)[0]
@@ -215,9 +238,12 @@ class Replay:
         ball_dest = ball_dest.scatter(kickoff_bounce.direction)
         board.set_ball_position(ball_dest)
 
+    def __process_turn(self, cmds, log_entries, board):
+        cmd = None
         prev_cmd = None
+        end_reason = None
 
-        while True:
+        while not end_reason:
             prev_cmd = cmd
             cmd = next(cmds, None)
             if cmd is None:
@@ -369,7 +395,6 @@ class Replay:
                     validate_log_entry(catch_entry, CatchEntry, pass_cmd.team, target_by_coords.number)
                     if catch_entry.result == ActionResult.SUCCESS:
                         board.set_ball_carrier(target_by_idx)
-
                 else:
                     raise ValueError(f"Unexpected post-target command {cmd}")
             elif isinstance(cmd, MovementCommand):
@@ -380,26 +405,27 @@ class Replay:
                    (player.position.y == NEAR_ENDZONE_IDX or player.position.y == FAR_ENDZONE_IDX):
                     board.score[player.team.team_type.value] += 1
                     yield Touchdown(player, board)
-                    yield from board.end_turn(player.team.team_type, 'Touchdown')
+                    end_reason = END_REASON_TOUCHDOWN
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
             elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
                 # On at least one occasion this has followed a dodge and has the tackling player's team & index
                 print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
-                yield from board.end_turn(cmd.team, 'End Turn')
+                end_reason = 'End Turn'
             elif cmd_type is AbandonMatchCommand:
-                yield from board.abandon_match(cmd.team)
-                break
+                end_reason = END_REASON_ABANDON
             else:
                 print(f"No handling for {cmd}")
                 break
 
-    def get_commands(self):
-        return self.__commands
-
-    def get_log_entries(self):
-        return self.__log_entries
+        if end_reason == END_REASON_ABANDON:
+            yield from board.abandon_match(cmd.team)
+        else:
+            yield from board.end_turn(cmd.team, end_reason)
+            if end_reason != END_REASON_TOUCHDOWN:
+                # Touchdowns will be restarted by the setup and kickoff process
+                yield from board.start_turn(other_team(cmd.team))
 
     def __handle_armour_roll(self, roll_entry, log_entries, player, board):
         validate_log_entry(roll_entry, ArmourValueRollEntry,
@@ -489,7 +515,7 @@ class Replay:
                     elif isinstance(log_entry, TurnOverEntry):
                         if log_entry.team != player.team.team_type:
                             # We have a timeout and play changed - which we have no other way of finding!
-                            yield from board.end_turn(log_entry.team, log_entry.reason)
+                            yield from board.change_turn(log_entry.team, log_entry.reason)
                             move_log_entries = self.__next_generator(log_entries)
                             continue
                         validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
@@ -578,7 +604,7 @@ class Replay:
             start_space = target_space
 
         if turnover:
-            yield from board.end_turn(player.team.team_type, turnover)
+            yield from board.change_turn(player.team.team_type, turnover)
 
         if unused:
             unused.log_entries = move_log_entries
@@ -593,7 +619,7 @@ class Replay:
             log_entry = next(log_entries, None)
             if isinstance(log_entry, TurnOverEntry):
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                turn_over = board.end_turn(log_entry.team, log_entry.reason)
+                turn_over = board.change_turn(log_entry.team, log_entry.reason)
             elif isinstance(log_entry, BounceLogEntry):
                 old_ball_position = board.get_ball_position()
                 if isinstance(previous_entry, BounceLogEntry) and board.get_position(old_ball_position) \

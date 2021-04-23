@@ -2,17 +2,19 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple
-from . import other_team, Role, Skills, TeamType, Weather, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
+from . import other_team, Skills, TeamType, Weather, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
 
 WeatherTuple = namedtuple('Weather', ['result'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
 StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
+AbandonMatch = namedtuple('AbandonMatch', ['team', 'board'])
 
 
 class GameState:
-    def __init__(self, home_team, away_team):
+    def __init__(self, home_team, away_team, receiving_team):
         self.__teams = [home_team, away_team]
+        self.__receiving_team = receiving_team
         self.score = [0, 0]
         self.turn_team = None
         self.rerolls = [home_team.rerolls, away_team.rerolls]
@@ -33,19 +35,27 @@ class GameState:
         self.weather = weather if not self.weather or weather != Weather.NICE else Weather.NICE_BOUNCY
         return WeatherTuple(self.weather)
 
-    def start_match(self, role_team, role_choice, is_blitz=False):
-        starting_team = role_team if role_choice == Role.RECEIVE else other_team(role_team)
-        if is_blitz:
-            starting_team = other_team(starting_team)
-            self.__turn -= 1
-        self.turn_team = self.__teams[starting_team.value]
+    def blitz(self):
+        self.__turn -= 1
+
+    def kickoff(self):
+        self.turn_team = self.__teams[self.__receiving_team.value]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.__teams[TeamType.HOME.value].get_players()):
             self.add_reroll(TeamType.HOME)
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.__teams[TeamType.AWAY.value].get_players()):
             self.add_reroll(TeamType.AWAY)
-        return StartTurn(starting_team, self.turn, self)
+        return StartTurn(self.__receiving_team, self.turn, self)
+
+    def change_turn(self, ending_team, reason):
+        yield from self.end_turn(ending_team, reason)
+        yield from self.start_turn(other_team(ending_team))
+
+    def start_turn(self, team):
+        if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
+            raise ValueError(f'Out of order start turn - expected {self.turn_team.team_type} but got {team}')
+        yield StartTurn(team, self.turn, self)
 
     def end_turn(self, team, reason):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
@@ -54,12 +64,12 @@ class GameState:
         self.__turn += 1
         next_team = other_team(team)
         self.turn_team = self.__teams[next_team.value]
-        yield StartTurn(next_team, self.turn, self)
 
     def abandon_match(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order match abandonment - expected {self.turn_team.team_type} but got {team}')
-        yield EndTurn(self.turn_team.team_type, self.turn, 'Abandon match', self)
+        yield EndTurn(team, self.turn, 'Abandon match', self)
+        yield AbandonMatch(team, self)
 
     def set_position(self, position, contents):
         self.__board[position.y][position.x] = contents
