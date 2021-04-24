@@ -275,10 +275,11 @@ class Replay:
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
                 target_log_entries = None
                 is_block = targeting_player.team != target_by_idx.team
-                if Skills.REALLY_STUPID in targeting_player.skills:
+                if Skills.REALLY_STUPID in targeting_player.skills and not board.tested_stupid(targeting_player):
                     target_log_entries = self.__next_generator(log_entries)
                     log_entry = next(target_log_entries)
                     validate_log_entry(log_entry, StupidEntry, target.team, targeting_player.number)
+                    board.stupidity_test(targeting_player, log_entry.result)
                     yield ConditionCheck(targeting_player, 'Really Stupid', log_entry.result)
                     if log_entry.result != ActionResult.SUCCESS:
                         # The stupid stopped us
@@ -487,11 +488,12 @@ class Replay:
         if not isinstance(cmd, MovementCommand) and unused:
             unused.command = cmd
 
-        if Skills.REALLY_STUPID in player.skills:
+        if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
             if not move_log_entries:
                 move_log_entries = self.__next_generator(log_entries)
             log_entry = next(move_log_entries)
             validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
+            board.stupidity_test(player, log_entry.result)
             yield ConditionCheck(player, 'Really Stupid', log_entry.result)
             if log_entry.result != ActionResult.SUCCESS:
                 failed_movement = True

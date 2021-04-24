@@ -2,7 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple
-from . import other_team, Skills, TeamType, Weather, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
+from . import other_team, Skills, TeamType, Weather, ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
 
 WeatherTuple = namedtuple('Weather', ['result'])
@@ -26,6 +26,7 @@ class GameState:
         self.__prone = set()
         self.__injured = set()
         self.__stupid = set()
+        self.__tested_stupid = set()
         self.__ball_position = OFF_PITCH_POSITION
         self.__ball_carrier = None
         self.__double_nice_weather = False
@@ -91,6 +92,7 @@ class GameState:
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order end turn - expected {self.turn_team.team_type} but got {team}')
         yield EndTurn(self.turn_team.team_type, self.turn, reason, self)
+        self.__tested_stupid = set()
         self.__turn += 1
         next_team = other_team(team)
         self.turn_team = self.__teams[next_team.value]
@@ -145,6 +147,17 @@ class GameState:
 
     def is_injured(self, player):
         return player in self.__injured
+
+    def is_stupid(self, player):
+        return player in self.__stupid
+
+    def stupidity_test(self, player, result):
+        self.__tested_stupid.add(player)
+        if result != ActionResult.SUCCESS:
+            self.__stupid.add(player)
+
+    def tested_stupid(self, player):
+        return player in self.__tested_stupid
 
     def get_surrounding_players(self, position):
         entities = []
