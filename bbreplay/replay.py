@@ -505,6 +505,7 @@ class Replay:
                         if log_entry.result == ActionResult.SUCCESS:
                             yield Reroll(log_entry.team, 'Pro')
                             log_entry = next(move_log_entries)
+                            board.stupidity_test(player, log_entry.result)
                             yield ConditionCheck(player, 'Really Stupid', log_entry.result)
                             if log_entry.result == ActionResult.SUCCESS:
                                 failed_movement = False

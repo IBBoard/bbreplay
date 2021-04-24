@@ -155,6 +155,8 @@ class GameState:
         self.__tested_stupid.add(player)
         if result != ActionResult.SUCCESS:
             self.__stupid.add(player)
+        elif self.is_stupid(player):
+            self.__stupid.remove(player)
 
     def tested_stupid(self, player):
         return player in self.__tested_stupid
