@@ -55,6 +55,7 @@ class GameState:
                         self.set_position(position.invert(), player)
                     else:
                         self.set_position(position, player)
+        self.set_ball_position(OFF_PITCH_POSITION)
 
     def kickoff(self):
         self.turn_team = self.__teams[self.__receiving_team.value]
