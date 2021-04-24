@@ -55,7 +55,8 @@ class GameState:
             for player, position in team_setup:
                 if self.is_prone(player):
                     self.unset_prone(player)
-                self.reset_position(player.position)
+                if self.get_position(player.position) == player:
+                    self.reset_position(player.position)
                 if not self.is_injured(player):
                     if crossed_half_time:
                         self.set_position(position.invert(), player)
