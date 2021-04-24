@@ -8,6 +8,7 @@ from . import other_team, Skills, TeamType, Weather, PITCH_LENGTH, PITCH_WIDTH, 
 WeatherTuple = namedtuple('Weather', ['result'])
 EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
 StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
+HalfTime = namedtuple('HalfTime', ['board'])
 AbandonMatch = namedtuple('AbandonMatch', ['team', 'board'])
 
 HALF_TIME_TURN = 8
@@ -42,6 +43,10 @@ class GameState:
 
     def blitz(self):
         self.__turn -= 1
+
+    def halftime(self):
+        self.__receiving_team = other_team(self.__receiving_team)
+        return HalfTime(self)
 
     def prepare_setup(self):
         crossed_half_time = (self.turn <= HALF_TIME_TURN) != (self.__last_setup_turn <= HALF_TIME_TURN)

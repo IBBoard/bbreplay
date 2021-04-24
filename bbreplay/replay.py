@@ -156,6 +156,8 @@ class Replay:
                     elif event_type is AbandonMatch:
                         return
                     yield event
+                    if event_type is EndTurn and board.turn == 8 and board.turn_team.team_type != receiver:
+                        yield board.halftime()
             yield from self.__process_kickoff(cmd, cmds, log_entries, board, False)
 
     def get_commands(self):
