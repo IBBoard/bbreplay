@@ -320,7 +320,6 @@ class Replay:
                             raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
                         throw_cmd = next(cmds)
                         yield from self.__process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board)
-                        cmd = next(cmds)
                     block = cmd
                     blocking_player = targeting_player
                     block_dice = next(target_log_entries)
@@ -682,6 +681,7 @@ class Replay:
                     board.set_ball_carrier(contents)
                     break
                 # Else they failed so bounce again
+        _ = next(cmds)  # XXX: Throw away the next command - cmd_type=13 from the opposition with no other data
 
     def __process_ball_movement(self, log_entries, player, board):
         log_entry = None
