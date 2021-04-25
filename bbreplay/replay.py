@@ -158,7 +158,7 @@ class Replay:
                     yield event
                     if event_type is EndTurn and board.turn == 8 and board.turn_team.team_type != receiver:
                         yield board.halftime()
-            yield from self.__process_kickoff(cmd, cmds, log_entries, board, False)
+            yield from self.__process_kickoff(next(cmds), cmds, log_entries, board, False)
 
     def get_commands(self):
         return self.__commands
@@ -211,7 +211,7 @@ class Replay:
             coords = cmd.position
             space_contents = board.get_position(coords)
 
-            if space_contents:
+            if space_contents and space_contents != player:
                 if old_coords:
                     board.set_position(old_coords, space_contents)
                 else:

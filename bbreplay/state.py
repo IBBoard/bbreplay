@@ -21,7 +21,7 @@ class GameState:
         self.score = [0, 0]
         self.turn_team = None
         self.rerolls = [home_team.rerolls, away_team.rerolls]
-        self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
+        self.__reset_board()
         self.__turn = 0
         self.__prone = set()
         self.__injured = set()
@@ -51,12 +51,11 @@ class GameState:
 
     def prepare_setup(self):
         crossed_half_time = (self.turn <= HALF_TIME_TURN) != (self.__last_setup_turn <= HALF_TIME_TURN)
+        self.__reset_board()
         for team_setup in self.__setups:
             for player, position in team_setup:
                 if self.is_prone(player):
                     self.unset_prone(player)
-                if self.get_position(player.position) == player:
-                    self.reset_position(player.position)
                 if not self.is_injured(player):
                     if crossed_half_time:
                         self.set_position(position.invert(), player)
@@ -184,3 +183,6 @@ class GameState:
 
     def add_reroll(self, team):
         self.rerolls[team.value] += 1
+
+    def __reset_board(self):
+        self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
