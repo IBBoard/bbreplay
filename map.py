@@ -131,6 +131,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretty', action='store_true', help='Use ANSII colours for the map')
     parser.add_argument('--animate', action='store_true',
                         help='Use ANSII commands to animate move-by-move. Requires --pretty')
+    parser.add_argument('--from', dest='from_turn', type=int, default=0, help='turn number to map from')
     args = parser.parse_args()
 
     print(f"{os.path.basename(args.replay_file)}")
@@ -154,16 +155,23 @@ if __name__ == '__main__':
         else:
             print("\n", text)
 
+    first_draw = True
+
     try:
         for event in replay.events():
             event_type = type(event)
             if event_type in [KickoffEventTuple, WeatherTuple, FailedMovement]:
                 continue
-            if args.pretty and args.animate and board:
-                time.sleep(SLEEP_TIME)
-                reset_console()
+            if args.pretty and args.animate and board and board.turn >= args.from_turn:
+                if not first_draw:
+                    time.sleep(SLEEP_TIME)
+                    reset_console()
+                else:
+                    first_draw = False
             if hasattr(event, 'board'):
                 board = event.board
+            if board and board.turn < args.from_turn:
+                continue
             if event_type is SetupComplete:
                 print_title("Setup")
                 print(draw_map(event.board, args.pretty))
