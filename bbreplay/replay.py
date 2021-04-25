@@ -367,12 +367,16 @@ class Replay:
                                 board.set_position(new_coords, pushed_player)
                                 yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
                                 break
+                            elif isinstance(block_result, MovementCommand):
+                                self.__process_movement(pushing_player, block_result, cmds, target_log_entries,
+                                                        log_entries, board)
+                                break
                             else:
                                 raise ValueError("Expected PushbackCommand after "
                                                  f"{chosen_block_dice} but got {type(block_result).__name__}")
 
                         # Follow-up
-                        if block_result.choice:
+                        if isinstance(block_result, FollowUpChoiceCommand) and block_result.choice:
                             old_coords = blocking_player.position
                             board.reset_position(old_coords)
                             board.set_position(block.position, blocking_player)
