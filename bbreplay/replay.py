@@ -285,15 +285,6 @@ class Replay:
                 target_by_idx = self.get_team(target.target_team).get_player(target.target_player)
                 target_log_entries = None
                 is_block = targeting_player.team != target_by_idx.team
-                if Skills.REALLY_STUPID in targeting_player.skills and not board.tested_stupid(targeting_player):
-                    target_log_entries = self.__next_generator(log_entries)
-                    log_entry = next(target_log_entries)
-                    validate_log_entry(log_entry, StupidEntry, target.team, targeting_player.number)
-                    board.stupidity_test(targeting_player, log_entry.result)
-                    yield ConditionCheck(targeting_player, 'Really Stupid', log_entry.result)
-                    if log_entry.result != ActionResult.SUCCESS:
-                        # The stupid stopped us
-                        continue
                 if is_block and Skills.FOUL_APPEARANCE in target_by_idx.skills:
                     if not target_log_entries:
                         target_log_entries = self.__next_generator(log_entries)
@@ -310,10 +301,15 @@ class Replay:
                                                        target_log_entries, log_entries, board, unused)
                     cmd = unused.command
                     target_log_entries = unused.log_entries
-                elif board.is_prone(targeting_player):
-                    board.unset_prone(targeting_player)
-                    if is_block:
-                        yield Blitz(targeting_player, target_by_idx)
+                else:
+                    unused = ReturnWrapper()
+                    yield from self.__process_stupidity(targeting_player, cmd, cmds, target_log_entries, log_entries,
+                                                        board, unused)
+                    target_log_entries = unused.log_entries
+                    if board.is_prone(targeting_player):
+                        board.unset_prone(targeting_player)
+                        if is_block:
+                            yield Blitz(targeting_player, target_by_idx)
                 if not target_log_entries:
                     target_log_entries = self.__next_generator(log_entries)
                 if isinstance(cmd, TargetSpaceCommand) and is_block:
@@ -478,6 +474,33 @@ class Replay:
                 casualty_roll = next(log_entries)
                 yield Casualty(player, casualty_roll.injury)
 
+    def __process_stupidity(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+        if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
+            if not cur_log_entries:
+                cur_log_entries = self.__next_generator(log_entries)
+            log_entry = next(cur_log_entries)
+            validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
+            board.stupidity_test(player, log_entry.result)
+            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
+            if log_entry.result != ActionResult.SUCCESS:
+                log_entry = next(cur_log_entries, None)
+                if log_entry:
+                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                    cmd = next(cmds)
+                    if isinstance(cmd, ProRerollCommand):
+                        if log_entry.result == ActionResult.SUCCESS:
+                            yield Reroll(log_entry.team, 'Pro')
+                            log_entry = next(cur_log_entries)
+                            board.stupidity_test(player, log_entry.result)
+                            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
+                    elif isinstance(cmd, RerollEntry):
+                        board.use_reroll(player.team.team_type)
+                        yield Reroll(cmd.team, 'Team Reroll')
+                    else:
+                        raise ValueError("No RerollCommand to go with RerollEntry")
+        if unused:
+            unused.log_entries = cur_log_entries
+
     def __process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         failed_movement = False
         pickup_entry = None
@@ -500,32 +523,12 @@ class Replay:
         if not isinstance(cmd, MovementCommand) and unused:
             unused.command = cmd
 
-        if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
-            if not move_log_entries:
-                move_log_entries = self.__next_generator(log_entries)
-            log_entry = next(move_log_entries)
-            validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
-            board.stupidity_test(player, log_entry.result)
-            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
-            if log_entry.result != ActionResult.SUCCESS:
-                failed_movement = True
-                log_entry = next(move_log_entries, None)
-                if log_entry:
-                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
-                    cmd = next(cmds)
-                    if isinstance(cmd, ProRerollCommand):
-                        if log_entry.result == ActionResult.SUCCESS:
-                            yield Reroll(log_entry.team, 'Pro')
-                            log_entry = next(move_log_entries)
-                            board.stupidity_test(player, log_entry.result)
-                            yield ConditionCheck(player, 'Really Stupid', log_entry.result)
-                            if log_entry.result == ActionResult.SUCCESS:
-                                failed_movement = False
-                    elif isinstance(cmd, RerollEntry):
-                        board.use_reroll(player.team.team_type)
-                        yield Reroll(cmd.team, 'Team Reroll')
-                    else:
-                        raise ValueError("No RerollCommand to go with RerollEntry")
+        stupid_unused = ReturnWrapper()
+        for event in self.__process_stupidity(player, cmd, cmds, move_log_entries, log_entries, board, stupid_unused):
+            if isinstance(event, ConditionCheck):
+                failed_movement = event.result != ActionResult.SUCCESS
+            yield event
+        move_log_entries = stupid_unused.log_entries
 
         for movement in moves:
             target_space = movement.position
@@ -700,7 +703,7 @@ def is_dodge(board, player, destination):
 
 def validate_log_entry(log_entry, expected_type, expected_team, expected_number=None):
     if not isinstance(log_entry, expected_type):
-        raise ValueError(f"Expected {expected_type.__name__} but got {type(log_entry)}")
+        raise ValueError(f"Expected {expected_type.__name__} but got {type(log_entry).__name__}")
     elif log_entry.team != expected_team or (expected_number is not None and log_entry.player != expected_number):
         if expected_number is not None:
             raise ValueError(f"Expected {expected_type.__name__} for "
