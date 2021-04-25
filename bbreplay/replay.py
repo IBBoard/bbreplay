@@ -454,7 +454,7 @@ class Replay:
             elif cmd_type is AbandonMatchCommand:
                 end_reason = END_REASON_ABANDON
             else:
-                print(f"No handling for {cmd}")
+                raise ValueError(f"No handling for {cmd}")
                 break
 
         if end_reason == END_REASON_ABANDON:
