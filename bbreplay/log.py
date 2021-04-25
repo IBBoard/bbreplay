@@ -182,6 +182,11 @@ class FoulAppearanceEntry(ActionResultEntry):
         super().__init__("FoulAppearance", team, player, required, roll, result)
 
 
+class KORecoveryEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("KORecovery", team, player, required, roll, result)
+
+
 class TentacleUseEntry(PartialEntry):
     def __init__(self, team, player):
         self.team = team
@@ -290,6 +295,8 @@ def create_other_entry(team, player, action, required, roll, result):
         return FoulAppearanceEntry(team, player, required, roll, result)
     elif action == "Catch":
         return CatchEntry(team, player, required, roll, result)
+    elif action == "KO":
+        return KORecoveryEntry(team, player, required, roll, result)
     else:
         return action, team, player, required, roll, result
 
@@ -320,7 +327,7 @@ tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
 leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
 turnover_re = re.compile(f"{TEAM} suffer a TURNOVER! : (.*)")
-other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][a-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
+other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][A-Za-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
                                       ".* ([0-9]+)(?: Critical)? -> (Success|Failure)")
 injury_roll_re = re.compile(f"{TEAM} #([0-9]+) .* = ([0-9]+) -> (Stunned|KO|Injured)")
 casualty_roll_re = re.compile(f"{TEAM} #([0-9]+) .* Casualty  : (.*) -> .*")
