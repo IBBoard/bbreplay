@@ -302,6 +302,7 @@ def create_other_entry(team, player, action, required, roll, result):
 
 
 TEAM = "([A-Z0-9]+)"
+TEAM_PLAYER = f"{TEAM} #([0-9]+) .*"
 
 toss_randomisation_team_re = re.compile('Team   : ([01])')
 toss_randomisation_result_re = re.compile('Result : ([01])')
@@ -310,27 +311,27 @@ block_dice_re = re.compile('^\\[[^\\]]+\\]( - \\[[^\\]]+\\])*')
 teams_re = re.compile(f"([^\\()]+)\\({TEAM}\\) vs ([^\\)]+)\\({TEAM}\\)")
 coin_toss_re = re.compile(f"{TEAM} choose (Heads|Tails)")
 role_re = re.compile(f"{TEAM} choose to (Kick|Receive)")
-kick_direction_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Direction \\(D8\\) : ([1-8])")
-kick_distance_re = re.compile(f"{TEAM} #([0-9]+).* Kick-off Distance \\(D6\\) : (?:[1-6] / 2 {{Kick}} -> )?([1-6])$")
+kick_direction_re = re.compile(f"{TEAM_PLAYER} Kick-off Direction \\(D8\\) : ([1-8])")
+kick_distance_re = re.compile(f"{TEAM_PLAYER} Kick-off Distance \\(D6\\) : (?:[1-6] / 2 {{Kick}} -> )?([1-6])$")
 ball_bounce_re = re.compile("Bounce \\(D8\\) : ([1-8])")
 block_re = re.compile(f"{TEAM} \\(([0-9]+)\\).*Block  Result:")
-block_dice_choice_re = re.compile(f"{TEAM} #([0-9]+).* chooses : "
+block_dice_choice_re = re.compile(f"{TEAM_PLAYER} chooses : "
                                   "(Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
-gfi_re = re.compile(f"{TEAM} #([0-9]+).* Going for it +\\(([0-9]+\\+)\\) : ([0-9]+) -> .* (Success|Failure)")
-pickup_re = re.compile(f"{TEAM} #([0-9]+).* Pick-up {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
+gfi_re = re.compile(f"{TEAM_PLAYER} Going for it +\\(([0-9]+\\+)\\) : ([0-9]+) -> .* (Success|Failure)")
+pickup_re = re.compile(f"{TEAM_PLAYER} Pick-up {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
                        " (Success|Failure)")
-dodge_re = re.compile(f"{TEAM} #([0-9]+).* Dodge {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
+dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
-skill_re = re.compile(f"{TEAM} #([0-9]+).* uses (Dodge|Block|Diving Tackle)")
-pro_reroll_re = re.compile(f"{TEAM} #([0-9]+).* Pro +\\(([0-9]+\\+)\\) : ([0-9]+) -> (Success|Failure)")
-tentacle_use_re = re.compile(f"{TEAM} #([0-9]+).* uses Tentacles")
+skill_re = re.compile(f"{TEAM_PLAYER} uses (Dodge|Block|Diving Tackle)")
+pro_reroll_re = re.compile(f"{TEAM_PLAYER} Pro +\\(([0-9]+\\+)\\) : ([0-9]+) -> (Success|Failure)")
+tentacle_use_re = re.compile(f"{TEAM_PLAYER} uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")
-leader_reroll_re = re.compile(f"{TEAM} #([0-9]+).* uses Leader")
+leader_reroll_re = re.compile(f"{TEAM_PLAYER} uses Leader")
 turnover_re = re.compile(f"{TEAM} suffer a TURNOVER! : (.*)")
 other_success_failure_re = re.compile(f"{TEAM} #([0-9]+) .* ([A-Z][A-Za-z]+)(?: {{[A-Z]+}})? +\\(([0-9]+\\+)\\) :"
                                       ".* ([0-9]+)(?: Critical)? -> (Success|Failure)")
-injury_roll_re = re.compile(f"{TEAM} #([0-9]+) .* = ([0-9]+) -> (Stunned|KO|Injured)")
-casualty_roll_re = re.compile(f"{TEAM} #([0-9]+) .* Casualty  : (.*) -> .*")
+injury_roll_re = re.compile(f"{TEAM_PLAYER} = ([0-9]+) -> (Stunned|KO|Injured)")
+casualty_roll_re = re.compile(f"{TEAM_PLAYER} Casualty  : (.*) -> .*")
 throw_in_direction_re = re.compile("Throw-in Direction \\(D6\\) : ([1-6]+)")
 throw_in_distance_re = re.compile("Throw-in Distance \\(2D6\\) : ([0-9]+)")
 kickoff_event_re = re.compile("Kick-Off Table: ([0-9]+)\\. .*")
