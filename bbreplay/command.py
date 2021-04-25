@@ -217,6 +217,30 @@ class PushbackCommand(Command):
             f'data={self._data})'
 
 
+class DumpOffCommand(SimpleCommand):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__("DumpOff", id, turn, team, command_type, data)
+
+
+class ThrowCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.team = player_idx_to_type(data[0])  # Override the team
+        self.player_idx = data[1]
+        self.position = Position(data[2], data[3])
+
+    @property
+    def x(self):
+        return self.position.x
+
+    @property
+    def y(self):
+        return self.position.y
+
+    def __repr__(self):
+        return f'Throw(team={self.team}, player={self.player_idx}, position={self.x},{self.y})'
+
+
 class RerollCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         # 0 and 1 MIGHT be team and player IDX, but it doesn't always match
@@ -281,9 +305,11 @@ MOVE_MAP = {
     21: ProRerollCommand,
     25: create_player_command,
     26: TargetPlayerCommand,
+    30: ThrowCommand,
     33: UnknownVerboseCommand,
     45: FollowUpChoiceCommand,
     46: PushbackCommand,
+    49: DumpOffCommand,
     51: DeclineRerollCommand,
     59: AbandonMatchCommand,
     69: NetworkCommand,

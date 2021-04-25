@@ -42,6 +42,12 @@ class ActionResult(Enum):
     FAILURE = 1
 
 
+class ThrowResult(Enum):
+    FUMBLE = auto()
+    INACCURATE_PASS = auto()
+    ACCURATE_PASS = auto()
+
+
 class ScatterDirection(Enum):
     NW = 1
     N = 2
@@ -248,12 +254,8 @@ def player_idx_to_type(idx):
         return TeamType(idx)
 
 
-def block_string_to_enum(block_string):
-    return BlockResult[block_string.upper().replace(' ', '_')]
-
-
-def skill_name_to_enum(skill_name):
-    return Skills[skill_name.upper().replace(' ', '_')]
+def enum_name_to_enum(enum_name, enum_type):
+    return enum_type[enum_name.upper().replace(' ', '_')]
 
 
 def other_team(team):

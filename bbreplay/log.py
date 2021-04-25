@@ -2,9 +2,9 @@
 # Licensed under GPLv3 or later - see COPYING
 
 import re
-from . import block_string_to_enum, skill_name_to_enum
+from . import enum_name_to_enum
 from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult, ThrowInDirection, \
-    KickoffEvent, Weather
+    KickoffEvent, Weather, Skills, BlockResult, ThrowResult
 
 
 class PartialEntry:
@@ -214,11 +214,23 @@ class TentacledEntry(ActionResultEntry):
                f"required={self.required}, roll={self.roll}, result={self.result})"
 
 
+class ThrowEntry(TeamPlayerEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__(team, player)
+        self.required = required
+        self.roll = int(roll)
+        self.result = enum_name_to_enum(result, ThrowResult)
+
+    def __repr__(self):
+        return f"Throw(team={self.team}, player={self.player}, required={self.required}, roll={self.roll}, " \
+               f"result={self.result})"
+
+
 class SkillEntry:
     def __init__(self, team, player, skill):
         self.team = team
         self.player = int(player)
-        self.skill = skill_name_to_enum(skill)
+        self.skill = enum_name_to_enum(skill, Skills)
 
     def __repr__(self):
         return f'Skill(team={self.team}, player={self.player}, skill={self.skill})'
@@ -320,6 +332,8 @@ block_dice_choice_re = re.compile(f"{TEAM_PLAYER} chooses : "
 gfi_re = re.compile(f"{TEAM_PLAYER} Going for it +\\(([0-9]+\\+)\\) : ([0-9]+) -> .* (Success|Failure)")
 pickup_re = re.compile(f"{TEAM_PLAYER} Pick-up {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
                        " (Success|Failure)")
+throw_re = re.compile(f"{TEAM_PLAYER} Launch {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
+                      " (Fumble|(?:Inaccurate|Accurate) pass)!")
 dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
 skill_re = re.compile(f"{TEAM_PLAYER} uses (Dodge|Block|Diving Tackle)")
@@ -340,6 +354,7 @@ weather_re = re.compile("Weather Table: [1-6] \\+ [1-6] = [0-9]+\\. (.*)")
 turn_regexes = [
     (block_re, BlockLogEntry),
     (pickup_re, PickupEntry),
+    (throw_re, ThrowEntry),
     (dodge_re, DodgeEntry),
     (skill_re, SkillEntry),
     (gfi_re, GoingForItEntry),
@@ -427,7 +442,7 @@ def parse_log_entries(log_path):
             else:
                 result = block_dice_re.search(line)
                 if result:
-                    block_dice = [block_string_to_enum(block_string.strip(' []'))
+                    block_dice = [enum_name_to_enum(block_string.strip(' []'), BlockResult)
                                   for block_string in result.group(0).split('-')]
                     block_result = partial_entry.complete(block_dice)
                     event_entries.append(block_result)

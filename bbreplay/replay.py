@@ -4,12 +4,12 @@
 import sqlite3
 from collections import namedtuple
 from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
-    KickoffEvent, Role, \
+    KickoffEvent, Role, ThrowResult, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
-    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry
+    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch  # noqa: F401 - these are for export
 from .teams import Team
@@ -36,6 +36,7 @@ Dodge = namedtuple('Dodge', ['player', 'result'])
 DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pro = namedtuple('Pro', ['player', 'result'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
+Pass = namedtuple('Pass', ['player', 'target', 'result', 'board'])
 Catch = namedtuple('Catch', ['player', 'result', 'board'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 ConditionCheck = namedtuple('ConditionCheck', ['player', 'condition', 'result'])
@@ -313,6 +314,13 @@ class Replay:
                 if not target_log_entries:
                     target_log_entries = self.__next_generator(log_entries)
                 if isinstance(cmd, TargetSpaceCommand) and is_block:
+                    if Skills.DUMP_OFF in target_by_idx.skills and board.get_ball_carrier() == target_by_idx:
+                        dumpoff_cmd = next(cmds)
+                        if dumpoff_cmd.team != target_by_idx.team.team_type:
+                            raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
+                        throw_cmd = next(cmds)
+                        yield from self.__process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board)
+                        cmd = next(cmds)
                     block = cmd
                     blocking_player = targeting_player
                     block_dice = next(target_log_entries)
@@ -650,6 +658,30 @@ class Replay:
 
         if unused:
             unused.log_entries = move_log_entries
+
+    def __process_pass(self, player, cmd, cmds, log_entries, board):
+        throw_log_entry = next(log_entries)
+        validate_log_entry(throw_log_entry, ThrowEntry, player.team.team_type, player.number)
+        throw_command = cmd
+        yield Pass(player, throw_command.position, throw_log_entry.result, board)
+        if throw_log_entry.result == ThrowResult.FUMBLE:
+            while True:
+                scatter_entry = next(log_entries)
+                start_position = board.get_ball_position()
+                ball_position = start_position.scatter(scatter_entry.direction)
+                yield Bounce(start_position, ball_position, scatter_entry.direction, board)
+                board.set_ball_position(ball_position)
+                contents = board.get_position(ball_position)
+                if not contents:
+                    break
+                if board.is_prone(contents):
+                    # Prone players can't catch!
+                    continue
+                catch_entry = next(log_entries)
+                if catch_entry.result == ActionResult.SUCCESS:
+                    board.set_ball_carrier(contents)
+                    break
+                # Else they failed so bounce again
 
     def __process_ball_movement(self, log_entries, player, board):
         log_entry = None
