@@ -52,10 +52,10 @@ class GameState:
     def prepare_setup(self):
         crossed_half_time = (self.turn <= HALF_TIME_TURN) != (self.__last_setup_turn <= HALF_TIME_TURN)
         self.__reset_board()
+        self.__prone = set()
+        self.__stupid = set()
         for team_setup in self.__setups:
             for player, position in team_setup:
-                if self.is_prone(player):
-                    self.unset_prone(player)
                 if not self.is_injured(player):
                     if crossed_half_time:
                         self.set_position(position.invert(), player)
@@ -77,7 +77,7 @@ class GameState:
                 team_setup.append((player, player.position))
             self.__setups[team.team_type.value] = team_setup
         self.__last_setup_turn = self.turn
-        return StartTurn(self.__receiving_team, self.turn, self)
+        yield from self.start_turn(self.__receiving_team)
 
     def change_turn(self, ending_team, reason):
         yield from self.end_turn(ending_team, reason)
@@ -86,13 +86,13 @@ class GameState:
     def start_turn(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order start turn - expected {self.turn_team.team_type} but got {team}')
+        self.__tested_stupid = set()
         yield StartTurn(team, self.turn, self)
 
     def end_turn(self, team, reason):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order end turn - expected {self.turn_team.team_type} but got {team}')
         yield EndTurn(self.turn_team.team_type, self.turn, reason, self)
-        self.__tested_stupid = set()
         self.__turn += 1
         next_team = other_team(team)
         self.turn_team = self.__teams[next_team.value]
@@ -144,6 +144,12 @@ class GameState:
 
     def is_prone(self, player):
         return player in self.__prone
+
+    def set_injured(self, player):
+        self.__injured.add(player)
+
+    def unset_injured(self, player):
+        self.__injured.remove(player)
 
     def is_injured(self, player):
         return player in self.__injured

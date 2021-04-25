@@ -9,7 +9,7 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
-    ThrowInDirectionLogEntry, CatchEntry
+    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch  # noqa: F401 - these are for export
 from .teams import Team
@@ -172,6 +172,16 @@ class Replay:
 
         board.prepare_setup()
 
+        kickoff_log_events = next(log_entries)
+
+        if type(kickoff_log_events[0]) is KORecoveryEntry:
+            for event in kickoff_log_events:
+                if event.result == ActionResult.SUCCESS:
+                    player = self.get_team(event.team).get_player_by_number(event.player)
+                    board.unset_injured(player)
+            kickoff_log_events = next(log_entries)
+        # Else leave it for the kickoff event
+
         while True:
             cmd_type = type(cmd)
             if cmd_type is SetupCompleteCommand:
@@ -221,7 +231,7 @@ class Replay:
             cmd = next(cmds)
 
         kickoff_cmd = find_next(cmds, KickoffCommand)
-        kickoff_direction, kickoff_scatter = next(log_entries)
+        kickoff_direction, kickoff_scatter = kickoff_log_events
         ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)
         board.set_ball_position(ball_dest)
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
@@ -249,7 +259,7 @@ class Replay:
             yield Movement(catcher, old_position, new_position, board)
             yield Catch(catcher, high_kick_catch.result, board)
 
-        yield board.kickoff()
+        yield from board.kickoff()
 
         if ball_bounces:
             # TODO: Handle no bounce when it gets caught straight away
@@ -460,9 +470,11 @@ class Replay:
             if injury_roll.result == InjuryRollResult.KO:
                 # Remove the player from the pitch
                 board.reset_position(player.position)
+                board.set_injured(player)
             elif injury_roll.result == InjuryRollResult.INJURED:
                 # Remove the player from the pitch
                 board.reset_position(player.position)
+                board.set_injured(player)
                 casualty_roll = next(log_entries)
                 yield Casualty(player, casualty_roll.injury)
 
