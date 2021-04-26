@@ -84,6 +84,28 @@ class InjuryRollResult(Enum):
     INJURED = auto()
 
 
+class CasualtyResult(Enum):
+    NONE = -1
+    BADLY_HURT = 0
+    BROKEN_RIBS = 1
+    GROIN_STRAIN = 2
+    GOUGED_EYE = 3
+    BROKEN_JAW = 4
+    FRACTURED_ARM = 5
+    FRACTURED_LEG = 6
+    SMASHED_HAND = 7
+    PINCHED_NERVE = 8
+    DAMAGED_BACK = 9
+    SMASHED_KNEE = 10
+    SMASHED_HIP = 11
+    SMASHED_ANKLE = 12
+    SERIOUS_CONCUSSION = 13
+    FRACTURED_SKULL = 14
+    BROKEN_NECK = 15
+    SMASHED_COLLAR_BONE = 16
+    DEAD = 17
+
+
 class KickoffEvent(Enum):
     GET_THE_REF = 2
     RIOT = 3

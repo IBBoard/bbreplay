@@ -4,7 +4,7 @@
 import re
 from . import enum_name_to_enum
 from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult, ThrowInDirection, \
-    KickoffEvent, Weather, Skills, BlockResult, ThrowResult
+    KickoffEvent, Weather, Skills, BlockResult, ThrowResult, CasualtyResult
 
 
 class PartialEntry:
@@ -281,10 +281,10 @@ class InjuryRollEntry(TeamPlayerEntry):
 class CasualtyRollEntry(TeamPlayerEntry):
     def __init__(self, team, player, result):
         super().__init__(team, player)
-        self.injury = result
+        self.result = enum_name_to_enum(result, CasualtyResult)
 
     def __repr__(self):
-        return f"CasualtyRoll(team={self.team}, player={self.player}, injury={self.injury})"
+        return f"CasualtyRoll(team={self.team}, player={self.player}, result={self.result})"
 
 
 class TurnOverEntry(TeamEntry):
@@ -403,6 +403,7 @@ def parse_log_entries(log_path):
     match_started = False
     in_block = False
     toss_randomisation = TossRandomisationEntry()
+    casualty_events = 0
 
     with open(log_path, 'r') as f:
         for line in f:
@@ -418,6 +419,7 @@ def parse_log_entries(log_path):
                 if event_entries:
                     log_entries.append(event_entries)
                 event_entries = []
+                casualty_events = 0
                 in_block = False
                 continue
             elif not in_block:
@@ -438,7 +440,14 @@ def parse_log_entries(log_path):
                     if partial_entry:
                         log_entry = partial_entry.complete(log_entry)
                         partial_entry = None
-                    event_entries.append(log_entry)
+                    if isinstance(log_entry, CasualtyRollEntry):
+                        casualty_events += 1
+                        event_entries.append(log_entry)
+                    elif casualty_events == 0:
+                        event_entries.append(log_entry)
+                    else:
+                        # Keep casualty rolls at the end to make our parsing easier
+                        event_entries.insert(-casualty_events, log_entry)
             else:
                 result = block_dice_re.search(line)
                 if result:

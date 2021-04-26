@@ -49,3 +49,6 @@ class Team:
     def get_player_by_number(self, number):
         idx = self._player_number_map[int(number)]
         return self._players[idx]
+
+    def get_player_number(self, idx):
+        return self._players[idx].number

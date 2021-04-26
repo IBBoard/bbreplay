@@ -31,7 +31,8 @@ Pushback = namedtuple('Pushback', ['pushing_player', 'pushed_player', 'source_sp
 FollowUp = namedtuple('Followup', ['following_player', 'followed_player', 'source_space', 'target_space', 'board'])
 ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
 InjuryRoll = namedtuple('InjuryRoll', ['player', 'result'])
-Casualty = namedtuple('Casualty', ['player', 'injury'])
+Casualty = namedtuple('Casualty', ['player', 'result'])
+Apothecary = namedtuple('Apothecary', ['player', 'new_injury', 'casualty'])
 Dodge = namedtuple('Dodge', ['player', 'result'])
 DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pro = namedtuple('Pro', ['player', 'result'])
@@ -417,21 +418,60 @@ class Replay:
                             yield BlockBothDown(target_by_idx)
                             defender_avoided = True
 
+                    attacker_injured = False
+                    attacker_casualty = False
                     if (chosen_block_dice == BlockResult.ATTACKER_DOWN
                         or chosen_block_dice == BlockResult.BOTH_DOWN) \
                             and not attacker_avoided:
                         armour_entry = next(target_log_entries)
-                        yield from self.__handle_armour_roll(armour_entry, target_log_entries, blocking_player, board)
+                        for event in self.__handle_armour_roll(armour_entry, target_log_entries,
+                                                               blocking_player, board):
+                            yield event
+                            if isinstance(event, InjuryRoll):
+                                attacker_injured = event.result != InjuryRollResult.STUNNED
+                                attacker_casualty = event.result == InjuryRollResult.INJURED
+                                if attacker_injured and not attacker_casualty:
+                                    yield from self.__process_apothecary(blocking_player, event.result,
+                                                                         CasualtyResult.NONE,
+                                                                         cmds, target_log_entries, board)
+
+                    defender_injured = False
+                    defender_casualty = False
                     if (chosen_block_dice == BlockResult.DEFENDER_DOWN
                        or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
                        or chosen_block_dice == BlockResult.BOTH_DOWN) \
                        and not defender_avoided:
                         armour_entry = next(target_log_entries)
-                        yield from self.__handle_armour_roll(armour_entry, target_log_entries, target_by_idx, board)
+                        pushed_into_ball = target_by_idx.position == board.get_ball_position()
+                        for event in self.__handle_armour_roll(armour_entry, target_log_entries, target_by_idx, board):
+                            yield event
+                            if isinstance(event, InjuryRoll):
+                                defender_injured = event.result != InjuryRollResult.STUNNED
+                                defender_casualty = event.result == InjuryRollResult.INJURED
+                                if defender_injured and not defender_casualty:
+                                    yield from self.__process_apothecary(target_by_idx, event.result,
+                                                                         CasualtyResult.NONE,
+                                                                         cmds, target_log_entries, board)
+                        if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
+                            yield from self.__process_ball_movement(target_log_entries, blocking_player, board)
+
                     if isinstance(cmd, MovementCommand):
                         yield from self.__process_movement(blocking_player, cmd, cmds,
                                                            target_log_entries, log_entries, board)
-                    yield from self.__process_ball_movement(target_log_entries, blocking_player, board)
+                    if attacker_casualty:
+                        yield from self.__process_casualty(blocking_player, cmds, target_log_entries, board)
+
+                    if defender_casualty:
+                        yield from self.__process_casualty(target_by_idx, cmds, target_log_entries, board)
+                    log_entry = next(target_log_entries, None)
+                    while log_entry:
+                        log_entry_type = type(log_entry)
+                        if log_entry_type is TurnOverEntry:
+                            validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
+                            yield from board.change_turn(blocking_player.team.team_type, log_entry.reason)
+                        else:
+                            raise NotImplementedError(f"Unhandled log entry - {log_entry}")
+                        log_entry = next(target_log_entries, None)
                 elif isinstance(cmd, TargetSpaceCommand) and not is_block:
                     pass_cmd = cmd
                     player_pos = targeting_player.position
@@ -457,15 +497,12 @@ class Replay:
                     end_reason = END_REASON_TOUCHDOWN
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
                 continue
-            elif cmd_type is BlockDiceChoiceCommand and type(prev_cmd) is MovementCommand:
-                # On at least one occasion this has followed a dodge and has the tackling player's team & index
-                print("Skipping an unexpected BlockDiceChoiceCommand - possibly related to rerolls")
             elif cmd_type is EndTurnCommand:
                 end_reason = 'End Turn'
             elif cmd_type is AbandonMatchCommand:
                 end_reason = END_REASON_ABANDON
             else:
-                raise ValueError(f"No handling for {cmd}")
+                raise NotImplementedError(f"No handling for {cmd}")
                 break
 
         if end_reason == END_REASON_ABANDON:
@@ -485,16 +522,40 @@ class Replay:
         if roll_entry.result == ActionResult.SUCCESS:
             injury_roll = next(log_entries)
             yield InjuryRoll(player, injury_roll.result)
-            if injury_roll.result == InjuryRollResult.KO:
-                # Remove the player from the pitch
+            if injury_roll.result != InjuryRollResult.STUNNED:
                 board.reset_position(player.position)
                 board.set_injured(player)
-            elif injury_roll.result == InjuryRollResult.INJURED:
-                # Remove the player from the pitch
-                board.reset_position(player.position)
-                board.set_injured(player)
-                casualty_roll = next(log_entries)
-                yield Casualty(player, casualty_roll.injury)
+
+    def __process_casualty(self, player, cmds, log_entries, board):
+        casualty_roll = next(log_entries)
+        yield Casualty(player, casualty_roll.result)
+        yield from self.__process_apothecary(player, InjuryRollResult.INJURED, casualty_roll.result,
+                                             cmds, log_entries, board)
+
+    def __process_apothecary(self, player, injury, casualty_result, cmds, log_entries, board):
+        cmd = next(cmds)
+        if not isinstance(cmd, ApothecaryCommand):
+            raise ValueError(f"Expected ApothecaryCommand after injury but got {type(cmd).__name__}")
+        if cmd.team != player.team.team_type or player.team.get_player_number(cmd.player) != player.number:
+            raise ValueError(f"Expected ApothecaryCommand for {player.team.team_type} #{player.number} "
+                             f"but got {cmd.team} #{player.team.get_player_number(cmd.player)}")
+        if not cmd.used:
+            # Let them suffer their fate!
+            return
+        if casualty_result == CasualtyResult.NONE:
+            raise NotImplementedError("Not seen apothecary on KO")
+        new_casualty_roll = next(log_entries)
+        yield Apothecary(player, injury, new_casualty_roll.result)
+        cmd = next(cmds)
+        if not isinstance(cmd, ApothecaryChoiceCommand):
+            raise ValueError(f"Expected ApothecaryChoiceCommand after injury but got {type(cmd).__name__}")
+        if cmd.team != player.team.team_type or player.team.get_player_number(cmd.player) != player.number:
+            raise ValueError(f"Expected ApothecaryChoiceCommand for {player.team.team_type} #{player.number} "
+                             f"but got {cmd.team} #{player.team.get_player_number(cmd.player)}")
+        if cmd.result != injury and cmd.result != new_casualty_roll.result:
+            raise ValueError(f"Expected ApothecaryChoiceCommand result of {injury} or "
+                             f"{new_casualty_roll.result} but got {cmd.result}")
+        yield Casualty(player, cmd.result)
 
     def __process_stupidity(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
@@ -719,7 +780,20 @@ class Replay:
                 else:
                     board.set_ball_position(ball_position)
                 yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
-                previous_ball_position = old_ball_position
+                if ball_position == OFF_PITCH_POSITION:
+                    # Continue to find the throw-in
+                    continue
+                elif board.get_position(ball_position):
+                    # Bounced to an occupied space, so we need to continue
+                    previous_ball_position = old_ball_position
+                else:
+                    # Bounced to an empty space
+                    break
+            elif isinstance(log_entry, CatchEntry):
+                if log_entry.result == ActionResult.SUCCESS:
+                    board.set_ball_carrier(self.get_team(log_entry.team).get_player_by_number(log_entry.player))
+                    break
+                # Else it bounces again
             elif isinstance(log_entry, ThrowInDirectionLogEntry):
                 distance_entry = next(log_entries)
                 ball_position = previous_ball_position.throwin(log_entry.direction, distance_entry.distance)
@@ -727,7 +801,8 @@ class Replay:
                 yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance,
                               board)
             else:
-                break
+                raise ValueError("Expected one of TurnOverEntry, BounceLogEntry, CatchEntry or "
+                                 f"ThrowInDirectionLogEntry but got {type(log_entry).__name__}")
         if turn_over:
             yield from turn_over
 

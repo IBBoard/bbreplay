@@ -2,7 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from . import player_idx_to_type
-from . import CoinToss, Role, Position
+from . import CoinToss, Role, Position, CasualtyResult
 
 
 class Command:
@@ -268,6 +268,26 @@ class DeclineRerollCommand(Command):
         return f'DeclineReroll?(data={self._data})'
 
 
+class ApothecaryCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.player = data[1]
+        self.used = data[2] == 1
+
+    def __repr__(self):
+        return f'Apothecary(team={self.team}, player={self.player}, used={self.used}, data={self._data})'
+
+
+class ApothecaryChoiceCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.player = data[1]
+        self.result = CasualtyResult(data[2])
+
+    def __repr__(self):
+        return f'ApothecaryChoice(team={self.team}, player={self.player}, result={self.result}, data={self._data})'
+
+
 class NetworkCommand(SimpleCommand):
     # These commands are only seen in online games and never in local exhibitions
     def __init__(self, id, turn, team, command_type, data):
@@ -303,8 +323,10 @@ MOVE_MAP = {
     19: BlockDiceChoiceCommand,
     20: RerollCommand,
     21: ProRerollCommand,
+    23: ApothecaryChoiceCommand,
     25: create_player_command,
     26: TargetPlayerCommand,
+    29: ApothecaryCommand,
     30: ThrowCommand,
     33: UnknownVerboseCommand,
     45: FollowUpChoiceCommand,
