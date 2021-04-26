@@ -662,6 +662,9 @@ class Replay:
                             else:
                                 board.use_reroll(player.team.team_type)
                                 yield Reroll(cmd.team, 'Team Reroll')
+                        elif isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.DODGE:
+                            validate_log_entry(log_entry, SkillEntry, player.team.team_type)
+                            yield Reroll(cmd.team, 'Dodge')
                         elif isinstance(log_entry, ArmourValueRollEntry):
                             yield from self.__handle_armour_roll(log_entry, move_log_entries, player, board)
                         else:
