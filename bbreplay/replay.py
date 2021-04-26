@@ -272,11 +272,9 @@ class Replay:
 
     def __process_turn(self, cmds, log_entries, board):
         cmd = None
-        prev_cmd = None
         end_reason = None
 
         while not end_reason:
-            prev_cmd = cmd
             cmd = next(cmds, None)
             if cmd is None:
                 break
