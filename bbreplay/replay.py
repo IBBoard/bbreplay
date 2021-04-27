@@ -273,8 +273,11 @@ class Replay:
     def __process_turn(self, cmds, log_entries, board):
         cmd = None
         end_reason = None
+        prev_cmd_type = None
+        cmd_type = None
 
         while not end_reason:
+            prev_cmd_type = cmd_type
             cmd = next(cmds, None)
             if cmd is None:
                 break
@@ -493,7 +496,11 @@ class Replay:
                     board.score[player.team.team_type.value] += 1
                     yield Touchdown(player, board)
                     end_reason = END_REASON_TOUCHDOWN
-            elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand or cmd_type is DeclineRerollCommand:
+            elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
+                continue
+            elif cmd_type is DeclineRerollCommand or (cmd_type is BlockDiceChoiceCommand
+                                                      and prev_cmd_type is DeclineRerollCommand):
+                # FIXME: We should be handling these, but it's not always clear how they associate with events
                 continue
             elif cmd_type is EndTurnCommand:
                 end_reason = 'End Turn'
