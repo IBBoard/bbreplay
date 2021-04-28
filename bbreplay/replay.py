@@ -9,7 +9,7 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
-    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry
+    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch  # noqa: F401 - these are for export
 from .teams import Team
@@ -23,6 +23,7 @@ Kickoff = namedtuple('Kickoff', ['target', 'scatter_direction', 'scatter_distanc
 KickoffEventTuple = namedtuple('KickoffEvent', ['result'])
 Movement = namedtuple('Movement', ['player', 'source_space', 'target_space', 'board'])
 FailedMovement = namedtuple('FailedMovement', ['player', 'source_space', 'target_space'])
+GoingForIt = namedtuple('GoingForIt', ['player', 'result'])
 Block = namedtuple('Block', ['blocking_player', 'blocked_player', 'dice', 'result'])
 Blitz = namedtuple('Blitz', ['blitzing_player', 'blitzed_player'])
 DodgeBlock = namedtuple('DodgeBlock', ['blocking_player', 'blocked_player'])
@@ -296,7 +297,9 @@ class Replay:
                     yield ConditionCheck(targeting_player, 'Foul Appearance', log_entry.result)
 
                 cmd = next(cmds)
+                moved = False
                 if isinstance(cmd, MovementCommand):
+                    moved = True
                     if is_block:
                         yield Blitz(targeting_player, target_by_idx)
                     unused = ReturnWrapper()
@@ -322,6 +325,13 @@ class Replay:
                             raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
                         throw_cmd = next(cmds)
                         yield from self.__process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board)
+                    if moved and board.get_distance_moved(targeting_player) >= targeting_player.MA:
+                        if not target_log_entries:
+                            target_log_entries = self.__next_generator(log_entries)
+                        log_entry = next(target_log_entries)
+                        validate_log_entry(log_entry, GoingForItEntry, targeting_player.team.team_type,
+                                           targeting_player.number)
+                        yield GoingForIt(targeting_player, log_entry.result)
                     block = cmd
                     blocking_player = targeting_player
                     block_dice = next(target_log_entries)
@@ -620,6 +630,14 @@ class Replay:
 
         for movement in moves:
             target_space = movement.position
+            if board.get_distance_moved(player) >= player.MA:
+                if not move_log_entries:
+                    move_log_entries = self.__next_generator(log_entries)
+                log_entry = next(move_log_entries)
+                validate_log_entry(log_entry, GoingForItEntry, player.team.team_type, player.number)
+                if log_entry.result != ActionResult.SUCCESS:
+                    failed_movement = True
+                yield GoingForIt(player, log_entry.result)
             if not failed_movement and is_dodge(board, player, target_space):
                 if not move_log_entries:
                     move_log_entries = self.__next_generator(log_entries)
@@ -699,12 +717,10 @@ class Replay:
                 if is_prone:
                     board.unset_prone(player)
                     is_prone = False
-                board.reset_position(start_space)
-                board.set_position(target_space, player)
+                board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
             elif isinstance(log_entry, TurnOverEntry):
-                board.reset_position(start_space)
-                board.set_position(target_space, player)
+                board.move(player, start_space, target_space)
                 yield FailedMovement(player, start_space, target_space)
             else:
                 # Failure due to Tentacles etc
@@ -716,6 +732,7 @@ class Replay:
             if diving_tackle_entry:
                 team = self.get_team(diving_tackle_entry.team)
                 diving_player = team.get_player_by_number(diving_tackle_entry.player)
+                # Don't use the move() function because it's not regular movement
                 board.reset_position(diving_player.position)
                 board.set_position(start_space, diving_player)
                 board.set_prone(diving_player)

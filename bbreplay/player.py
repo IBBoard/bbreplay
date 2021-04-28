@@ -4,6 +4,30 @@
 from . import prefix_for_teamtype, PlayerStatus, Skills, OFF_PITCH_POSITION
 
 
+MA_TO_STAT = {
+    33: 4,
+    41: 5,
+    50: 6,
+    58: 7,
+    66: 8
+}
+
+ST_AG_TO_STAT = {
+    16: 1,
+    33: 2,
+    50: 3,
+    60: 4,  # Yes, two values for 4!
+    66: 4,
+    70: 5
+}
+
+AV_TO_STAT = {
+    58: 7,
+    72: 8,
+    83: 9
+}
+
+
 class Positionable:
     def __init__(self):
         self.position = OFF_PITCH_POSITION
@@ -20,10 +44,10 @@ class Player(Positionable):
         self.number = number
         self.name = name
         # TODO: Convert stats
-        self.MA = move
-        self.ST = strength
-        self.AG = agility
-        self.AV = armour_value
+        self.MA = MA_TO_STAT[int(float(move))]
+        self.ST = ST_AG_TO_STAT[int(float(strength))]
+        self.AG = ST_AG_TO_STAT[int(float(agility))]
+        self.AV = AV_TO_STAT[int(float(armour_value))]
         self.level = level
         self.SPP = spp
         self.value = value

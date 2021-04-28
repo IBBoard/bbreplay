@@ -329,7 +329,7 @@ ball_bounce_re = re.compile("Bounce \\(D8\\) : ([1-8])")
 block_re = re.compile(f"{TEAM} \\(([0-9]+)\\).*Block  Result:")
 block_dice_choice_re = re.compile(f"{TEAM_PLAYER} chooses : "
                                   "(Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
-gfi_re = re.compile(f"{TEAM_PLAYER} Going for it +\\(([0-9]+\\+)\\) : ([0-9]+) -> .* (Success|Failure)")
+gfi_re = re.compile(f"{TEAM_PLAYER} Going for it +\\(([0-9]+\\+)\\) : ([0-9]+) -> (Success|Failure)")
 pickup_re = re.compile(f"{TEAM_PLAYER} Pick-up {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
                        " (Success|Failure)")
 throw_re = re.compile(f"{TEAM_PLAYER} Launch {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"

@@ -1,7 +1,7 @@
 # Copyright © 2021, IBBoard
 # Licensed under GPLv3 or later - see COPYING
 
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from . import other_team, Skills, TeamType, Weather, ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
 
@@ -33,6 +33,7 @@ class GameState:
         self.weather = None
         self.__setups = [[], []]
         self.__last_setup_turn = 0
+        self.__moves = defaultdict(int)
 
     @property
     def turn(self):
@@ -52,8 +53,8 @@ class GameState:
     def prepare_setup(self):
         crossed_half_time = (self.turn <= HALF_TIME_TURN) != (self.__last_setup_turn <= HALF_TIME_TURN)
         self.__reset_board()
-        self.__prone = set()
-        self.__stupid = set()
+        self.__prone.clear()
+        self.__stupid.clear()
         for team_setup in self.__setups:
             for player, position in team_setup:
                 if not self.is_injured(player):
@@ -86,7 +87,8 @@ class GameState:
     def start_turn(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order start turn - expected {self.turn_team.team_type} but got {team}')
-        self.__tested_stupid = set()
+        self.__tested_stupid.clear()
+        self.__moves.clear()
         yield StartTurn(team, self.turn, self)
 
     def end_turn(self, team, reason):
@@ -102,6 +104,14 @@ class GameState:
             raise ValueError(f'Out of order match abandonment - expected {self.turn_team.team_type} but got {team}')
         yield EndTurn(team, self.turn, 'Abandon match', self)
         yield AbandonMatch(team, self)
+
+    def move(self, player, from_space, to_space):
+        self.__moves[player] += max(abs(from_space.x - to_space.x), abs(from_space.y - to_space.y))
+        self.reset_position(from_space)
+        self.set_position(to_space, player)
+
+    def get_distance_moved(self, player):
+        return self.__moves[player]
 
     def set_position(self, position, contents):
         self.__board[position.y][position.x] = contents
@@ -141,6 +151,7 @@ class GameState:
 
     def unset_prone(self, player):
         self.__prone.remove(player)
+        self.__moves[player] += 3
 
     def is_prone(self, player):
         return player in self.__prone
