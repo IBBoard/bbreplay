@@ -910,8 +910,14 @@ def calculate_pushbacks(blocker_coords, old_coords, board):
             possible_coords = [old_coords.add(x_diff, -1), old_coords.add(x_diff, 0), old_coords.add(x_diff, 1)]
     else:
         possible_coords = [old_coords.add(-1, y_diff), old_coords.add(0, y_diff), old_coords.add(1, y_diff)]
-    return [coord for coord in possible_coords if coord.x >= 0 and coord.x <= LAST_COLUMN_IDX
-            and coord.y >= 0 and coord.y <= FAR_ENDZONE_IDX and not board.get_position(coord)]
+    pushbacks = [coord for coord in possible_coords if on_pitch(coord) and not board.get_position(coord)]
+    if not pushbacks and any(not on_pitch(coord) for coord in possible_coords):
+        pushbacks = [OFF_PITCH_POSITION]
+    return pushbacks
+
+
+def on_pitch(coord):
+    return coord.x >= 0 and coord.x <= LAST_COLUMN_IDX and coord.y >= 0 and coord.y <= FAR_ENDZONE_IDX
 
 
 def calculate_pushback(blocker_coords, old_coords, board):
