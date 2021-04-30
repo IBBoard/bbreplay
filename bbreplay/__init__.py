@@ -66,9 +66,9 @@ _souths = [ScatterDirection.SW, ScatterDirection.S, ScatterDirection.SE]
 
 
 class ThrowInDirection(Enum):
-    LEFT = 1
+    DOWN_PITCH = 1
     CENTER = 2
-    RIGHT = 3
+    UP_PITCH = 3
 
 
 class PlayerStatus(Enum):
@@ -226,10 +226,7 @@ class Position:
 
     def throwin(self, direction, distance):
         dx = distance if self.x == 0 else -distance
-        if self.x == LAST_COLUMN_IDX:
-            dy = (direction.value - 2) * distance
-        else:
-            raise ValueError(f'Not seen an example of throw-in {self}, {direction}, {distance}')
+        dy = (direction.value - 2) * distance
         return self.add(dx, dy)
 
     def add(self, dx, dy):
