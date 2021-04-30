@@ -470,6 +470,17 @@ class Replay:
                                                                          cmds, target_log_entries, board)
                         if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
                             yield from self.__process_ball_movement(target_log_entries, blocking_player, board)
+                    elif target_by_idx.position == OFF_PITCH_POSITION:
+                        event = self.__process_injury_roll(target_log_entries, target_by_idx, board)
+                        defender_injured = event.result != InjuryRollResult.STUNNED
+                        defender_casualty = event.result == InjuryRollResult.INJURED
+                        if defender_injured and not defender_casualty:
+                            yield from self.__process_apothecary(target_by_idx, event.result,
+                                                                 CasualtyResult.NONE,
+                                                                 cmds, target_log_entries, board)
+                        if board.get_ball_carrier() == target_by_idx:
+                            board.set_ball_position(block.position)  # Drop the ball so the throw-in works
+                            yield from self.__process_ball_movement(target_log_entries, blocking_player, board)
 
                     if isinstance(cmd, MovementCommand):
                         yield from self.__process_movement(blocking_player, cmd, cmds,
@@ -571,11 +582,14 @@ class Replay:
         yield PlayerDown(player)
         yield ArmourRoll(player, roll_entry.result)
         if roll_entry.result == ActionResult.SUCCESS:
-            injury_roll = next(log_entries)
-            yield InjuryRoll(player, injury_roll.result)
-            if injury_roll.result != InjuryRollResult.STUNNED:
-                board.reset_position(player.position)
-                board.set_injured(player)
+            yield self.__process_injury_roll(log_entries, player, board)
+
+    def __process_injury_roll(self, log_entries, player, board):
+        injury_roll = next(log_entries)
+        if injury_roll.result != InjuryRollResult.STUNNED:
+            board.reset_position(player.position)
+            board.set_injured(player)
+        return InjuryRoll(player, injury_roll.result)
 
     def __process_casualty(self, player, cmds, log_entries, board):
         casualty_roll = next(log_entries)
