@@ -98,7 +98,8 @@ class KickoffEventLogEntry:
 
 class ThrowInDirectionLogEntry:
     def __init__(self, direction):
-        self.direction = ThrowInDirection(int(direction) // 2)
+        # This *should* be a D6. But we've only seen values of 2 and 3 so assume it's really a D3 for now
+        self.direction = ThrowInDirection(int(direction))
 
     def __repr__(self):
         return f"ThrowInDirection(direction={self.direction})"

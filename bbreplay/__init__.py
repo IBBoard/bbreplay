@@ -225,14 +225,12 @@ class Position:
         return Position(new_x, new_y)
 
     def throwin(self, direction, distance):
-        new_x = None
-        new_y = None
-        if self.x == LAST_COLUMN_IDX and self.y < AFTER_HALFWAY_IDX:
-            new_x = 14 - distance
-            new_y = 7 - (direction.value - 2) * distance
-        if new_x is None or new_y is None:
+        dx = distance if self.x == 0 else -distance
+        if self.x == LAST_COLUMN_IDX:
+            dy = (direction.value - 2) * distance
+        else:
             raise ValueError(f'Not seen an example of throw-in {self}, {direction}, {distance}')
-        return Position(new_x, new_y)
+        return self.add(dx, dy)
 
     def add(self, dx, dy):
         return Position(self.x + dx, self.y + dy)

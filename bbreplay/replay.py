@@ -5,7 +5,7 @@ import sqlite3
 from collections import namedtuple
 from enum import Enum, auto
 from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
-    KickoffEvent, Role, ThrowResult, \
+    KickoffEvent, Role, ThrowResult, _norths, _souths, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
@@ -852,6 +852,16 @@ class Replay:
                     board.set_ball_position(ball_position)
                 yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
                 if ball_position == OFF_PITCH_POSITION:
+                    if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH:
+                        offset = 0
+                        # Throw-ins from fumbled pickups seem to come from the space where the ball
+                        # would have landed if there was an off-board space rather than the one adjacent
+                        # to where the pickup was attempted
+                        if log_entry.direction in _norths:
+                            offset = 1
+                        elif log_entry.direction in _souths:
+                            offset = -1
+                        previous_ball_position = previous_ball_position.add(0, offset)
                     # Continue to find the throw-in
                     continue
                 elif board.get_position(ball_position):
