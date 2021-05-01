@@ -715,7 +715,15 @@ class Replay:
                             yield from actions
                             if new_result:
                                 yield Action(player, ActionType.DODGE, new_result, board)
-                                failed_movement = new_result == ActionResult.FAILURE
+                                if new_result == ActionResult.FAILURE:
+                                    failed_movement = True
+                                    log_entry = next(move_log_entries)
+                                    yield from self.__handle_armour_roll(log_entry, move_log_entries, player, board)
+                                    log_entry = next(move_log_entries)
+                                    validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                                    turnover = log_entry.reason
+                                else:
+                                    failed_movement = False
                             break
                         else:
                             raise ValueError("Looking for dodge-related log entries but got "
@@ -750,12 +758,16 @@ class Replay:
                         raise ValueError("Looking for dodge-related log entries but got "
                                          f"{type(log_entry).__name__}")
 
-            if target_space == board.get_ball_position() and not pickup_entry and not failed_movement:
-                if not move_log_entries:
-                    move_log_entries = self.__next_generator(log_entries)
-                log_entry = next(move_log_entries)
-                validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
-                pickup_entry = log_entry
+            if target_space == board.get_ball_position() and not pickup_entry:
+                if not failed_movement:
+                    if not move_log_entries:
+                        move_log_entries = self.__next_generator(log_entries)
+                    log_entry = next(move_log_entries)
+                    validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
+                    pickup_entry = log_entry
+                elif turnover:
+                    # They went splat on the ball
+                    yield from self.__process_ball_movement(move_log_entries, player, board)
             else:
                 target_contents = board.get_position(target_space)
                 if target_contents and target_contents != player:
@@ -790,7 +802,16 @@ class Replay:
                 yield Pickup(player, movement.position, pickup_entry.result)
                 if pickup_entry.result != ActionResult.SUCCESS:
                     failed_movement = True
-                    yield from self.__process_ball_movement(move_log_entries, player, board)
+                    find_turnover = True
+                    for event in self.__process_ball_movement(move_log_entries, player, board):
+                        yield event
+                        if isinstance(event, EndTurn):
+                            find_turnover = False
+                    if find_turnover:
+                        log_entry = next(move_log_entries)
+                        validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                        yield from board.change_turn(player.team.team_type, log_entry.reason)
+                    # Else we already found the turnover during the pickup
                 else:
                     board.set_ball_carrier(player)
                 pickup_entry = None
