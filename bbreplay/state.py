@@ -50,6 +50,13 @@ class GameState:
         self.__receiving_team = other_team(self.__receiving_team)
         return HalfTime(self)
 
+    @property
+    def receiving_team(self):
+        return self.__receiving_team
+
+    def kicking_team(self):
+        return other_team(self.__receiving_team)
+
     def prepare_setup(self):
         crossed_half_time = (self.turn <= HALF_TIME_TURN) != (self.__last_setup_turn <= HALF_TIME_TURN)
         self.__reset_board()

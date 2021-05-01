@@ -153,7 +153,7 @@ class Replay:
         yield board.set_weather(weather.result)
 
         cmd = find_next(cmds, SetupCommand)
-        yield from self.__process_kickoff(cmd, cmds, log_entries, board, True)
+        yield from self.__process_kickoff(cmd, cmds, log_entries, board)
 
         while True:
             drive_ended = False
@@ -167,7 +167,7 @@ class Replay:
                     yield event
                     if event_type is EndTurn and board.turn == 8 and board.turn_team.team_type != receiver:
                         yield board.halftime()
-            yield from self.__process_kickoff(next(cmds), cmds, log_entries, board, False)
+            yield from self.__process_kickoff(next(cmds), cmds, log_entries, board)
 
     def get_commands(self):
         return self.__commands
@@ -175,10 +175,7 @@ class Replay:
     def get_log_entries(self):
         return self.__log_entries
 
-    def __process_kickoff(self, cmd, cmds, log_entries, board, is_match_start):
-        deployments_finished = 0
-        team = None
-
+    def __process_kickoff(self, cmd, cmds, log_entries, board):
         board.prepare_setup()
 
         kickoff_log_events = next(log_entries)
@@ -191,53 +188,9 @@ class Replay:
             kickoff_log_events = next(log_entries)
         # Else leave it for the kickoff event
 
-        while True:
-            cmd_type = type(cmd)
-            if cmd_type is SetupCompleteCommand:
-                deployments_finished += 1
-                for i in range(PITCH_WIDTH):
-                    endzone_contents = board[NEAR_ENDZONE_IDX][i]
-                    if endzone_contents:
-                        board[NEAR_ENDZONE_IDX][i] = None
-                        endzone_contents.position = OFF_PITCH_POSITION
-                    endzone_contents = board[FAR_ENDZONE_IDX][i]
-                    if endzone_contents:
-                        board[FAR_ENDZONE_IDX][i] = None
-                        endzone_contents.position = OFF_PITCH_POSITION
-                yield TeamSetupComplete(team.team_type, team.get_players())
-                team = None
-                if deployments_finished == 2:
-                    yield SetupComplete(board)
-                    break
-                else:
-                    cmd = next(cmds)
-                    continue
-            elif cmd_type is not SetupCommand:
-                cmd = next(cmds)
-                continue
-            # else…
-
-            if team is None:
-                team = self.get_team(cmd.team)
-
-            player = team.get_player(cmd.player_idx)
-            if player.is_on_pitch():
-                old_coords = player.position
-                board.reset_position(old_coords)
-            else:
-                old_coords = None
-
-            coords = cmd.position
-            space_contents = board.get_position(coords)
-
-            if space_contents and space_contents != player:
-                if old_coords:
-                    board.set_position(old_coords, space_contents)
-                else:
-                    space_contents.position = OFF_PITCH_POSITION
-
-            board.set_position(coords, player)
-            cmd = next(cmds)
+        yield from self.__process_team_setup(board.kicking_team, cmds, log_entries, board)
+        yield from self.__process_team_setup(board.receiving_team, cmds, log_entries, board)
+        yield SetupComplete(board)
 
         kickoff_cmd = find_next(cmds, KickoffCommand)
         kickoff_direction, kickoff_scatter = kickoff_log_events
@@ -267,6 +220,8 @@ class Replay:
                 ball_bounces = False
             yield Movement(catcher, old_position, new_position, board)
             yield Action(catcher, ActionType.CATCH, high_kick_catch.result, board)
+        elif kickoff_event.result == KickoffEvent.PERFECT_DEFENCE:
+            yield from self.__process_team_setup(board.kicking_team, cmds, log_entries, board)
 
         yield from board.kickoff()
 
@@ -276,6 +231,51 @@ class Replay:
             # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
             ball_dest = ball_dest.scatter(kickoff_bounce.direction)
             board.set_ball_position(ball_dest)
+
+    def __process_team_setup(self, team, cmds, log_entries, board):
+        cmd = next(cmds)
+        cmd_type = type(cmd)
+        team = None
+        while cmd_type is not SetupCompleteCommand:
+            if cmd_type is not SetupCommand:
+                cmd = next(cmds)
+                cmd_type = type(cmd)
+                continue
+            # else…
+
+            if team is None:
+                team = self.get_team(cmd.team)
+
+            player = team.get_player(cmd.player_idx)
+            if player.is_on_pitch():
+                old_coords = player.position
+                board.reset_position(old_coords)
+            else:
+                old_coords = None
+
+            coords = cmd.position
+            space_contents = board.get_position(coords)
+
+            if space_contents and space_contents != player:
+                if old_coords:
+                    board.set_position(old_coords, space_contents)
+                else:
+                    space_contents.position = OFF_PITCH_POSITION
+
+            board.set_position(coords, player)
+            cmd = next(cmds)
+            cmd_type = type(cmd)
+
+        for i in range(PITCH_WIDTH):
+            endzone_contents = board[NEAR_ENDZONE_IDX][i]
+            if endzone_contents:
+                board[NEAR_ENDZONE_IDX][i] = None
+                endzone_contents.position = OFF_PITCH_POSITION
+            endzone_contents = board[FAR_ENDZONE_IDX][i]
+            if endzone_contents:
+                board[FAR_ENDZONE_IDX][i] = None
+                endzone_contents.position = OFF_PITCH_POSITION
+        yield TeamSetupComplete(team.team_type, team.get_players())
 
     def __process_turn(self, cmds, log_entries, board):
         cmd = None
