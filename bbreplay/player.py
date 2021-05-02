@@ -18,7 +18,8 @@ ST_AG_TO_STAT = {
     50: 3,
     60: 4,  # Yes, two values for 4!
     66: 4,
-    70: 5
+    70: 5,
+    83: 5
 }
 
 AV_TO_STAT = {
@@ -43,7 +44,6 @@ class Player(Positionable):
         self.team = team
         self.number = number
         self.name = name
-        # TODO: Convert stats
         self.MA = MA_TO_STAT[int(float(move))]
         self.ST = ST_AG_TO_STAT[int(float(strength))]
         self.AG = ST_AG_TO_STAT[int(float(agility))]
