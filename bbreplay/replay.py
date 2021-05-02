@@ -627,6 +627,8 @@ class Replay:
             raise ValueError(f"Expected ApothecaryChoiceCommand result of {injury} or "
                              f"{new_casualty_roll.result} but got {cmd.result}")
         yield Casualty(player, cmd.result)
+        if cmd.result == CasualtyResult.BADLY_HURT:
+            board.unset_injured(player)
 
     def __process_stupidity(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
