@@ -190,6 +190,7 @@ class Replay:
 
         yield from self.__process_team_setup(board.kicking_team, cmds, log_entries, board)
         yield from self.__process_team_setup(board.receiving_team, cmds, log_entries, board)
+        board.setup_complete()
         yield SetupComplete(board)
 
         kickoff_cmd = find_next(cmds, KickoffCommand)
@@ -222,6 +223,8 @@ class Replay:
             yield Action(catcher, ActionType.CATCH, high_kick_catch.result, board)
         elif kickoff_event.result == KickoffEvent.PERFECT_DEFENCE:
             yield from self.__process_team_setup(board.kicking_team, cmds, log_entries, board)
+            board.setup_complete()
+            yield SetupComplete(board)
 
         yield from board.kickoff()
 

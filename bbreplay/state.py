@@ -71,6 +71,13 @@ class GameState:
                         self.set_position(position, player)
         self.set_ball_position(OFF_PITCH_POSITION)
 
+    def setup_complete(self):
+        for team in self.__teams:
+            team_setup = []
+            for player in team.get_players():
+                team_setup.append((player, player.position))
+            self.__setups[team.team_type.value] = team_setup
+
     def kickoff(self):
         self.turn_team = self.__teams[self.__receiving_team.value]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
@@ -79,11 +86,6 @@ class GameState:
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.__teams[TeamType.AWAY.value].get_players()):
             self.add_reroll(TeamType.AWAY)
-        for team in self.__teams:
-            team_setup = []
-            for player in team.get_players():
-                team_setup.append((player, player.position))
-            self.__setups[team.team_type.value] = team_setup
         self.__last_setup_turn = self.turn
         yield from self.start_turn(self.__receiving_team)
 
