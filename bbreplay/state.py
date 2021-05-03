@@ -54,6 +54,7 @@ class GameState:
     def receiving_team(self):
         return self.__receiving_team
 
+    @property
     def kicking_team(self):
         return other_team(self.__receiving_team)
 
