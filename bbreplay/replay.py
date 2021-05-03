@@ -249,21 +249,15 @@ class Replay:
                 team = self.get_team(cmd.team)
 
             player = team.get_player(cmd.player_idx)
+            old_coords = player.position
             if player.is_on_pitch():
-                old_coords = player.position
                 board.reset_position(old_coords)
-            else:
-                old_coords = None
 
             coords = cmd.position
             space_contents = board.get_position(coords)
 
             if space_contents and space_contents != player:
-                if old_coords:
-                    board.set_position(old_coords, space_contents)
-                else:
-                    space_contents.position = OFF_PITCH_POSITION
-
+                board.set_position(old_coords, space_contents)
             board.set_position(coords, player)
             cmd = next(cmds)
             cmd_type = type(cmd)

@@ -123,7 +123,8 @@ class GameState:
         return self.__moves[player]
 
     def set_position(self, position, contents):
-        self.__board[position.y][position.x] = contents
+        if position != OFF_PITCH_POSITION:
+            self.__board[position.y][position.x] = contents
         if contents:
             contents.position = position
 
