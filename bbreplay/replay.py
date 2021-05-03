@@ -515,7 +515,7 @@ class Replay:
                 yield from self.__process_movement(player, cmd, cmds, None, log_entries, board)
                 if board.get_ball_carrier() == player and \
                    (player.position.y == NEAR_ENDZONE_IDX or player.position.y == FAR_ENDZONE_IDX):
-                    board.score[player.team.team_type.value] += 1
+                    board.touchdown(player)
                     yield Touchdown(player, board)
                     end_reason = END_REASON_TOUCHDOWN
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:

@@ -86,6 +86,12 @@ class GameState:
                 team_setup.append((player, player.position))
             self.__setups[team.team_type.value] = team_setup
 
+    def touchdown(self, player):
+        team = player.team.team_type
+        team_value = team.value
+        self.score[team_value] += 1
+        self.__receiving_team = other_team(team)
+
     def kickoff(self):
         self.turn_team = self.__teams[self.__receiving_team.value]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
