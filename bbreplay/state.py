@@ -63,12 +63,19 @@ class GameState:
         self.__prone.clear()
         self.__stupid.clear()
         for team_setup in self.__setups:
+            deployed_subs = set()
+            subs = (player for player, position in team_setup if position == OFF_PITCH_POSITION)
             for player, position in team_setup:
+                if player in deployed_subs:
+                    continue
+                position = position if not crossed_half_time else position.invert()
                 if not self.is_injured(player):
-                    if crossed_half_time:
-                        self.set_position(position.invert(), player)
-                    else:
-                        self.set_position(position, player)
+                    self.set_position(position, player)
+                else:
+                    replacement_player = next(subs, None)
+                    self.set_position(position, replacement_player)
+                    deployed_subs.add(replacement_player)
+
         self.set_ball_position(OFF_PITCH_POSITION)
 
     def setup_complete(self):
@@ -213,3 +220,6 @@ class GameState:
 
     def __reset_board(self):
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
+        for team in self.__teams:
+            for player in team.get_players():
+                player.position = OFF_PITCH_POSITION
