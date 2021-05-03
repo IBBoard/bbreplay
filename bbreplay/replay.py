@@ -152,8 +152,7 @@ class Replay:
         weather = next(log_entries)[0]
         yield board.set_weather(weather.result)
 
-        cmd = find_next(cmds, SetupCommand)
-        yield from self.__process_kickoff(cmd, cmds, log_entries, board)
+        yield from self.__process_kickoff(cmds, log_entries, board)
 
         while True:
             drive_ended = False
@@ -167,7 +166,7 @@ class Replay:
                     yield event
                     if event_type is EndTurn and board.turn == 8 and board.turn_team.team_type != receiver:
                         yield board.halftime()
-            yield from self.__process_kickoff(next(cmds), cmds, log_entries, board)
+            yield from self.__process_kickoff(cmds, log_entries, board)
 
     def get_commands(self):
         return self.__commands
@@ -175,7 +174,7 @@ class Replay:
     def get_log_entries(self):
         return self.__log_entries
 
-    def __process_kickoff(self, cmd, cmds, log_entries, board):
+    def __process_kickoff(self, cmds, log_entries, board):
         board.prepare_setup()
 
         kickoff_log_events = next(log_entries)
