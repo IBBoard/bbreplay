@@ -499,14 +499,14 @@ class Replay:
                     pass_cmd = cmd
                     player_pos = targeting_player.position
                     if abs(pass_cmd.x - player_pos.x) > 1 or pass_cmd.y - player_pos.y > 1:
-                        # Pass (Launch)
-                        raise NotImplementedError("Not handling passes yet")
-                    # Else hand-off - doesn't have the pass part, just the catch
-                    catch_entry = next(target_log_entries)
-                    target_by_coords = board.get_position(pass_cmd.position)
-                    validate_log_entry(catch_entry, CatchEntry, pass_cmd.team, target_by_coords.number)
-                    if catch_entry.result == ActionResult.SUCCESS:
-                        board.set_ball_carrier(target_by_idx)
+                        yield from self.__process_pass(player, pass_cmd, cmds, target_log_entries, board)
+                    else:
+                        # Else hand-off - doesn't have the pass part, just the catch
+                        catch_entry = next(target_log_entries)
+                        target_by_coords = board.get_position(pass_cmd.position)
+                        validate_log_entry(catch_entry, CatchEntry, pass_cmd.team, target_by_coords.number)
+                        if catch_entry.result == ActionResult.SUCCESS:
+                            board.set_ball_carrier(target_by_idx)
                 else:
                     raise ValueError(f"Unexpected post-target command {cmd}")
             elif isinstance(cmd, MovementCommand):
@@ -828,25 +828,38 @@ class Replay:
         throw_command = cmd
         yield Pass(player, throw_command.position, throw_log_entry.result, board)
         if throw_log_entry.result == ThrowResult.FUMBLE:
-            while True:
-                scatter_entry = next(log_entries)
-                start_position = board.get_ball_position()
-                ball_position = start_position.scatter(scatter_entry.direction)
-                yield Bounce(start_position, ball_position, scatter_entry.direction, board)
-                board.set_ball_position(ball_position)
-                contents = board.get_position(ball_position)
-                if not contents:
-                    break
-                if board.is_prone(contents):
-                    # Prone players can't catch!
-                    continue
-                catch_entry = next(log_entries)
-                yield Action(contents, ActionType.CATCH, catch_entry.result, board)
-                if catch_entry.result == ActionResult.SUCCESS:
-                    board.set_ball_carrier(contents)
-                    break
-                # Else they failed so bounce again
+            scatter_entry = next(log_entries)
+            start_position = board.get_ball_position()
+            ball_position = start_position.scatter(scatter_entry.direction)
+            yield Bounce(start_position, ball_position, scatter_entry.direction, board)
+            board.set_ball_position(ball_position)
+        elif throw_log_entry.result == ThrowResult.ACCURATE_PASS:
+            ball_position = throw_command.position
+        else:
+            raise NotImplementedError("Not handled inaccurate passes")
+        yield from self.__process_catch(ball_position, log_entries, board)
         _ = next(cmds)  # XXX: Throw away the next command - cmd_type=13 from the opposition with no other data
+
+    def __process_catch(self, ball_position, log_entries, board):
+        while True:
+            catcher = board.get_position(ball_position)
+            if not catcher:
+                break
+            if board.is_prone(catcher):
+                # Prone players can't catch!
+                continue
+            catch_entry = next(log_entries)
+            if catch_entry.result == ActionResult.SUCCESS:
+                board.set_ball_carrier(catcher)
+                yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
+                return
+            # Else
+            yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
+            scatter_entry = next(log_entries)
+            start_position = board.get_ball_position()
+            ball_position = start_position.scatter(scatter_entry.direction)
+            yield Bounce(start_position, ball_position, scatter_entry.direction, board)
+            board.set_ball_position(ball_position)
 
     def __process_ball_movement(self, log_entries, player, board):
         log_entry = None
@@ -893,8 +906,10 @@ class Replay:
                     # Bounced to an empty space
                     break
             elif isinstance(log_entry, CatchEntry):
+                catcher = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
+                yield Action(catcher, ActionType.CATCH, log_entry.result, board)
                 if log_entry.result == ActionResult.SUCCESS:
-                    board.set_ball_carrier(self.get_team(log_entry.team).get_player_by_number(log_entry.player))
+                    board.set_ball_carrier(catcher)
                     break
                 # Else it bounces again
             elif isinstance(log_entry, ThrowInDirectionLogEntry):
