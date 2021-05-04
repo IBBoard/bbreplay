@@ -118,8 +118,15 @@ class BounceLogEntry:
         self.direction = ScatterDirection(int(direction))
 
     def __repr__(self):
-        # XXX Is this relative to the kick direction? i.e. rotated for the other team's kicks
         return f"Bounce(direction={self.direction})"
+
+
+class ScatterLaunchEntry:
+    def __init__(self, direction):
+        self.direction = ScatterDirection(int(direction))
+
+    def __repr__(self):
+        return f"ScatterLaunchEntry(direction={self.direction})"
 
 
 class BlockLogEntry(TeamPlayerEntry, PartialEntry):
@@ -327,6 +334,7 @@ role_re = re.compile(f"{TEAM} choose to (Kick|Receive)")
 kick_direction_re = re.compile(f"{TEAM_PLAYER} Kick-off Direction \\(D8\\) : ([1-8])")
 kick_distance_re = re.compile(f"{TEAM_PLAYER} Kick-off Distance \\(D6\\) : (?:[1-6] / 2 {{Kick}} -> )?([1-6])$")
 ball_bounce_re = re.compile("Bounce \\(D8\\) : ([1-8])")
+scatter_launch_re = re.compile("Scatter Launch \\(D8\\) : ([1-8])")
 block_re = re.compile(f"{TEAM} \\(([0-9]+)\\).*Block  Result:")
 block_dice_choice_re = re.compile(f"{TEAM_PLAYER} chooses : "
                                   "(Pushed|Defender Stumbles|Defender Down|Both Down|Attacker Down)")
@@ -374,6 +382,7 @@ turn_regexes = [
     (throw_in_direction_re, ThrowInDirectionLogEntry),
     (throw_in_distance_re, ThrowInDistanceLogEntry),
     (ball_bounce_re, BounceLogEntry),
+    (scatter_launch_re, ScatterLaunchEntry),
     (other_success_failure_re, create_other_entry),
     (kickoff_event_re, KickoffEventLogEntry),
     (weather_re, WeatherLogEntry)

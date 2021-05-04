@@ -51,6 +51,7 @@ PlayerDown = namedtuple('PlayerDown', ['player'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
+Scatter = namedtuple('Scatter', ['start_space', 'end_space', 'board'])
 ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'distance', 'board'])
 Touchdown = namedtuple('Touchdown', ['player', 'board'])
 
@@ -326,7 +327,7 @@ class Replay:
                         if dumpoff_cmd.team != target_by_idx.team.team_type:
                             raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
                         throw_cmd = next(cmds)
-                        yield from self.__process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board)
+                        yield from self.__process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board, False)
                     if moved and board.get_distance_moved(targeting_player) >= targeting_player.MA:
                         if not target_log_entries:
                             target_log_entries = self.__next_generator(log_entries)
@@ -500,6 +501,10 @@ class Replay:
                     player_pos = targeting_player.position
                     if abs(pass_cmd.x - player_pos.x) > 1 or pass_cmd.y - player_pos.y > 1:
                         yield from self.__process_pass(player, pass_cmd, cmds, target_log_entries, board)
+                        if not board.get_ball_carrier():
+                            log_entry = next(target_log_entries)
+                            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                            end_reason = log_entry.reason
                     else:
                         # Else hand-off - doesn't have the pass part, just the catch
                         catch_entry = next(target_log_entries)
@@ -507,6 +512,10 @@ class Replay:
                         validate_log_entry(catch_entry, CatchEntry, pass_cmd.team, target_by_coords.number)
                         if catch_entry.result == ActionResult.SUCCESS:
                             board.set_ball_carrier(target_by_idx)
+                        else:
+                            log_entry = next(log_entries)
+                            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                            end_reason = log_entry.reason
                 else:
                     raise ValueError(f"Unexpected post-target command {cmd}")
             elif isinstance(cmd, MovementCommand):
@@ -822,23 +831,43 @@ class Replay:
         if unused:
             unused.log_entries = move_log_entries
 
-    def __process_pass(self, player, cmd, cmds, log_entries, board):
+    def __process_pass(self, player, cmd, cmds, log_entries, board, can_reroll=True):
         throw_log_entry = next(log_entries)
         validate_log_entry(throw_log_entry, ThrowEntry, player.team.team_type, player.number)
         throw_command = cmd
-        yield Pass(player, throw_command.position, throw_log_entry.result, board)
-        if throw_log_entry.result == ThrowResult.FUMBLE:
+        result = throw_log_entry.result
+        yield Pass(player, throw_command.position, result, board)
+        _ = next(cmds)  # XXX: Throw away the next command - cmd_type=13 from the opposition with no other data
+
+        if throw_log_entry.result != ThrowResult.ACCURATE_PASS and can_reroll:
+            log_entry = next(log_entries, None)
+            actions, result = self.__process_action_reroll(log_entry, log_entries, cmds, player, board)
+            yield from actions
+            yield Pass(player, throw_command.position, result, board)
+
+        if result == ThrowResult.FUMBLE:
             scatter_entry = next(log_entries)
             start_position = board.get_ball_position()
             ball_position = start_position.scatter(scatter_entry.direction)
-            yield Bounce(start_position, ball_position, scatter_entry.direction, board)
             board.set_ball_position(ball_position)
-        elif throw_log_entry.result == ThrowResult.ACCURATE_PASS:
+            yield Bounce(start_position, ball_position, scatter_entry.direction, board)
+        elif result == ThrowResult.ACCURATE_PASS:
             ball_position = throw_command.position
+            board.set_ball_position(ball_position)
         else:
-            raise NotImplementedError("Not handled inaccurate passes")
+            scatter_1 = next(log_entries)
+            scatter_2 = next(log_entries)
+            scatter_3 = next(log_entries)
+            ball_position = throw_command.position.scatter(scatter_1.direction).scatter(scatter_2.direction) \
+                                                  .scatter(scatter_3.direction)
+            board.set_ball_position(ball_position)
+            yield Scatter(throw_command.position, ball_position, board)
+            bounce_entry = next(log_entries)
+            start_position = board.get_ball_position()
+            ball_position = start_position.scatter(bounce_entry.direction)
+            board.set_ball_position(ball_position)
+            yield Bounce(start_position, ball_position, bounce_entry.direction, board)
         yield from self.__process_catch(ball_position, log_entries, board)
-        _ = next(cmds)  # XXX: Throw away the next command - cmd_type=13 from the opposition with no other data
 
     def __process_catch(self, ball_position, log_entries, board):
         while True:
@@ -853,8 +882,8 @@ class Replay:
                 board.set_ball_carrier(catcher)
                 yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
                 return
-            # Else
-            yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
+            else:
+                yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
             scatter_entry = next(log_entries)
             start_position = board.get_ball_position()
             ball_position = start_position.scatter(scatter_entry.direction)
