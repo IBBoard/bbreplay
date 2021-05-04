@@ -10,6 +10,7 @@ EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
 StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
 HalfTime = namedtuple('HalfTime', ['board'])
 AbandonMatch = namedtuple('AbandonMatch', ['team', 'board'])
+EndMatch = namedtuple('EndMatch', ['board'])
 
 HALF_TIME_TURN = 8
 
@@ -119,6 +120,9 @@ class GameState:
             raise ValueError(f'Out of order end turn - expected {self.turn_team.team_type} but got {team}')
         yield EndTurn(self.turn_team.team_type, self.turn, reason, self)
         self.__turn += 1
+        if self.__turn == 32:
+            yield EndMatch(self)
+            return
         next_team = other_team(team)
         self.turn_team = self.__teams[next_team.value]
 

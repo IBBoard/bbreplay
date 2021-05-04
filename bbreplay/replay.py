@@ -12,7 +12,7 @@ from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, Skil
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry
 from .state import GameState
-from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch  # noqa: F401 - these are for export
+from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import Team
 
 
@@ -162,7 +162,7 @@ class Replay:
                     event_type = type(event)
                     if event_type in [Touchdown]:
                         drive_ended = True
-                    elif event_type is AbandonMatch:
+                    elif event_type is AbandonMatch or event_type is EndMatch:
                         return
                     yield event
                     if event_type is EndTurn and board.turn == 8 and board.turn_team.team_type != receiver:
