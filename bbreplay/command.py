@@ -161,7 +161,7 @@ class PreKickoffCompleteCommand(SimpleTeamOverrideCommand):
         super().__init__('PreKickoffComplete', id, turn, team, command_type, data)
 
 
-class BlockDiceChoiceCommand(Command):
+class DiceChoiceCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
         self.team = player_idx_to_type(data[0])  # Override the team
@@ -169,7 +169,7 @@ class BlockDiceChoiceCommand(Command):
         self.dice_idx = data[2]
 
     def __repr__(self):
-        return f'BlockDiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, ' \
+        return f'DiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, ' \
             f'data={self._data})'
 
 
@@ -185,7 +185,7 @@ class TargetPlayerCommand(Command):
 
     def __repr__(self):
         return f'TargetPlayerCommand(team={self.team}, player={self.player_idx}, ' \
-               f'target_team?={self.target_team}, target_player?={self.target_player}, data={self._data})'
+               f'target_team={self.target_team}, target_player={self.target_player}, data={self._data})'
 
 
 class FollowUpChoiceCommand(Command):
@@ -247,7 +247,7 @@ class RerollCommand(Command):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'Reroll?(team={self.team}, data={self._data})'
+        return f'Reroll(team={self.team}, data={self._data})'
 
 
 class ProRerollCommand(SimpleTeamOverrideCommand):
@@ -256,7 +256,7 @@ class ProRerollCommand(SimpleTeamOverrideCommand):
         self.player = data[1]
 
     def __repr__(self):
-        return f'ProReroll?(team={self.team}, player?={self.player}, data={self._data})'
+        return f'ProReroll(team={self.team}, player={self.player}, data={self._data})'
 
 
 class DeclineRerollCommand(Command):
@@ -265,7 +265,7 @@ class DeclineRerollCommand(Command):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'DeclineReroll?(data={self._data})'
+        return f'DeclineReroll(data={self._data})'
 
 
 class ApothecaryCommand(Command):
@@ -318,9 +318,10 @@ MOVE_MAP = {
     8: SetupCommand,
     9: SetupCompleteCommand,
     10: KickoffCommand,
+    # 13: Intercept?
     14: PreKickoffCompleteCommand,
     17: EndTurnCommand,
-    19: BlockDiceChoiceCommand,
+    19: DiceChoiceCommand,
     20: RerollCommand,
     21: ProRerollCommand,
     23: ApothecaryChoiceCommand,
@@ -335,9 +336,9 @@ MOVE_MAP = {
     51: DeclineRerollCommand,
     59: AbandonMatchCommand,
     69: NetworkCommand,
-    # Block related? After BlockDiceChoice and before PushbackCommand
+    # Block related? After DiceChoice and before PushbackCommand
     91: UnknownVerboseCommand,
-    # Block related? After BlockDiceChoice and before PushbackCommand
+    # Block related? After DiceChoice and before PushbackCommand
     92: UnknownVerboseCommand,
     94: NetworkCommand
 }

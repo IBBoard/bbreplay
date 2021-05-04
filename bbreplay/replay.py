@@ -529,7 +529,7 @@ class Replay:
                     end_reason = END_REASON_TOUCHDOWN
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
-            elif cmd_type is DeclineRerollCommand or (cmd_type is BlockDiceChoiceCommand
+            elif cmd_type is DeclineRerollCommand or (cmd_type is DiceChoiceCommand
                                                       and prev_cmd_type is DeclineRerollCommand):
                 # FIXME: We should be handling these, but it's not always clear how they associate with events
                 continue
