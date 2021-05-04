@@ -59,6 +59,8 @@ def player_to_text(player, pretty, board=None):
     elif board and board.get_ball_carrier() == player:
         if pretty:
             player_str = BALL_COLOUR + "●" + colour
+        else:
+            player_str = "●"
     else:
         player_str = ROW[1]
     player_str += chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1) + ROW[1]
@@ -190,6 +192,6 @@ if __name__ == '__main__':
             elif args.pretty and args.animate and board:
                 print_title(f"Turn {board.turn} - {board.turn_team.name}")
                 print(draw_map(board, args.pretty))
-    finally:
+
         print("\nEnd")
         print(draw_map(board, args.pretty))
