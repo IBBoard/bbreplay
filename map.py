@@ -201,6 +201,7 @@ if __name__ == '__main__':
             elif args.pretty and args.animate and board:
                 print_title(f"Turn {board.turn} - {board.turn_team.name}")
                 print(draw_map(board, args.pretty))
-    except Exception:
+    except Exception as ex:
         print("\nLast positions")
         print(draw_map(board, args.pretty))
+        raise ex
