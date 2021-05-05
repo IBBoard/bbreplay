@@ -157,6 +157,8 @@ class GameState:
         self.__ball_position = position
 
     def set_ball_carrier(self, player):
+        if not player and self.__ball_carrier:
+            self.__ball_position = self.__ball_carrier.position
         self.__ball_carrier = player
 
     def get_ball_position(self):

@@ -787,6 +787,8 @@ class Replay:
                 board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
             elif isinstance(log_entry, TurnOverEntry):
+                if board.get_ball_carrier() == player:
+                    board.set_ball_carrier(None)
                 board.move(player, start_space, target_space)
                 yield FailedMovement(player, start_space, target_space)
             else:
