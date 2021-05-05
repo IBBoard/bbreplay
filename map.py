@@ -54,16 +54,18 @@ def player_to_text(player, pretty, board=None):
     if pretty:
         # TODO: Can we pull this from the team? Relies on 24-bit terminals
         colour = HOME_TEAM_COLOUR if team_type == TeamType.HOME else AWAY_TEAM_COLOUR
-    if board and board.is_prone(player):
-        player_str = "⤓"
-    elif board and board.get_ball_carrier() == player:
+    if board and board.get_ball_position() == player.position:
         if pretty:
             player_str = BALL_COLOUR + "●" + colour
         else:
             player_str = "●"
     else:
         player_str = ROW[1]
-    player_str += chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1) + ROW[1]
+    player_str += chr((0x2460 if team_type == TeamType.HOME else 0x2474) + player.number - 1)
+    if board and board.is_prone(player):
+        player_str += "🡻"
+    else:
+        player_str += ROW[1]
     if pretty:
         player_str = colour + player_str + PIECE_RESET
     return player_str
@@ -72,6 +74,8 @@ def player_to_text(player, pretty, board=None):
 def draw_map(board, pretty):
     # TODO: String builder
     map = ""
+    has_ball_carrier = board.get_ball_carrier() is not None
+    ball_position = board.get_ball_position()
     for row in range(PITCH_LENGTH - 1, -1, -1):
         row_data = board[row]
         if row == NEAR_ENDZONE_IDX:
@@ -92,7 +96,7 @@ def draw_map(board, pretty):
             player = row_data[col]
             if player:
                 map += player_to_text(player, pretty, board)
-            elif not board.get_ball_carrier() and board.get_ball_position() == Position(col, row):
+            elif not has_ball_carrier and ball_position == Position(col, row):
                 ball = ROW[1] + "●" + ROW[1]  # "🏈" is too wide to align properly☹
                 map += ball if not pretty else BALL_COLOUR + ball + PIECE_RESET
             else:
