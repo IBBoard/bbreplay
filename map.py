@@ -104,7 +104,9 @@ def draw_map(board, pretty):
                 map += ROW[4]
             else:
                 map += ROW[2]
-        map += ROW_RESET + "\n"
+        if pretty:
+            map += ROW_RESET
+        map += "\n"
         if row == 0:
             map += draw_filler_row(BOTTOMLINE, pretty)
             map += "    "  # Three spaces for numbering, plus one for the border
@@ -118,7 +120,10 @@ def print_team(team, pretty):
     prefix = "Home" if team.team_type == TeamType.HOME else "Away"
     print(f"{prefix}: {team.name} ({team.race})")
     for player in sorted(team.get_players(), key=lambda p: p.number):
-        print(f"\t{BOARD_COLOUR} {player_to_text(player, pretty)} {ROW_RESET}- {player.name}")
+        if pretty:
+            print(f"\t{BOARD_COLOUR} {player_to_text(player, pretty)} {ROW_RESET}- {player.name}")
+        else:
+            print(f"\t{player_to_text(player, pretty)} - {player.name}")
 
 
 def reset_console():
