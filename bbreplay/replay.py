@@ -842,6 +842,8 @@ class Replay:
             unused.log_entries = move_log_entries
 
     def __process_pass(self, player, cmd, cmds, log_entries, board, can_reroll=True):
+        if board.get_ball_carrier() != player:
+            raise ValueError(f"Got Pass command for {player} but ball carrier is {board.get_ball_carrier()}")
         throw_log_entry = next(log_entries)
         validate_log_entry(throw_log_entry, ThrowEntry, player.team.team_type, player.number)
         throw_command = cmd
