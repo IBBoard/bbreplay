@@ -825,6 +825,14 @@ class Replay:
 
             start_space = target_space
 
+            if failed_movement:
+                break
+
+        for failed_movement in moves:
+            target_space = failed_movement.position
+            yield FailedMovement(player, start_space, target_space)
+            start_space = target_space
+
         if turnover:
             yield from board.change_turn(player.team.team_type, turnover)
 
