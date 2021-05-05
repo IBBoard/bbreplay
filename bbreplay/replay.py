@@ -663,6 +663,7 @@ class Replay:
         move_log_entries = cur_log_entries
         moves = []
         is_prone = board.is_prone(player)
+        is_ball_carrier = board.get_ball_carrier() == player
 
         # We can't just use "while true" and check for EndMovementCommand because a blitz is
         # movement followed by a Block without an EndMovementCommand
@@ -787,7 +788,7 @@ class Replay:
                 board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
             elif isinstance(log_entry, TurnOverEntry):
-                if board.get_ball_carrier() == player:
+                if is_ball_carrier:
                     board.set_ball_carrier(None)
                 board.move(player, start_space, target_space)
                 yield FailedMovement(player, start_space, target_space)
@@ -836,6 +837,8 @@ class Replay:
             start_space = target_space
 
         if turnover:
+            if is_ball_carrier:
+                yield from self.__process_ball_movement(move_log_entries, player, board)
             yield from board.change_turn(player.team.team_type, turnover)
 
         if unused:
