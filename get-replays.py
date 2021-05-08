@@ -1,19 +1,27 @@
 from pathlib import Path
+import platform
 import shutil
 
 
+# Linux/Steam paths
 DRIVE_BASE = Path.home().joinpath('.local/share/Steam/steamapps/compatdata/216890/pfx/drive_c/')
 BLOODBOWL_DIR = DRIVE_BASE.joinpath('users/steamuser/My Documents/BloodBowlChaos/')
 
 OPEN_DB_PREFIX_LENGTH = 14
 
+IS_WINDOWS = platform.system() == "Windows"
+
 
 def get_log_lines():
     # Merge all of the logs into one
-    log_files = [log_file for log_file in BLOODBOWL_DIR.glob('BB_Chaos*.log')]
+    if IS_WINDOWS:
+        bb_dir = Path.home().joinpath('My Documents/BloodBowlChaos/')
+    else:
+        bb_dir = BLOODBOWL_DIR
+
+    log_files = [log_file for log_file in bb_dir.glob('BB_Chaos*.log')]
     log_files.sort()
     for log in log_files:
-        print(log)
         with log.open() as f:
             for line in f:
                 yield line.strip()
@@ -25,8 +33,12 @@ def get_replay_path(log_line):
 
 
 def copy_replay(replay_path, dest):
-    relative_path = replay_path.relative_to(replay_path.parents[2])
-    shutil.copy2(BLOODBOWL_DIR.joinpath(relative_path), dest)
+    if IS_WINDOWS:
+        src_path = replay_path
+    else:
+        relative_path = replay_path.relative_to(replay_path.parents[2])
+        src_path = BLOODBOWL_DIR.joinpath(relative_path)
+    shutil.copy2(src_path, dest)
 
 
 if __name__ == '__main__':
@@ -37,6 +49,7 @@ if __name__ == '__main__':
     replay_path = None
     target_dir = Path('temp/')
     target_dir.mkdir(exist_ok=True)
+    line_ending = '\r\n' if IS_WINDOWS else '\n'
 
     for log_line in get_log_lines():
         if log_line.startswith("| Set match version to "):
@@ -60,7 +73,7 @@ if __name__ == '__main__':
 
             if capture_log:
                 new_log_file.write(log_line)
-                new_log_file.write('\n')
+                new_log_file.write(line_ending)
         # Else it's not interesting yet
 
         prev_line = log_line
