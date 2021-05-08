@@ -153,6 +153,7 @@ class Skills(Enum):
     ACCURATE = 21
     BREAK_TACKLE = 22
     SNEAKY_GIT = 23
+    CHAINSAW = 25
     DAUNTLESS = 26
     DIRTY_PLAYER = 27
     DIVING_CATCH = 28
@@ -171,6 +172,7 @@ class Skills(Enum):
     JUMP_UP = 41
     LONER = 44
     NERVES_OF_STEEL = 45
+    NO_HANDS = 46
     PASS = 47
     PREHENSILE_TAIL = 49
     PRO = 50
@@ -193,6 +195,7 @@ class Skills(Enum):
     KICK = 71
     KICKOFF_RETURN = 72
     CLAWS = 75
+    BALL_AND_CHAIN = 76
     STAB = 77
     HYPTNOTIC_GAZE = 78
     STAKES = 79
