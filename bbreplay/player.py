@@ -5,27 +5,41 @@ from . import prefix_for_teamtype, PlayerStatus, Skills, OFF_PITCH_POSITION
 
 
 MA_TO_STAT = {
+    16: 2,
+    25: 3,
     33: 4,
     41: 5,
     50: 6,
     58: 7,
-    66: 8
+    66: 8,
+    75: 9
 }
 
-ST_AG_TO_STAT = {
+AG_TO_STAT = {
     16: 1,
     33: 2,
     50: 3,
-    60: 4,  # Yes, two values for 4!
     66: 4,
+    83: 5,
+}
+
+ST_TO_STAT = {
+    30: 1,
+    40: 2,
+    50: 3,
+    60: 4,
     70: 5,
-    83: 5
+    80: 6,
+    90: 7
 }
 
 AV_TO_STAT = {
+    27: 5,
+    41: 6,
     58: 7,
     72: 8,
-    83: 9
+    83: 9,
+    91: 10
 }
 
 
@@ -44,10 +58,15 @@ class Player(Positionable):
         self.team = team
         self.number = number
         self.name = name
-        self.MA = MA_TO_STAT[int(float(move))]
-        self.ST = ST_AG_TO_STAT[int(float(strength))]
-        self.AG = ST_AG_TO_STAT[int(float(agility))]
-        self.AV = AV_TO_STAT[int(float(armour_value))]
+        try:
+            # Use Float to handle "XX." values (nothing after the decimal point)
+            # and round stats down with int to keep the tables simple
+            self.MA = MA_TO_STAT[int(float(move))]
+            self.ST = ST_TO_STAT[int(float(strength))]
+            self.AG = AG_TO_STAT[int(float(agility))]
+            self.AV = AV_TO_STAT[int(float(armour_value))]
+        except KeyError as ex:
+            raise KeyError(f"Unhandled attribute value for {team.name} #{number} {name}") from ex
         self.level = level
         self.SPP = spp
         self.value = value
