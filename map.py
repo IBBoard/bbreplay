@@ -166,7 +166,7 @@ if __name__ == '__main__':
         else:
             print("\n", text)
 
-    first_draw = True
+    needs_reset = args.from_turn <= 1
 
     try:
         for event in replay.events():
@@ -174,11 +174,11 @@ if __name__ == '__main__':
             if event_type in [KickoffEventTuple, WeatherTuple, FailedMovement]:
                 continue
             if args.pretty and args.animate and board and board.turn >= args.from_turn:
-                if not first_draw:
+                if needs_reset:
                     time.sleep(SLEEP_TIME)
                     reset_console()
                 else:
-                    first_draw = False
+                    needs_reset = True
             if hasattr(event, 'board'):
                 board = event.board
             if board and board.turn < args.from_turn:
