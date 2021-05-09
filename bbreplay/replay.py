@@ -748,6 +748,9 @@ class Replay:
                             raise ValueError("Looking for dodge-related log entries but got "
                                              f"{type(log_entry).__name__}")
                     elif isinstance(log_entry, TentacledEntry):
+                        surrounding_players = board.get_surrounding_players(start_space)
+                        if not any(Skills.TENTACLES in player.skills for player in surrounding_players):
+                            raise ValueError("Got TentacledEntry but none of the surrounding players have tentacles!")
                         validate_log_entry(log_entry, TentacledEntry, player.team.team_type, player.number)
                         attacker = self.get_team(log_entry.attacking_team)\
                                        .get_player_by_number(log_entry.attacking_player)
