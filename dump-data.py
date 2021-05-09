@@ -13,11 +13,14 @@ def logging_generator(data):
         yield datum
 
 
-def print_team(team):
+def print_team(team, debug):
     prefix = "Home" if team.team_type == TeamType.HOME else "Away"
     print(f"{prefix}: {team.name} ({team.race})")
-    for player in sorted(team.get_players(), key=lambda p: p.number):
-        print(f"\t{player.number} - {player.name}")
+    for idx, player in sorted(enumerate(team.get_players()), key=lambda x: x[1].number):
+        if debug:
+            print(f"\t{player.number} - {player.name} (idx {idx})")
+        else:
+            print(f"\t{player.number} - {player.name}")
         if player.skills:
             skill_string = ', '.join(skill.name.replace('_', ' ').title() for skill in player.skills)
             print(f"\t\t{skill_string}")
@@ -41,8 +44,8 @@ if __name__ == '__main__':
         replay.set_generator(logging_generator)
 
     home_team, away_team = replay.get_teams()
-    print_team(home_team)
-    print_team(away_team)
+    print_team(home_team, args.debug)
+    print_team(away_team, args.debug)
 
     print("\n+++ Commands")
 
