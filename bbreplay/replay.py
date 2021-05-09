@@ -691,6 +691,11 @@ class Replay:
 
         for movement in moves:
             target_space = movement.position
+            if failed_movement:
+                yield FailedMovement(player, start_space, target_space)
+                start_space = target_space
+                continue
+
             if board.get_distance_moved(player) >= player.MA:
                 if not move_log_entries:
                     move_log_entries = self.__next_generator(log_entries)
@@ -836,11 +841,6 @@ class Replay:
 
             if failed_movement:
                 break
-
-        for failed_movement in moves:
-            target_space = failed_movement.position
-            yield FailedMovement(player, start_space, target_space)
-            start_space = target_space
 
         if turnover:
             if is_ball_carrier:
