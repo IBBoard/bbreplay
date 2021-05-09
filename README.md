@@ -5,6 +5,8 @@ into a sequence of actions and other details about the game.
 
 ![Sample game map replay](docs/sample-replay.gif)
 
+BBReplay can be used to generate statistics, but the focus is on recreating blow-by-blow accounts of a game - like the old match reports in White Dwarf magazine.
+
 ## Running BBReplay
 
 All BBReplay scripts need a log file and a replay database. The database provides the team details and the user commands, while the log file provides the results of rolls.
@@ -15,7 +17,7 @@ Note that there must be one log per replay. If you run Blood Bowl, play one game
 
 When watching replays, press the <kbd>+</kbd> key to speed up the replay and the <kbd>-</kbd> key to slow it down.
 
-###  Game maps
+### Game maps
 
 The `map.py` prints Unicode maps of the game progress. By default it prints a sequence of maps for setup, kick-off, and at the end of each turn.
 
