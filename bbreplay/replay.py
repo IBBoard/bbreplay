@@ -724,7 +724,9 @@ class Replay:
                         validate_log_entry(log_entry, DodgeEntry, player.team.team_type, player.number)
                         yield Action(player, ActionType.DODGE, log_entry.result, board)
                         if log_entry.result == ActionResult.SUCCESS:
+                            failed_movement = False
                             break
+                        failed_movement = True
                         log_entry = next(move_log_entries)
                         if isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.DODGE:
                             validate_log_entry(log_entry, SkillEntry, player.team.team_type)
