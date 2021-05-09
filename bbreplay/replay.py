@@ -657,6 +657,14 @@ class Replay:
                     if new_result:
                         board.stupidity_test(player, log_entry.result)
                         yield Action(player, ActionType.REALLY_STUPID, new_result, board)
+                    else:
+                        cmd = next(cmds)
+                        if not isinstance(cmd, DiceChoiceCommand):
+                            raise ValueError(f"Expected DiceChoiceCommand but got {type(cmd).__name__}")
+                        if cmd.team != player.team.team_type \
+                           or player.team.get_player_number(cmd.player_idx) != player.number:
+                            raise ValueError(f"Expected DiceChoiceCommand for {player.team.team_type} #{player.number} "
+                                             f"but got {cmd.team} #{player.team.get_player_number(cmd.player_idx)}")
 
         if unused:
             unused.log_entries = cur_log_entries
