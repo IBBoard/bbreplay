@@ -903,18 +903,25 @@ class Replay:
                                                   .scatter(scatter_3.direction)
             board.set_ball_position(ball_position)
             yield Scatter(throw_command.position, ball_position, board)
-            bounce_entry = next(log_entries)
-            start_position = board.get_ball_position()
-            ball_position = start_position.scatter(bounce_entry.direction)
-            board.set_ball_position(ball_position)
-            yield Bounce(start_position, ball_position, bounce_entry.direction, board)
-        yield from self.__process_catch(ball_position, log_entries, board)
+        yield from self.__process_catch(ball_position, log_entries, board, result != ThrowResult.FUMBLE)
 
-    def __process_catch(self, ball_position, log_entries, board):
+    def __process_catch(self, ball_position, log_entries, board, bounce_on_empty=False):
         while True:
             catcher = board.get_position(ball_position)
             if not catcher:
-                break
+                if bounce_on_empty:
+                    # We've attempted a dump-off to a blank space or it scattered to a blank space
+                    bounce_entry = next(log_entries)
+                    start_position = board.get_ball_position()
+                    ball_position = start_position.scatter(bounce_entry.direction)
+                    board.set_ball_position(ball_position)
+                    yield Bounce(start_position, ball_position, bounce_entry.direction, board)
+                    bounce_on_empty = False
+                    continue
+                else:
+                    # It comes to rest
+                    break
+            bounce_on_empty = False
             if board.is_prone(catcher):
                 # Prone players can't catch!
                 continue
@@ -928,8 +935,8 @@ class Replay:
             scatter_entry = next(log_entries)
             start_position = board.get_ball_position()
             ball_position = start_position.scatter(scatter_entry.direction)
-            yield Bounce(start_position, ball_position, scatter_entry.direction, board)
             board.set_ball_position(ball_position)
+            yield Bounce(start_position, ball_position, scatter_entry.direction, board)
 
     def __process_ball_movement(self, log_entries, player, board):
         log_entry = None
