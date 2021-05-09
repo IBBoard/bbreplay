@@ -674,6 +674,11 @@ class Replay:
         # We can't just use "while true" and check for EndMovementCommand because a blitz is
         # movement followed by a Block without an EndMovementCommand
         while isinstance(cmd, MovementCommand):
+            team = self.get_team(cmd.team)
+            idx_player = team.get_player(cmd.player_idx)
+            if self.get_team(cmd.team).get_player(cmd.player_idx) != player:
+                raise ValueError(f"Expected movement for {player.team.team_type} #{player.number} "
+                                 f"but got {team.team_type} #{idx_player.number}")
             moves.append(cmd)
             if isinstance(cmd, EndMovementCommand):
                 break
