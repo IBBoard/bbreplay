@@ -384,9 +384,11 @@ class Replay:
                                     origin_coords = pushed_player.position
                                     board.set_position(new_coords, pushed_player)
                                     yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
-                                    cmd = next(cmds)
                                     if not dest_content:
+                                        if Skills.FRENZY not in blocking_player.skills:
+                                            cmd = next(cmds)
                                         break
+                                    cmd = next(cmds)
                                     pushing_player = pushed_player
                                     pushed_player = dest_content
                                     old_coords = new_coords
