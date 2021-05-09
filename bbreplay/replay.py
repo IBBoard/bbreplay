@@ -200,15 +200,16 @@ class Replay:
         yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
 
         kickoff_event = next(log_entries)[0]
-        yield KickoffEventTuple(kickoff_event.result)
+        kickoff_result = kickoff_event.result
+        yield KickoffEventTuple(kickoff_result)
         ball_bounces = True
-        if kickoff_event.result == KickoffEvent.BLITZ:
+        if kickoff_result == KickoffEvent.BLITZ:
             board.blitz()
             yield from self.__process_turn(cmds, log_entries, board)
-        elif kickoff_event.result == KickoffEvent.CHANGING_WEATHER:
+        elif kickoff_result == KickoffEvent.CHANGING_WEATHER:
             weather = next(log_entries)[0]  # Sometimes this duplicates, but we don't care
             yield board.set_weather(weather.result)
-        elif kickoff_event.result == KickoffEvent.HIGH_KICK:
+        elif kickoff_result == KickoffEvent.HIGH_KICK:
             high_kick_log = next(log_entries)
             high_kick_catch = high_kick_log[0]
             catcher = self.get_team(high_kick_catch.team).get_player_by_number(high_kick_catch.player)
@@ -221,10 +222,15 @@ class Replay:
                 ball_bounces = False
             yield Movement(catcher, old_position, new_position, board)
             yield Action(catcher, ActionType.CATCH, high_kick_catch.result, board)
-        elif kickoff_event.result == KickoffEvent.PERFECT_DEFENCE:
+        elif kickoff_result == KickoffEvent.PERFECT_DEFENCE:
             yield from self.__process_team_setup(board.kicking_team, cmds, log_entries, board)
             board.setup_complete()
             yield SetupComplete(board)
+        elif kickoff_result == KickoffEvent.CHEERING_FANS or kickoff_result == KickoffEvent.BRILLIANT_COACHING:
+            # XXX: We don't seem to have a way of seeing who got the reroll
+            pass
+        else:
+            raise NotImplementedError(f"{kickoff_result} not yet implemented")
 
         yield from board.kickoff()
 
