@@ -76,8 +76,7 @@ class Replay:
         cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity, iRerolls '
                     'FROM Away_Team_Listing team INNER JOIN Away_Races race ON idRaces = race.ID')
         self.away_team = Team(*cur.fetchone(), TeamType.AWAY, self.__db)
-        self.__commands = [create_command(self, row)
-                           for row in cur.execute('SELECT * FROM Replay_NetCommands ORDER BY ID')]
+        self.__commands = [create_command(row) for row in cur.execute('SELECT * FROM Replay_NetCommands ORDER BY ID')]
         cur.close()
         self.__log_entries = parse_log_entries(log_path)
 

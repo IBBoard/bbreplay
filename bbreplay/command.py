@@ -344,7 +344,7 @@ MOVE_MAP = {
 }
 
 
-def create_command(replay, row):
+def create_command(row):
     command_id, turn, player_idx, command_type, *data = row
     team = player_idx_to_type(player_idx - 1)
     command = MOVE_MAP.get(command_type, Command)
