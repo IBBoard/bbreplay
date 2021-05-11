@@ -4,7 +4,7 @@
 import argparse
 import os.path
 from bbreplay import TeamType
-from bbreplay.replay import Replay
+from bbreplay.replay import create_replay
 
 
 def logging_generator(data):
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(f"{os.path.basename(args.replay_file)}\n")
-    replay = Replay(args.replay_file, args.log_file)
+    replay = create_replay(args.replay_file, args.log_file)
 
     if args.debug:
         replay.set_generator(logging_generator)

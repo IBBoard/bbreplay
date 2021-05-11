@@ -7,7 +7,7 @@ import os.path
 import time
 from bbreplay import TeamType, Position, PITCH_LENGTH, PITCH_WIDTH, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, \
     LAST_COLUMN_IDX, LEFT_WIDEZONE_IDX, RIGHT_WIDEZONE_IDX, BEFORE_HALFWAY_IDX
-from bbreplay.replay import Replay, TeamSetupComplete, SetupComplete, Kickoff, EndTurn, KickoffEventTuple, \
+from bbreplay.replay import create_replay, TeamSetupComplete, SetupComplete, Kickoff, EndTurn, KickoffEventTuple, \
     WeatherTuple, FailedMovement
 
 
@@ -147,7 +147,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(f"{os.path.basename(args.replay_file)}")
-    replay = Replay(args.replay_file, args.log_file)
+    replay = create_replay(args.replay_file, args.log_file)
     home_team, away_team = replay.get_teams()
 
     print_team(home_team, args.pretty)

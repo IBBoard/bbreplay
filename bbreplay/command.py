@@ -349,3 +349,10 @@ def create_command(row):
     team = player_idx_to_type(player_idx - 1)
     command = MOVE_MAP.get(command_type, Command)
     return command(command_id, turn, team, command_type, data)
+
+
+def create_commands(db):
+    cur = db.cursor()
+    commands = [create_command(row) for row in cur.execute('SELECT * FROM Replay_NetCommands ORDER BY ID')]
+    cur.close()
+    return commands

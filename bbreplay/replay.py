@@ -13,7 +13,7 @@ from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, Skil
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
-from .teams import Team
+from .teams import create_team
 
 
 class ActionType(Enum):
@@ -66,20 +66,26 @@ class ReturnWrapper:
         self.log_entries = None
 
 
-class Replay:
-    def __init__(self, db_path, log_path):
-        self.__db = sqlite3.connect(db_path)
-        cur = self.__db.cursor()
-        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity, iRerolls '
-                    'FROM Home_Team_Listing team INNER JOIN Home_Races race ON idRaces = race.ID')
-        self.home_team = Team(*cur.fetchone(), TeamType.HOME, self.__db)
-        cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity, iRerolls '
-                    'FROM Away_Team_Listing team INNER JOIN Away_Races race ON idRaces = race.ID')
-        self.away_team = Team(*cur.fetchone(), TeamType.AWAY, self.__db)
-        self.__commands = [create_command(row) for row in cur.execute('SELECT * FROM Replay_NetCommands ORDER BY ID')]
-        cur.close()
-        self.__log_entries = parse_log_entries(log_path)
+def create_replay(db_path, log_path):
+    db = sqlite3.connect(db_path)
+    home_team = create_team(db, TeamType.HOME)
+    away_team = create_team(db, TeamType.AWAY)
+    commands = create_commands(db)
+    log_entries = parse_log_entries(log_path)
+    replay = Replay(home_team, away_team, commands, log_entries)
+    replay.validate()
+    return replay
 
+
+class Replay:
+    def __init__(self, home_team, away_team, commands, log_entries):
+        self.home_team = home_team
+        self.away_team = away_team
+        self.__commands = commands
+        self.__log_entries = log_entries
+        self.__generator = self.__default_generator
+
+    def validate(self):
         log_entry = self.__log_entries[1][0]
 
         if type(log_entry) is not MatchLogEntry:
@@ -91,8 +97,6 @@ class Replay:
             raise ValueError("Away team mismatch between replay and log - got "
                              f"{log_entry.away_name} expected {self.away_team.name}")
         # TODO: More validation of matching
-
-        self.__generator = self.__default_generator
 
     def get_teams(self):
         return self.home_team, self.away_team
