@@ -118,7 +118,9 @@ def test_going_for_it_fail_no_reroll(board):
         EndMovementCommand(1, 1, TeamType.HOME.value, 4, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 0])
     ]
     log_entries = [
-        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name)
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
     events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), iter(log_entries), None, board)
