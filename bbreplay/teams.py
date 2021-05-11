@@ -75,6 +75,7 @@ class Team:
     def add_player(self, idx, player):
         self._player_number_map[player.number] = idx
         self._players[idx] = player
+        player.team = self
 
     def get_players(self):
         return filter(None, self._players)

@@ -61,13 +61,13 @@ def create_player(team, number, name, move, strength, agility, armour_value, lev
         av_stat = AV_TO_STAT[int(float(armour_value))]
     except KeyError as ex:
         raise KeyError(f"Unhandled attribute value for {team.name} #{number} {name}") from ex
-    return Player(team, number, name, ma_stat, st_stat, ag_stat, av_stat, level, spp, value, [])
+    return Player(number, name, ma_stat, st_stat, ag_stat, av_stat, level, spp, value, [])
 
 
 class Player(Positionable):
-    def __init__(self, team, number, name, move, strength, agility, armour_value, level, spp, value, skills):
+    def __init__(self, number, name, move, strength, agility, armour_value, level, spp, value, skills):
         super().__init__()
-        self.team = team
+        self.team = None
         self.number = number
         self.name = name
         self.MA = move
