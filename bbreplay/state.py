@@ -17,7 +17,7 @@ HALF_TIME_TURN = 8
 
 class GameState:
     def __init__(self, home_team, away_team, receiving_team):
-        self.__teams = [home_team, away_team]
+        self.teams = [home_team, away_team]
         self.__receiving_team = receiving_team
         self.score = [0, 0]
         self.turn_team = None
@@ -81,7 +81,7 @@ class GameState:
         self.set_ball_position(OFF_PITCH_POSITION)
 
     def setup_complete(self):
-        for team in self.__teams:
+        for team in self.teams:
             team_setup = []
             for player in team.get_players():
                 team_setup.append((player, player.position))
@@ -94,12 +94,12 @@ class GameState:
         self.__receiving_team = other_team(team)
 
     def kickoff(self):
-        self.turn_team = self.__teams[self.__receiving_team.value]
+        self.turn_team = self.teams[self.__receiving_team.value]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
-               for player in self.__teams[TeamType.HOME.value].get_players()):
+               for player in self.teams[TeamType.HOME.value].get_players()):
             self.add_reroll(TeamType.HOME)
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
-               for player in self.__teams[TeamType.AWAY.value].get_players()):
+               for player in self.teams[TeamType.AWAY.value].get_players()):
             self.add_reroll(TeamType.AWAY)
         self.__last_setup_turn = self.turn
         yield from self.start_turn(self.__receiving_team)
@@ -124,7 +124,7 @@ class GameState:
             yield EndMatch(self)
             return
         next_team = other_team(team)
-        self.turn_team = self.__teams[next_team.value]
+        self.turn_team = self.teams[next_team.value]
 
     def abandon_match(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
@@ -233,6 +233,6 @@ class GameState:
 
     def __reset_board(self):
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]
-        for team in self.__teams:
+        for team in self.teams:
             for player in team.get_players():
                 player.position = OFF_PITCH_POSITION
