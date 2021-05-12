@@ -35,6 +35,7 @@ class GameState:
         self.__setups = [[], []]
         self.__last_setup_turn = 0
         self.__moves = defaultdict(int)
+        self.__used_reroll = False
 
     @property
     def turn(self):
@@ -95,6 +96,7 @@ class GameState:
 
     def kickoff(self):
         self.turn_team = self.teams[self.__receiving_team.value]
+        self.rerolls = [team.rerolls for team in self.teams]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.teams[TeamType.HOME.value].get_players()):
             self.add_reroll(TeamType.HOME)
@@ -113,6 +115,7 @@ class GameState:
             raise ValueError(f'Out of order start turn - expected {self.turn_team.team_type} but got {team}')
         self.__tested_stupid.clear()
         self.__moves.clear()
+        self.__used_reroll = False
         yield StartTurn(team, self.turn, self)
 
     def end_turn(self, team, reason):
@@ -226,7 +229,13 @@ class GameState:
         return entities
 
     def use_reroll(self, team):
+        if self.__used_reroll:
+            raise ValueError("Already used a team reroll this turn!")
         self.rerolls[team.value] -= 1
+        self.__used_reroll = True
+
+    def can_reroll(self, team):
+        return self.rerolls[team.value] > 0 and not self.__used_reroll
 
     def add_reroll(self, team):
         self.rerolls[team.value] += 1

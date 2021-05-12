@@ -110,12 +110,15 @@ def test_going_for_it_fail_no_reroll(board):
     replay = Replay(home_team, away_team, [], [])
     player = home_team.get_player(0)
     board.set_position(Position(0, 0), player)
+    home_id = TeamType.HOME.value
     cmds = [
-        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 1, 1]),
-        MovementCommand(1, 1, TeamType.HOME.value, 1, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 2]),
-        MovementCommand(1, 1, TeamType.HOME.value, 2, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 1]),
-        MovementCommand(1, 1, TeamType.HOME.value, 3, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 0]),
-        EndMovementCommand(1, 1, TeamType.HOME.value, 4, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 0])
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        EndMovementCommand(1, 1, home_id, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 3, 0]),
+        DeclineRerollCommand(1, 1, home_id, 1, []),
+        DiceChoiceCommand(1, 1, home_id, 1, [home_id, 0, 0])
     ]
     log_entries = [
         GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
@@ -132,8 +135,72 @@ def test_going_for_it_fail_no_reroll(board):
         if seq == 4:
             assert isinstance(event, Action)
             assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
             assert event.result == ActionResult.FAILURE
         elif seq == 5:
+            assert isinstance(event, PlayerDown)
+            assert event.player == player
+        elif seq == 6:
+            assert isinstance(event, ArmourRoll)
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 7:
+            assert isinstance(event, FailedMovement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == end_move
+            assert board.is_prone(player)
+            move += 1
+        else:
+            assert isinstance(event, Movement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == expected_end
+            move += 1
+
+
+def test_going_for_it_twice_fail_first_no_reroll(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    home_id = TeamType.HOME.value
+    cmds = [
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        MovementCommand(1, 1, home_id, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 3, 0]),
+        EndMovementCommand(1, 1, home_id, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 4, 1]),
+        DeclineRerollCommand(1, 1, home_id, 1, []),
+        DiceChoiceCommand(1, 1, home_id, 1, [home_id, 0, 0])
+    ]
+    log_entries = [
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
+                 Position(4, 1)]
+    events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), iter(log_entries), None, board)
+    end_move = Position(2, 0)
+    move = 0
+    for seq, event in enumerate(events):
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        if seq == 4:
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 5:
+            assert isinstance(event, PlayerDown)
+            assert event.player == player
+        elif seq == 6:
+            assert isinstance(event, ArmourRoll)
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 7 or seq == 8:
             assert isinstance(event, FailedMovement)
             assert event.source_space == expected_start
             assert event.target_space == expected_end
