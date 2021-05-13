@@ -1,14 +1,3 @@
-* Handle more command types (if required)
-* Load team rosters
-* Map player indexes to roster numbers/players
-* Fill in missing players on setup (default places in standard "attract centre" formation?)
-* Match log entries up with commands
-* Create flow of "events" based on commands and entries
-  (e.g. command says move three but one was a dodge that failed)
-  * Track board state
-  * Calculate when a move needs a dodge
-  * Include other effects (Tentacles prevent dodge… anything else?)
-  * Include negating effects (Stupid/Bone-head/prone/stunned lose tackle zone)
 * Check how some skills are represented in commands/logs:
     * Sidestep
     * Ball and Chain
@@ -16,7 +5,6 @@
     * Leap
     * Kick-Off Return
     * Diving Catch
-    * Diving tackle
     * Pass Block
     * Throw Team-Mate
-    * Leader and Pro re-rolls
+* Pick up reroll count from "XXX use a re-roll … (Left : x/y)" log entry to find bonus rerolls (e.g. Brilliant Coaching)
