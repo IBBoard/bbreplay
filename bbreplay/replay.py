@@ -756,9 +756,13 @@ class Replay:
                 if not move_log_entries:
                     move_log_entries = self.__next_generator(log_entries)
                 log_entry = next(move_log_entries)
-                yield from self._process_action_result(log_entry, GoingForItEntry, move_log_entries, cmds,
-                                                       player, ActionType.GOING_FOR_IT, board)
-                if log_entry.result == ActionResult.FAILURE:
+                result = log_entry.result
+                for event in self._process_action_result(log_entry, GoingForItEntry, move_log_entries, cmds,
+                                                         player, ActionType.GOING_FOR_IT, board):
+                    yield event
+                    if isinstance(event, Action):
+                        result = event.result
+                if result == ActionResult.FAILURE:
                     failed_movement = True
                     yield from self._process_armour_roll(next(move_log_entries), move_log_entries, player, board)
                     log_entry = next(move_log_entries)

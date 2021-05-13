@@ -8,6 +8,12 @@ from bbreplay.state import GameState, EndTurn
 from bbreplay.teams import Team
 
 
+def iter_(iterable):
+    for item in iterable:
+        print(f"Consuming {type(item).__module__}.{item}")
+        yield item
+
+
 @pytest.fixture
 def home_player_1():
     return Player(1, "Player1H", 4, 4, 4, 4, 1, 0, 40000, [])
@@ -67,7 +73,7 @@ def test_multi_movement(board):
         EndMovementCommand(1, 1, TeamType.HOME.value, 3, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 0])
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0)]
-    events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), None, None, board)
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), None, None, board)
     for event, expected_start, expected_end in zip_longest(events, positions[:-1], positions[1:], fillvalue=None):
         assert isinstance(event, Movement)
         assert event.source_space == expected_start
@@ -91,7 +97,7 @@ def test_going_for_it_success(board):
         GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
-    events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), iter(log_entries), None, board)
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
     move = 0
     for seq, event in enumerate(events):
         expected_start = positions[move]
@@ -115,13 +121,13 @@ def test_going_for_it_fail_no_reroll(board):
     board.set_position(Position(0, 0), player)
     home_id = TeamType.HOME.value
     cmds = [
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
-        EndMovementCommand(1, 1, home_id, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 3, 0]),
-        DeclineRerollCommand(1, 1, home_id, 1, []),
-        DiceChoiceCommand(1, 1, home_id, 1, [home_id, 0, 0])
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 3, 0]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0])
     ]
     log_entries = [
         GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
@@ -129,7 +135,7 @@ def test_going_for_it_fail_no_reroll(board):
         TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
-    events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), iter(log_entries), None, board)
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
     end_move = Position(3, 0)
     move = 0
     for seq, event in enumerate(events):
@@ -167,6 +173,170 @@ def test_going_for_it_fail_no_reroll(board):
     assert seq == 8
 
 
+def test_going_for_it_fail_reroll(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    home_id = TeamType.HOME.value
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 3, 0]),
+        RerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0])
+    ]
+    log_entries = [
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        RerollEntry(TeamType.HOME),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    end_move = Position(3, 0)
+    move = 0
+    for seq, event in enumerate(events):
+        expected_start = positions[move] if move + 1 < len(positions) else None
+        expected_end = positions[move + 1] if move + 1 < len(positions) else None
+        if seq == 4 or seq == 6:
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 5:
+            assert isinstance(event, Reroll)
+            assert event.team == player.team.team_type
+            assert event.type == "Team Reroll"
+        elif seq == 7:
+            assert isinstance(event, PlayerDown)
+            assert event.player == player
+        elif seq == 8:
+            assert isinstance(event, ArmourRoll)
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 9:
+            assert isinstance(event, FailedMovement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == end_move
+            assert board.is_prone(player)
+            move += 1
+        elif seq == 10:
+            assert isinstance(event, EndTurn)
+            assert event.reason == "Knocked Down!"
+            break
+        else:
+            assert isinstance(event, Movement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == expected_end
+            move += 1
+    assert seq == 10
+
+
+def test_going_for_it_fail_success_on_reroll(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    home_id = TeamType.HOME.value
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 3, 0]),
+        RerollCommand(1, 1, TeamType.HOME, 1, [])
+    ]
+    log_entries = [
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        RerollEntry(TeamType.HOME),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.SUCCESS.name)
+    ]
+    positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    move = 0
+    for seq, event in enumerate(events):
+        expected_start = positions[move] if move + 1 < len(positions) else None
+        expected_end = positions[move + 1] if move + 1 < len(positions) else None
+        if seq == 4:
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 5:
+            assert isinstance(event, Reroll)
+            assert event.team == player.team.team_type
+            assert event.type == "Team Reroll"
+        elif seq == 6:
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.SUCCESS
+        else:
+            assert isinstance(event, Movement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == expected_end
+            move += 1
+    assert seq == 7
+
+
+def test_going_for_it_fail_first_success_on_reroll(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    home_id = TeamType.HOME.value
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 3, 0]),
+        EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 4, 1]),
+        RerollCommand(1, 1, TeamType.HOME, 1, [])
+    ]
+    log_entries = [
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        RerollEntry(TeamType.HOME),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
+    ]
+    positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
+                 Position(4, 1)]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    move = 0
+    for seq, event in enumerate(events):
+        expected_start = positions[move] if move + 1 < len(positions) else None
+        expected_end = positions[move + 1] if move + 1 < len(positions) else None
+        if seq == 4:
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 5:
+            assert isinstance(event, Reroll)
+            assert event.team == player.team.team_type
+            assert event.type == "Team Reroll"
+        elif seq == 6 or seq == 8:
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.SUCCESS
+        else:
+            assert isinstance(event, Movement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == expected_end
+            move += 1
+    assert seq == 9
+
+
 def test_going_for_it_twice_fail_first_no_reroll(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
@@ -174,14 +344,14 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
     board.set_position(Position(0, 0), player)
     home_id = TeamType.HOME.value
     cmds = [
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
-        MovementCommand(1, 1, home_id, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 3, 0]),
-        EndMovementCommand(1, 1, home_id, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 4, 1]),
-        DeclineRerollCommand(1, 1, home_id, 1, []),
-        DiceChoiceCommand(1, 1, home_id, 1, [home_id, 0, 0])
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 3, 0]),
+        EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 4, 1]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0])
     ]
     log_entries = [
         GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
@@ -190,7 +360,7 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
                  Position(4, 1)]
-    events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), iter(log_entries), None, board)
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
     end_move = Position(3, 0)
     move = 0
     for seq, event in enumerate(events):
@@ -226,3 +396,70 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
             assert player.position == expected_end
             move += 1
     assert seq == 9
+
+
+def test_going_for_it_twice_fail_second_no_reroll(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    home_id = TeamType.HOME.value
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 3, 0]),
+        EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 4, 1]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0])
+    ]
+    log_entries = [
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
+                 Position(4, 1)]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    end_move = Position(4, 1)
+    move = 0
+    for seq, event in enumerate(events):
+        expected_start = positions[move] if move + 1 < len(positions) else None
+        expected_end = positions[move + 1] if move + 1 < len(positions) else None
+        if seq == 4:
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.SUCCESS
+        elif seq == 6:  # 5 is another Movement
+            assert isinstance(event, Action)
+            assert event.action == ActionType.GOING_FOR_IT
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 7:
+            assert isinstance(event, PlayerDown)
+            assert event.player == player
+        elif seq == 8:
+            assert isinstance(event, ArmourRoll)
+            assert event.player == player
+            assert event.result == ActionResult.FAILURE
+        elif seq == 9:
+            assert isinstance(event, FailedMovement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == end_move
+            assert board.is_prone(player)
+            move += 1
+        elif seq == 10:
+            assert isinstance(event, EndTurn)
+            assert event.reason == "Knocked Down!"
+            break
+        else:
+            assert isinstance(event, Movement)
+            assert event.source_space == expected_start
+            assert event.target_space == expected_end
+            assert player.position == expected_end
+            move += 1
+    assert seq == 10
