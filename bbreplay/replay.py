@@ -541,7 +541,7 @@ class Replay:
                 block_choice = next(cmds)
             target_by_coords = board.get_position(block.position)
             if target_by_coords != target_by_idx:
-                raise ValueError(f"{target} targetted {target_by_idx} but {block} targetted {target_by_coords}")
+                raise ValueError(f"Target command targetted {target_by_idx} but {block} targetted {target_by_coords}")
             chosen_block_dice = block_dice.results[block_choice.dice_idx]
             yield Block(blocking_player, target_by_idx,
                         block_dice.results, chosen_block_dice)
