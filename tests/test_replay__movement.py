@@ -4,7 +4,7 @@ from bbreplay import TeamType, Position
 from bbreplay.command import *
 from bbreplay.player import Player
 from bbreplay.replay import *
-from bbreplay.state import GameState
+from bbreplay.state import GameState, EndTurn
 from bbreplay.teams import Team
 
 
@@ -34,7 +34,10 @@ def away_team(away_player_1):
 
 @pytest.fixture
 def board(home_team, away_team):
-    return GameState(home_team, away_team, home_team)
+    gamestate = GameState(home_team, away_team, TeamType.HOME)
+    for _ in gamestate.kickoff():
+        pass
+    return gamestate
 
 
 def test_single_movement(board):
@@ -127,11 +130,11 @@ def test_going_for_it_fail_no_reroll(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
     events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), iter(log_entries), None, board)
-    end_move = Position(2, 0)
+    end_move = Position(3, 0)
     move = 0
     for seq, event in enumerate(events):
-        expected_start = positions[move]
-        expected_end = positions[move + 1]
+        expected_start = positions[move] if move + 1 < len(positions) else None
+        expected_end = positions[move + 1] if move + 1 < len(positions) else None
         if seq == 4:
             assert isinstance(event, Action)
             assert event.action == ActionType.GOING_FOR_IT
@@ -151,12 +154,17 @@ def test_going_for_it_fail_no_reroll(board):
             assert player.position == end_move
             assert board.is_prone(player)
             move += 1
+        elif seq == 8:
+            assert isinstance(event, EndTurn)
+            assert event.reason == "Knocked Down!"
+            break
         else:
             assert isinstance(event, Movement)
             assert event.source_space == expected_start
             assert event.target_space == expected_end
             assert player.position == expected_end
             move += 1
+    assert seq == 8
 
 
 def test_going_for_it_twice_fail_first_no_reroll(board):
@@ -183,11 +191,11 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
                  Position(4, 1)]
     events = replay._process_movement(player, cmds[0], (cmd for cmd in cmds[1:]), iter(log_entries), None, board)
-    end_move = Position(2, 0)
+    end_move = Position(3, 0)
     move = 0
     for seq, event in enumerate(events):
-        expected_start = positions[move]
-        expected_end = positions[move + 1]
+        expected_start = positions[move] if move + 1 < len(positions) else None
+        expected_end = positions[move + 1] if move + 1 < len(positions) else None
         if seq == 4:
             assert isinstance(event, Action)
             assert event.action == ActionType.GOING_FOR_IT
@@ -207,9 +215,14 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
             assert player.position == end_move
             assert board.is_prone(player)
             move += 1
+        elif seq == 9:
+            assert isinstance(event, EndTurn)
+            assert event.reason == "Knocked Down!"
+            break
         else:
             assert isinstance(event, Movement)
             assert event.source_space == expected_start
             assert event.target_space == expected_end
             assert player.position == expected_end
             move += 1
+    assert seq == 9
