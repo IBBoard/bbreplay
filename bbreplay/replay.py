@@ -761,6 +761,9 @@ class Replay:
                 if log_entry.result == ActionResult.FAILURE:
                     failed_movement = True
                     yield from self._process_armour_roll(next(move_log_entries), move_log_entries, player, board)
+                    log_entry = next(move_log_entries)
+                    validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                    turnover = log_entry.reason
             if not failed_movement and is_dodge(board, player, target_space):
                 if not move_log_entries:
                     move_log_entries = self.__next_generator(log_entries)
@@ -844,7 +847,7 @@ class Replay:
                     is_prone = False
                 board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
-            elif isinstance(log_entry, TurnOverEntry):
+            elif turnover:
                 if is_ball_carrier:
                     board.set_ball_carrier(None)
                 board.move(player, start_space, target_space)
@@ -885,10 +888,8 @@ class Replay:
 
             start_space = target_space
 
-            if failed_movement:
-                break
-
         if turnover:
+            print("turnover")
             if is_ball_carrier:
                 yield from self._process_ball_movement(move_log_entries, player, board)
             yield from board.change_turn(player.team.team_type, turnover)
