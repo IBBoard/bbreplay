@@ -560,3 +560,84 @@ def test_going_for_it_twice_fail_second_no_reroll(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+
+
+def test_going_for_it_twice_fail_second_success_on_reroll(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    home_id = TeamType.HOME.value
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 3, 0]),
+        EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 4, 1]),
+        RerollCommand(1, 1, TeamType.HOME, 1, [])
+    ]
+    log_entries = [
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        RerollEntry(TeamType.HOME),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
+    ]
+    positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
+                 Position(4, 1)]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    end_move = Position(4, 1)
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Reroll)
+    assert event.team == player.team.team_type
+    assert event.type == "Team Reroll"
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == expected_end
+    assert player.position == end_move
+    assert not board.is_prone(player)
+
+    assert not next(events, None)
