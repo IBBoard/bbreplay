@@ -74,11 +74,14 @@ def test_multi_movement(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), None, None, board)
+    end_move = Position(2, 0)
     for event, expected_start, expected_end in zip_longest(events, positions[:-1], positions[1:], fillvalue=None):
         assert isinstance(event, Movement)
         assert event.source_space == expected_start
         assert event.target_space == expected_end
         assert player.position == expected_end
+    assert player.position == end_move
+    assert not board.is_prone(player)
 
 
 def test_going_for_it_success(board):
@@ -98,20 +101,33 @@ def test_going_for_it_success(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
-    move = 0
-    for seq, event in enumerate(events):
+    end_move = Position(3, 0)
+
+    for move in range(4):
+        event = next(events)
         expected_start = positions[move]
         expected_end = positions[move + 1]
-        if seq == 4:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.result == ActionResult.SUCCESS
-        else:
-            assert isinstance(event, Movement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == expected_end
-            move += 1
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+
+    assert player.position == end_move
+    assert not board.is_prone(player)
+    assert not next(events, None)
 
 
 def test_going_for_it_fail_no_reroll(board):
@@ -137,40 +153,44 @@ def test_going_for_it_fail_no_reroll(board):
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
     end_move = Position(3, 0)
-    move = 0
-    for seq, event in enumerate(events):
-        expected_start = positions[move] if move + 1 < len(positions) else None
-        expected_end = positions[move + 1] if move + 1 < len(positions) else None
-        if seq == 4:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 5:
-            assert isinstance(event, PlayerDown)
-            assert event.player == player
-        elif seq == 6:
-            assert isinstance(event, ArmourRoll)
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 7:
-            assert isinstance(event, FailedMovement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == end_move
-            assert board.is_prone(player)
-            move += 1
-        elif seq == 8:
-            assert isinstance(event, EndTurn)
-            assert event.reason == "Knocked Down!"
-            break
-        else:
-            assert isinstance(event, Movement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == expected_end
-            move += 1
-    assert seq == 8
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == end_move
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
 
 
 def test_going_for_it_fail_reroll(board):
@@ -198,44 +218,56 @@ def test_going_for_it_fail_reroll(board):
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
     end_move = Position(3, 0)
-    move = 0
-    for seq, event in enumerate(events):
-        expected_start = positions[move] if move + 1 < len(positions) else None
-        expected_end = positions[move + 1] if move + 1 < len(positions) else None
-        if seq == 4 or seq == 6:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 5:
-            assert isinstance(event, Reroll)
-            assert event.team == player.team.team_type
-            assert event.type == "Team Reroll"
-        elif seq == 7:
-            assert isinstance(event, PlayerDown)
-            assert event.player == player
-        elif seq == 8:
-            assert isinstance(event, ArmourRoll)
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 9:
-            assert isinstance(event, FailedMovement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == end_move
-            assert board.is_prone(player)
-            move += 1
-        elif seq == 10:
-            assert isinstance(event, EndTurn)
-            assert event.reason == "Knocked Down!"
-            break
-        else:
-            assert isinstance(event, Movement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == expected_end
-            move += 1
-    assert seq == 10
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event == Movement(player, expected_start, expected_end, board)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Reroll)
+    assert event.team == player.team.team_type
+    assert event.type == "Team Reroll"
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == end_move
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
 
 
 def test_going_for_it_fail_success_on_reroll(board):
@@ -259,31 +291,47 @@ def test_going_for_it_fail_success_on_reroll(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
-    move = 0
-    for seq, event in enumerate(events):
-        expected_start = positions[move] if move + 1 < len(positions) else None
-        expected_end = positions[move + 1] if move + 1 < len(positions) else None
-        if seq == 4:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 5:
-            assert isinstance(event, Reroll)
-            assert event.team == player.team.team_type
-            assert event.type == "Team Reroll"
-        elif seq == 6:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.SUCCESS
-        else:
-            assert isinstance(event, Movement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == expected_end
-            move += 1
-    assert seq == 7
+    end_move = Position(3, 0)
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Reroll)
+    assert event.team == player.team.team_type
+    assert event.type == "Team Reroll"
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == expected_end
+
+    assert player.position == end_move
+    assert not board.is_prone(player)
+
+    assert not next(events, None)
 
 
 def test_going_for_it_fail_first_success_on_reroll(board):
@@ -310,31 +358,62 @@ def test_going_for_it_fail_first_success_on_reroll(board):
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
                  Position(4, 1)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
-    move = 0
-    for seq, event in enumerate(events):
-        expected_start = positions[move] if move + 1 < len(positions) else None
-        expected_end = positions[move + 1] if move + 1 < len(positions) else None
-        if seq == 4:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 5:
-            assert isinstance(event, Reroll)
-            assert event.team == player.team.team_type
-            assert event.type == "Team Reroll"
-        elif seq == 6 or seq == 8:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.SUCCESS
-        else:
-            assert isinstance(event, Movement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == expected_end
-            move += 1
-    assert seq == 9
+    end_move = Position(4, 1)
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Reroll)
+    assert event.team == player.team.team_type
+    assert event.type == "Team Reroll"
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == expected_end
+
+    assert player.position == end_move
+    assert not board.is_prone(player)
+
+    assert not next(events, None)
 
 
 def test_going_for_it_twice_fail_first_no_reroll(board):
@@ -362,40 +441,44 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
                  Position(4, 1)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
     end_move = Position(3, 0)
-    move = 0
-    for seq, event in enumerate(events):
-        expected_start = positions[move] if move + 1 < len(positions) else None
-        expected_end = positions[move + 1] if move + 1 < len(positions) else None
-        if seq == 4:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 5:
-            assert isinstance(event, PlayerDown)
-            assert event.player == player
-        elif seq == 6:
-            assert isinstance(event, ArmourRoll)
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 7 or seq == 8:
-            assert isinstance(event, FailedMovement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == end_move
-            assert board.is_prone(player)
-            move += 1
-        elif seq == 9:
-            assert isinstance(event, EndTurn)
-            assert event.reason == "Knocked Down!"
-            break
-        else:
-            assert isinstance(event, Movement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == expected_end
-            move += 1
-    assert seq == 9
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    for move in range(4, 6):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, FailedMovement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == end_move
+        assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
 
 
 def test_going_for_it_twice_fail_second_no_reroll(board):
@@ -424,42 +507,56 @@ def test_going_for_it_twice_fail_second_no_reroll(board):
                  Position(4, 1)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
     end_move = Position(4, 1)
-    move = 0
-    for seq, event in enumerate(events):
-        expected_start = positions[move] if move + 1 < len(positions) else None
-        expected_end = positions[move + 1] if move + 1 < len(positions) else None
-        if seq == 4:
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.SUCCESS
-        elif seq == 6:  # 5 is another Movement
-            assert isinstance(event, Action)
-            assert event.action == ActionType.GOING_FOR_IT
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 7:
-            assert isinstance(event, PlayerDown)
-            assert event.player == player
-        elif seq == 8:
-            assert isinstance(event, ArmourRoll)
-            assert event.player == player
-            assert event.result == ActionResult.FAILURE
-        elif seq == 9:
-            assert isinstance(event, FailedMovement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == end_move
-            assert board.is_prone(player)
-            move += 1
-        elif seq == 10:
-            assert isinstance(event, EndTurn)
-            assert event.reason == "Knocked Down!"
-            break
-        else:
-            assert isinstance(event, Movement)
-            assert event.source_space == expected_start
-            assert event.target_space == expected_end
-            assert player.position == expected_end
-            move += 1
-    assert seq == 10
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+    assert player.position == end_move
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
