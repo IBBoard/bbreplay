@@ -1,4 +1,3 @@
-from itertools import zip_longest
 import pytest
 from bbreplay import TeamType, Position
 from bbreplay.command import *
@@ -86,6 +85,133 @@ def test_multi_movement(board):
     assert player.position == end_move
     assert not board.is_prone(player)
     assert not next(events, None)
+
+
+def test_single_successful_dodge(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmd = EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7])
+    log_entries = [
+        DodgeEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
+    ]
+    events = replay._process_movement(player, cmd, [], iter_(log_entries), None, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.DODGE
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+
+
+def test_single_failed_dodge(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    log_entries = [
+        DodgeEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.DODGE
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
+
+
+def test_single_failed_dodge_with_more_moves(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    positions = [Position(7, 7), Position(6, 7), Position(5, 7), Position(4, 7), Position(3, 7)]
+    log_entries = [
+        DodgeEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    end_move = Position(6, 7)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.DODGE
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, FailedMovement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+
+    assert board.is_prone(player)
+    assert player.position == end_move
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
 
 
 def test_going_for_it_success(board):
