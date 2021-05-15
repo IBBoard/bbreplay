@@ -206,12 +206,10 @@ class Replay:
         kickoff_result = kickoff_event.result
         yield KickoffEventTuple(kickoff_result)
         ball_bounces = True
-        if kickoff_result == KickoffEvent.BLITZ:
-            board.blitz()
-            yield from self._process_turn(cmds, log_entries, board)
-        elif kickoff_result == KickoffEvent.CHANGING_WEATHER:
-            weather = next(log_entries)[0]  # Sometimes this duplicates, but we don't care
-            yield board.set_weather(weather.result)
+        if kickoff_result == KickoffEvent.PERFECT_DEFENCE:
+            yield from self._process_team_setup(board.kicking_team, cmds, log_entries, board)
+            board.setup_complete()
+            yield SetupComplete(board)
         elif kickoff_result == KickoffEvent.HIGH_KICK:
             high_kick_log = next(log_entries)
             high_kick_catch = high_kick_log[0]
@@ -225,13 +223,18 @@ class Replay:
                 ball_bounces = False
             yield Movement(catcher, old_position, new_position, board)
             yield Action(catcher, ActionType.CATCH, high_kick_catch.result, board)
-        elif kickoff_result == KickoffEvent.PERFECT_DEFENCE:
-            yield from self._process_team_setup(board.kicking_team, cmds, log_entries, board)
-            board.setup_complete()
-            yield SetupComplete(board)
         elif kickoff_result == KickoffEvent.CHEERING_FANS or kickoff_result == KickoffEvent.BRILLIANT_COACHING:
-            # XXX: We don't seem to have a way of seeing who got the reroll
+            # XXX: We need to check reroll log events to identify who got the free reroll
             pass
+        elif kickoff_result == KickoffEvent.CHANGING_WEATHER:
+            weather = next(log_entries)[0]  # Sometimes this duplicates, but we don't care
+            yield board.set_weather(weather.result)
+        elif kickoff_result == KickoffEvent.QUICK_SNAP:
+            board.quick_snap()
+            yield from self._process_turn(cmds, log_entries, board, False)
+        elif kickoff_result == KickoffEvent.BLITZ:
+            board.blitz()
+            yield from self._process_turn(cmds, log_entries, board, False)
         else:
             raise NotImplementedError(f"{kickoff_result} not yet implemented")
 
@@ -283,7 +286,7 @@ class Replay:
                 endzone_contents.position = OFF_PITCH_POSITION
         yield TeamSetupComplete(team.team_type, team.get_players())
 
-    def _process_turn(self, cmds, log_entries, board):
+    def _process_turn(self, cmds, log_entries, board, start_next_turn=True):
         cmd = None
         end_reason = None
         prev_cmd_type = None
@@ -336,7 +339,7 @@ class Replay:
             yield from board.abandon_match(cmd.team)
         else:
             yield from board.end_turn(cmd.team, end_reason)
-            if end_reason != END_REASON_TOUCHDOWN:
+            if start_next_turn and end_reason != END_REASON_TOUCHDOWN:
                 # Touchdowns will be restarted by the setup and kickoff process
                 yield from board.start_turn(other_team(cmd.team))
 

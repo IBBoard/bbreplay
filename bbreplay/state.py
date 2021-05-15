@@ -36,6 +36,7 @@ class GameState:
         self.__last_setup_turn = 0
         self.__moves = defaultdict(int)
         self.__used_reroll = False
+        self.__kicked_off = False
 
     @property
     def turn(self):
@@ -46,6 +47,10 @@ class GameState:
         return WeatherTuple(self.weather)
 
     def blitz(self):
+        self.__turn -= 1
+        self.turn_team = self.teams[other_team(self.receiving_team).value]
+
+    def quick_snap(self):
         self.__turn -= 1
 
     def halftime(self):
@@ -87,14 +92,6 @@ class GameState:
             for player in team.get_players():
                 team_setup.append((player, player.position))
             self.__setups[team.team_type.value] = team_setup
-
-    def touchdown(self, player):
-        team = player.team.team_type
-        team_value = team.value
-        self.score[team_value] += 1
-        self.__receiving_team = other_team(team)
-
-    def kickoff(self):
         self.turn_team = self.teams[self.__receiving_team.value]
         self.rerolls = [team.rerolls for team in self.teams]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
@@ -104,11 +101,24 @@ class GameState:
                for player in self.teams[TeamType.AWAY.value].get_players()):
             self.add_reroll(TeamType.AWAY)
         self.__last_setup_turn = self.turn
+        self.__kicked_off = False
+
+    def touchdown(self, player):
+        team = player.team.team_type
+        team_value = team.value
+        self.score[team_value] += 1
+        self.__receiving_team = other_team(team)
+
+    def kickoff(self):
+        self.turn_team = self.teams[self.__receiving_team.value]
+        self.__kicked_off = True
         yield from self.start_turn(self.__receiving_team)
 
     def change_turn(self, ending_team, reason):
         yield from self.end_turn(ending_team, reason)
-        yield from self.start_turn(other_team(ending_team))
+        if self.__kicked_off:
+            yield from self.start_turn(other_team(ending_team))
+        # Else we're in a kickoff event and the start turn will be handled separately
 
     def start_turn(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
