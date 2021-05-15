@@ -892,3 +892,170 @@ def test_going_for_it_twice_fail_second_success_on_reroll(board):
     assert not next(events, None)
     assert not next(cmds_iter, None)
     assert not next(log_entries_iter, None)
+
+
+def test_single_failed_tentacled(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    defender.skills.append(Skills.TENTACLES)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    log_entries = [
+        TentacledEntry(TeamType.HOME, player.number, TeamType.AWAY, defender.number,
+                       "7+", "2", ActionResult.FAILURE.name)
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+
+    event = next(events)
+    assert isinstance(event, Tentacle)
+    assert event.dodging_player == player
+    assert event.tentacle_player == defender
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(7, 7)
+    assert not board.is_prone(player)
+
+    assert not next(events, None)
+
+
+def test_standup_is_not_tentacled(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_prone(player)
+    defender = away_team.get_player(0)
+    defender.skills.append(Skills.TENTACLES)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7])
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    events = replay._process_movement(player, cmd, cmds_iter, [], None, board)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(7, 7)
+    assert player.position == Position(7, 7)
+    assert not board.is_prone(player)
+
+    assert not next(events, None)
+
+
+def test_move_from_prone_defender_is_not_tentacled(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    board.set_prone(defender)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    defender.skills.append(Skills.TENTACLES)
+    cmd = EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7])
+    events = replay._process_movement(player, cmd, [], [], None, board)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+
+
+def test_single_sucessful_break_tentacled(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    defender.skills.append(Skills.TENTACLES)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7])
+    ]
+    log_entries = [
+        TentacledEntry(TeamType.HOME, player.number, TeamType.AWAY, defender.number,
+                       "7+", "7", ActionResult.SUCCESS.name)
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+
+    event = next(events)
+    assert isinstance(event, Tentacle)
+    assert event.dodging_player == player
+    assert event.tentacle_player == defender
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+
+    assert not next(events, None)
+
+
+def test_single_failed_tentacled_with_more_moves(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    defender.skills.append(Skills.TENTACLES)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    positions = [Position(7, 7), Position(6, 7), Position(5, 7), Position(4, 7), Position(3, 7)]
+    log_entries = [
+        TentacledEntry(TeamType.HOME, player.number, TeamType.AWAY, defender.number,
+                       "7+", "2", ActionResult.FAILURE.name)
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+    end_move = Position(7, 7)
+
+    event = next(events)
+    assert isinstance(event, Tentacle)
+    assert event.dodging_player == player
+    assert event.tentacle_player == defender
+    assert event.result == ActionResult.FAILURE
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, FailedMovement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+
+    assert player.position == end_move
+    assert not board.is_prone(player)
+    assert not next(events, None)
