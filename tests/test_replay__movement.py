@@ -87,6 +87,48 @@ def test_multi_movement(board):
     assert not next(events, None)
 
 
+def test_move_from_prone_defender_is_not_dodge(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    board.set_prone(defender)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmd = EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7])
+    events = replay._process_movement(player, cmd, [], [], None, board)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+
+
+def test_move_from_stupid_defender_is_not_dodge(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    board.stupidity_test(defender, ActionResult.FAILURE)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmd = EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7])
+    events = replay._process_movement(player, cmd, [], [], None, board)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+
+
 def test_single_successful_dodge(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
@@ -212,6 +254,29 @@ def test_single_failed_dodge_with_more_moves(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+
+
+def test_standup_is_not_dodge(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_prone(player)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7])
+    ]
+    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), [], None, board)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(7, 7)
+    assert player.position == Position(7, 7)
+    assert not board.is_prone(player)
+
+    assert not next(events, None)
 
 
 def test_going_for_it_success(board):
