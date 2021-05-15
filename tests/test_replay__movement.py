@@ -75,13 +75,17 @@ def test_multi_movement(board):
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0)]
     events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), None, None, board)
     end_move = Position(2, 0)
-    for event, expected_start, expected_end in zip_longest(events, positions[:-1], positions[1:], fillvalue=None):
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
         assert isinstance(event, Movement)
         assert event.source_space == expected_start
         assert event.target_space == expected_end
         assert player.position == expected_end
     assert player.position == end_move
     assert not board.is_prone(player)
+    assert not next(events, None)
 
 
 def test_going_for_it_success(board):
