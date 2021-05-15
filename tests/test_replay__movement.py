@@ -72,7 +72,9 @@ def test_multi_movement(board):
         EndMovementCommand(1, 1, TeamType.HOME.value, 3, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 0])
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), None, None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    events = replay._process_movement(player, cmd, cmds_iter, None, None, board)
     end_move = Position(2, 0)
     for move in range(4):
         event = next(events)
@@ -85,6 +87,7 @@ def test_multi_movement(board):
     assert player.position == end_move
     assert not board.is_prone(player)
     assert not next(events, None)
+    assert not next(cmds_iter, None)
 
 
 def test_move_from_prone_defender_is_not_dodge(board):
@@ -140,7 +143,8 @@ def test_single_successful_dodge(board):
     log_entries = [
         DodgeEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
     ]
-    events = replay._process_movement(player, cmd, [], iter_(log_entries), None, board)
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, [], log_entries_iter, None, board)
 
     event = next(events)
     assert isinstance(event, Action)
@@ -174,7 +178,10 @@ def test_single_failed_dodge(board):
         ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
         TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
 
     event = next(events)
     assert isinstance(event, Action)
@@ -200,6 +207,8 @@ def test_single_failed_dodge(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_single_failed_dodge_with_more_moves(board):
@@ -223,7 +232,10 @@ def test_single_failed_dodge_with_more_moves(board):
         ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
         TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(6, 7)
 
     event = next(events)
@@ -254,6 +266,8 @@ def test_single_failed_dodge_with_more_moves(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_standup_is_not_dodge(board):
@@ -267,7 +281,9 @@ def test_standup_is_not_dodge(board):
     cmds = [
         EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7])
     ]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), [], None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    events = replay._process_movement(player, cmd, cmds_iter, [], None, board)
 
     event = next(events)
     assert isinstance(event, Movement)
@@ -277,6 +293,7 @@ def test_standup_is_not_dodge(board):
     assert not board.is_prone(player)
 
     assert not next(events, None)
+    assert not next(cmds_iter, None)
 
 
 def test_going_for_it_success(board):
@@ -295,7 +312,10 @@ def test_going_for_it_success(board):
         GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(3, 0)
 
     for move in range(4):
@@ -323,6 +343,8 @@ def test_going_for_it_success(board):
     assert player.position == end_move
     assert not board.is_prone(player)
     assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_going_for_it_fail_no_reroll(board):
@@ -346,7 +368,10 @@ def test_going_for_it_fail_no_reroll(board):
         TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(3, 0)
 
     for move in range(4):
@@ -386,6 +411,8 @@ def test_going_for_it_fail_no_reroll(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_going_for_it_fail_reroll(board):
@@ -400,8 +427,7 @@ def test_going_for_it_fail_reroll(board):
         MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 3, 0, 0, 0, 0, 0, 3, 1]),
         MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 4, 0, 0, 0, 0, 0, 2, 0]),
         EndMovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0, 0, 0, 0, 0, 0, 3, 0]),
-        RerollCommand(1, 1, TeamType.HOME, 1, []),
-        DiceChoiceCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 0])
+        RerollCommand(1, 1, TeamType.HOME, 1, [])
     ]
     log_entries = [
         GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
@@ -411,7 +437,10 @@ def test_going_for_it_fail_reroll(board):
         TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(3, 0)
 
     for move in range(4):
@@ -463,6 +492,8 @@ def test_going_for_it_fail_reroll(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_going_for_it_fail_success_on_reroll(board):
@@ -485,7 +516,10 @@ def test_going_for_it_fail_success_on_reroll(board):
         GoingForItEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.SUCCESS.name)
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(3, 0)
 
     for move in range(4):
@@ -527,6 +561,8 @@ def test_going_for_it_fail_success_on_reroll(board):
     assert not board.is_prone(player)
 
     assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_going_for_it_fail_first_success_on_reroll(board):
@@ -552,7 +588,10 @@ def test_going_for_it_fail_first_success_on_reroll(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
                  Position(4, 1)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(4, 1)
 
     for move in range(4):
@@ -609,6 +648,8 @@ def test_going_for_it_fail_first_success_on_reroll(board):
     assert not board.is_prone(player)
 
     assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_going_for_it_twice_fail_first_no_reroll(board):
@@ -634,7 +675,10 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
                  Position(4, 1)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(3, 0)
 
     for move in range(4):
@@ -674,6 +718,8 @@ def test_going_for_it_twice_fail_first_no_reroll(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_going_for_it_twice_fail_second_no_reroll(board):
@@ -700,7 +746,10 @@ def test_going_for_it_twice_fail_second_no_reroll(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
                  Position(4, 1)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(4, 1)
 
     for move in range(4):
@@ -755,6 +804,8 @@ def test_going_for_it_twice_fail_second_no_reroll(board):
     event = next(events)
     assert isinstance(event, EndTurn)
     assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
 
 
 def test_going_for_it_twice_fail_second_success_on_reroll(board):
@@ -780,7 +831,10 @@ def test_going_for_it_twice_fail_second_success_on_reroll(board):
     ]
     positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 1), Position(2, 0), Position(3, 0),
                  Position(4, 1)]
-    events = replay._process_movement(player, cmds[0], iter_(cmds[1:]), iter_(log_entries), None, board)
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
     end_move = Position(4, 1)
 
     for move in range(4):
@@ -836,3 +890,5 @@ def test_going_for_it_twice_fail_second_success_on_reroll(board):
     assert not board.is_prone(player)
 
     assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
