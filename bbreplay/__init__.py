@@ -143,6 +143,7 @@ class Skills(Enum):
     PASS_BLOCK = 9
     FOUL_APPEARANCE = 10
     LEAP = 11
+    EXTRA_ARM = 12
     MIGHTY_BLOW = 13
     LEADER = 14
     HORNS = 15
