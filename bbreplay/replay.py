@@ -499,7 +499,9 @@ class Replay:
         if not target_log_entries:
             target_log_entries = self.__next_generator(log_entries)
         if isinstance(cmd, TargetSpaceCommand):
+            dumped_off = False
             if Skills.DUMP_OFF in target_by_idx.skills and board.get_ball_carrier() == target_by_idx:
+                dumped_off = True
                 dumpoff_cmd = next(cmds)
                 if dumpoff_cmd.team != target_by_idx.team.team_type:
                     raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
@@ -510,12 +512,22 @@ class Replay:
                     target_log_entries = self.__next_generator(log_entries)
                 log_entry = next(target_log_entries)
                 success = True
+                rerolled = False
                 for event in self._process_action_result(log_entry, GoingForItEntry, target_log_entries, cmds,
                                                          targeting_player, ActionType.GOING_FOR_IT, board):
                     yield event
                     if isinstance(event, Action):
                         success = event.result == ActionResult.SUCCESS
-                # BREAKME: Dump-off seems to trigger a bug in GFI which resulted in two attempts
+                    elif isinstance(event, Reroll):
+                        rerolled = True
+                if dumped_off and rerolled:
+                    log_entry = next(target_log_entries)
+                    for event in self._process_action_result(log_entry, GoingForItEntry, target_log_entries, cmds,
+                                                             targeting_player, ActionType.GOING_FOR_IT, board):
+                        yield event
+                        if isinstance(event, Action):
+                            success = event.result == ActionResult.SUCCESS
+
                 if not success:
                     log_entry = next(target_log_entries)
                     yield from self._process_armour_roll(log_entry, target_log_entries,
