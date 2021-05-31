@@ -235,6 +235,9 @@ class Replay:
         elif kickoff_result == KickoffEvent.BLITZ:
             board.blitz()
             yield from self._process_turn(cmds, log_entries, board, False)
+        elif kickoff_result == KickoffEvent.PITCH_INVASION:
+            # XXX: Players may get stunned, but we've not currently got any examples so we need to check what happens
+            pass
         else:
             raise NotImplementedError(f"{kickoff_result} not yet implemented")
 
