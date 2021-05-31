@@ -392,8 +392,11 @@ class Replay:
                 board.use_reroll(player.team.team_type)
                 actions.append(Reroll(cmd.team, 'Team Reroll'))
                 reroll_success = True
+            elif isinstance(cmd, DiceChoiceCommand):
+                # Sometimes we only get cmd_type=19 even though most of the time we get cmd_type=51 for declined reroll
+                pass
             else:
-                raise ValueError("Non-reroll command found after failed action")
+                raise ValueError(f"Non-reroll command {type(cmd).__name__} found after failed action")
         if modifying_skill:
             log_entry = next(log_entries)
             validate_log_entry(log_entry, SkillEntry, other_team(player.team.team_type))
