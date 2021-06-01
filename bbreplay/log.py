@@ -351,7 +351,7 @@ throw_re = re.compile(f"{TEAM_PLAYER} Launch {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9
                       " (Fumble|(?:Inaccurate|Accurate) pass)!")
 dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
-skill_re = re.compile(f"{TEAM_PLAYER} uses (Dodge|Block|Diving Tackle)")
+skill_re = re.compile(f"{TEAM_PLAYER} uses (Dodge|Block|Diving Tackle|Fend)")
 pro_reroll_re = re.compile(f"{TEAM_PLAYER} Pro +\\(([0-9]+\\+)\\) : ([0-9]+) -> (Success|Failure)")
 tentacle_use_re = re.compile(f"{TEAM_PLAYER} uses Tentacles")
 reroll_re = re.compile(f"{TEAM} use a re-roll")

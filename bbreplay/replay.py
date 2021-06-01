@@ -50,6 +50,7 @@ Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 Pass = namedtuple('Pass', ['player', 'target', 'result', 'board'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
+Skill = namedtuple('Skill', ['player', 'skill'])
 Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
 Scatter = namedtuple('Scatter', ['start_space', 'end_space', 'board'])
@@ -632,8 +633,13 @@ class Replay:
                             board.set_position(new_coords, pushed_player)
                             yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
                             if not dest_content:
-                                if Skills.FRENZY not in blocking_player.skills:
+                                if Skills.FRENZY not in blocking_player.skills \
+                                   and Skills.FEND not in target_by_idx.skills:
                                     cmd = next(cmds)
+                                elif Skills.FEND in target_by_idx.skills:
+                                    skill_entry = next(target_log_entries)
+                                    validate_skill_log_entry(skill_entry, target_by_idx, Skills.FEND)
+                                    yield Skill(target_by_idx, Skills.FEND)
                                 break
                             cmd = next(cmds)
                             pushing_player = pushed_player
@@ -659,7 +665,7 @@ class Replay:
                     board.reset_position(old_coords)
 
                 # Follow-up
-                if Skills.FRENZY in blocking_player.skills or \
+                if (Skills.FRENZY in blocking_player.skills and Skills.FEND not in target_by_idx.skills) or \
                    (isinstance(cmd, FollowUpChoiceCommand) and cmd.choice):
                     old_coords = blocking_player.position
                     board.reset_position(old_coords)
