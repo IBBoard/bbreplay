@@ -962,7 +962,6 @@ class Replay:
             start_space = target_space
 
         if turnover:
-            print("turnover")
             if is_ball_carrier:
                 yield from self._process_ball_movement(move_log_entries, player, board)
             yield from board.change_turn(player.team.team_type, turnover)
