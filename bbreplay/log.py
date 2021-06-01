@@ -185,6 +185,11 @@ class StupidEntry(ActionResultEntry):
         super().__init__("Stupid", team, player, required, roll, result)
 
 
+class WildAnimalEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Wild Animal", team, player, required, roll, result)
+
+
 class FoulAppearanceEntry(ActionResultEntry):
     def __init__(self, team, player, required, roll, result):
         super().__init__("FoulAppearance", team, player, required, roll, result)
@@ -304,19 +309,20 @@ class TurnOverEntry(TeamEntry):
         return f'TurnOver(team={self.team}, reason={self.reason})'
 
 
+OTHER_ENTRY_MAP = {
+    "Animal": WildAnimalEntry,
+    "Appearance": FoulAppearanceEntry,
+    "Catch": CatchEntry,
+    "KO": KORecoveryEntry,
+    "Stupid": StupidEntry,
+    "Tentacles": TentacledRollEntry,
+    "Value": ArmourValueRollEntry,
+}
+
+
 def create_other_entry(team, player, action, required, roll, result):
-    if action == "Stupid":
-        return StupidEntry(team, player, required, roll, result)
-    elif action == "Value":
-        return ArmourValueRollEntry(team, player, required, roll, result)
-    elif action == "Tentacles":
-        return TentacledRollEntry(team, player, required, roll, result)
-    elif action == "Appearance":
-        return FoulAppearanceEntry(team, player, required, roll, result)
-    elif action == "Catch":
-        return CatchEntry(team, player, required, roll, result)
-    elif action == "KO":
-        return KORecoveryEntry(team, player, required, roll, result)
+    if action in OTHER_ENTRY_MAP:
+        return OTHER_ENTRY_MAP[action](team, player, required, roll, result)
     else:
         return action, team, player, required, roll, result
 

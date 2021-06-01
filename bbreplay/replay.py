@@ -10,7 +10,7 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
-    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry
+    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
@@ -23,6 +23,7 @@ class ActionType(Enum):
     PRO = auto()
     FOUL_APPEARANCE = auto()
     REALLY_STUPID = auto()
+    WILD_ANIMAL = auto()
 
 
 MatchEvent = namedtuple('Match', [])
@@ -480,6 +481,12 @@ class Replay:
         if cmd.result == CasualtyResult.BADLY_HURT:
             board.unset_injured(player)
 
+    def _process_uncontrollable_skills(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+        yield from self._process_stupidity(player, cmd, cmds, cur_log_entries, log_entries, board, unused)
+        if unused:
+            cur_log_entries = unused.log_entries
+        yield from self._process_wild_animal(player, cmd, cmds, cur_log_entries, log_entries, board, unused)
+
     def _process_stupidity(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
             if not cur_log_entries:
@@ -498,6 +505,23 @@ class Replay:
         if unused:
             unused.log_entries = cur_log_entries
 
+    def _process_wild_animal(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+        if Skills.WILD_ANIMAL in player.skills and not board.tested_wild_animal(player):
+            if not cur_log_entries:
+                cur_log_entries = self.__next_generator(log_entries)
+            log_entry = next(cur_log_entries)
+            validate_log_entry(log_entry, WildAnimalEntry, cmd.team, player.number)
+            board.wild_animal_test(player)
+            yield Action(player, ActionType.WILD_ANIMAL, log_entry.result, board)
+            if log_entry.result != ActionResult.SUCCESS:
+                actions, new_result = self._process_action_reroll(cmds, cur_log_entries, player, board)
+                yield from actions
+                if new_result:
+                    yield Action(player, ActionType.WILD_ANIMAL, new_result, board)
+
+        if unused:
+            unused.log_entries = cur_log_entries
+
     def _process_block(self, targeting_player, target_by_idx, cmds, target_log_entries, log_entries, board):
         cmd = next(cmds)
         moved = False
@@ -511,8 +535,8 @@ class Replay:
             target_log_entries = unused.log_entries
         else:
             unused = ReturnWrapper()
-            yield from self._process_stupidity(targeting_player, cmd, cmds,
-                                               target_log_entries, log_entries, board, unused)
+            yield from self._process_uncontrollable_skills(targeting_player, cmd, cmds,
+                                                           target_log_entries, log_entries, board, unused)
             target_log_entries = unused.log_entries
             if board.is_prone(targeting_player):
                 board.unset_prone(targeting_player)
@@ -783,7 +807,8 @@ class Replay:
             unused.command = cmd
 
         stupid_unused = ReturnWrapper()
-        for event in self._process_stupidity(player, cmd, cmds, move_log_entries, log_entries, board, stupid_unused):
+        for event in self._process_uncontrollable_skills(player, cmd, cmds, move_log_entries, log_entries,
+                                                         board, stupid_unused):
             if isinstance(event, Action):
                 failed_movement = event.result != ActionResult.SUCCESS
             yield event

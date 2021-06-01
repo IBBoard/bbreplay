@@ -28,6 +28,7 @@ class GameState:
         self.__injured = set()
         self.__stupid = set()
         self.__tested_stupid = set()
+        self.__tested_wild_animal = set()
         self.__ball_position = OFF_PITCH_POSITION
         self.__ball_carrier = None
         self.__double_nice_weather = False
@@ -124,6 +125,7 @@ class GameState:
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order start turn - expected {self.turn_team.team_type} but got {team}')
         self.__tested_stupid.clear()
+        self.__tested_wild_animal.clear()
         self.__moves.clear()
         self.__used_reroll = False
         yield StartTurn(team, self.turn, self)
@@ -220,6 +222,12 @@ class GameState:
 
     def tested_stupid(self, player):
         return player in self.__tested_stupid
+
+    def wild_animal_test(self, player):
+        self.__tested_wild_animal.add(player)
+
+    def tested_wild_animal(self, player):
+        return player in self.__tested_wild_animal
 
     def get_surrounding_players(self, position):
         entities = []
