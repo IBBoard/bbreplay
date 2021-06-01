@@ -135,14 +135,16 @@ class Replay:
         role_log = next(log_entries)[0]
         toss_team = toss_cmd.team if toss_cmd.team != TeamType.HOTSEAT else randomisation.team
         if toss_team != toss_log.team or toss_cmd.choice != toss_log.choice:
-            raise ValueError("Mismatch in toss details")
+            raise ValueError(f"Mismatch in toss details - {toss_team} {toss_cmd.choice} "
+                             f"vs {toss_log.team} {toss_log.choice}")
         if role_cmd.team == TeamType.HOTSEAT:
             role_team = randomisation.team if toss_log.choice == randomisation.result \
                 else other_team(randomisation.result)
         else:
             role_team = role_cmd.team
         if role_team != role_log.team or role_cmd.choice != role_log.choice:
-            raise ValueError("Mismatch in role details")
+            raise ValueError(f"Mismatch in role details - {role_team} {role_cmd.choice} "
+                             f"vs {role_log.team} {role_log.choice}")
         toss_choice = toss_cmd.choice
         if toss_team == role_team:
             toss_result = toss_choice
