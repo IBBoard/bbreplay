@@ -129,9 +129,9 @@ class Replay:
         match_log_entries = next(log_entries)
         yield MatchEvent()
 
-        toss_cmd = find_next(cmds, CoinTossCommand)
+        toss_cmd = find_next_known_command(cmds)
         toss_log = match_log_entries[1]
-        role_cmd = find_next(cmds, RoleCommand)
+        role_cmd = find_next_known_command(cmds)
         role_log = next(log_entries)[0]
         toss_team = toss_cmd.team if toss_cmd.team != TeamType.HOTSEAT else randomisation.team
         if toss_team != toss_log.team or toss_cmd.choice != toss_log.choice:
@@ -198,11 +198,18 @@ class Replay:
         board.setup_complete()
         yield SetupComplete(board)
 
-        kickoff_cmd = find_next(cmds, KickoffCommand)
-        kickoff_direction, kickoff_scatter = kickoff_log_events
-        ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)
-        board.set_ball_position(ball_dest)
-        yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
+        kickoff_cmd = find_next_known_command(cmds)
+        if isinstance(kickoff_cmd, KickoffCommand):
+            kickoff_direction, kickoff_scatter = kickoff_log_events
+            ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)
+            board.set_ball_position(ball_dest)
+            yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
+        elif isinstance(kickoff_cmd, PreKickoffCompleteCommand):
+            # Kickoff happened automatically due to timeout
+            # Dispose of next PreKickoffCompleteCommand as well
+            _ = next(cmds)
+        else:
+            raise ValueError(f"Unexpected command type at kickoff: {type(kickoff_cmd).__name__}")
 
         kickoff_event = next(log_entries)[0]
         kickoff_result = kickoff_event.result
@@ -244,6 +251,20 @@ class Replay:
             raise NotImplementedError(f"{kickoff_result} not yet implemented")
 
         yield from board.kickoff()
+
+        if board.get_ball_position() == OFF_PITCH_POSITION:
+            # Ball didn't get set, so it must have been a timer-based kick
+            # We've only seen this happen and go off the pitch so far, so handle that situation
+            # Dispose of the other PreKickoffCompleteCommand
+            touchback = next(cmds)
+            if not isinstance(touchback, TouchbackCommand):
+                raise ValueError(f"Expected TouchbackCommand but got {type(touchback).__name__}")
+            board.set_ball_carrier(self.get_team(touchback.team).get_player(touchback.player_idx))
+            ball_bounces = False
+            touchback_log_entries = next(log_entries)
+            for log_entry in touchback_log_entries:
+                if not isinstance(log_entry, BounceLogEntry):
+                    raise ValueError(f"Expected Bounce log entries but got {type(log_entry).__name__}")
 
         if ball_bounces:
             # TODO: Handle no bounce when it gets caught straight away
@@ -1055,11 +1076,10 @@ class Replay:
             yield from turn_over
 
 
-def find_next(generator, target_cls):
-    while True:
+def find_next_known_command(generator):
+    cur = next(generator)
+    while type(cur) == Command:
         cur = next(generator)
-        if isinstance(cur, target_cls):
-            break
     return cur
 
 

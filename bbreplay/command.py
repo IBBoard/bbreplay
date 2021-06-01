@@ -161,6 +161,16 @@ class PreKickoffCompleteCommand(SimpleTeamOverrideCommand):
         super().__init__('PreKickoffComplete', id, turn, team, command_type, data)
 
 
+class TouchbackCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.team = player_idx_to_type(data[0])  # Override the team
+        self.player_idx = data[1]
+
+    def __repr__(self):
+        return f'Touchback(team={self.team}, player={self.player_idx}, data={self._data})'
+
+
 class DiceChoiceCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__(id, turn, team, command_type, data)
@@ -320,6 +330,7 @@ MOVE_MAP = {
     10: KickoffCommand,
     # 13: Intercept?
     14: PreKickoffCompleteCommand,
+    16: TouchbackCommand,
     17: EndTurnCommand,
     19: DiceChoiceCommand,
     20: RerollCommand,
