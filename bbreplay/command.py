@@ -135,7 +135,7 @@ class TargetSpaceCommand(PlayerCommand):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'Block(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+        return f'TargetSpace(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
             f'target={self.x},{self.y}, data={self._data})'
 
 
