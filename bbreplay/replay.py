@@ -543,219 +543,231 @@ class Replay:
                 board.unset_prone(targeting_player)
                 yield Blitz(targeting_player, target_by_idx)
 
+        if not isinstance(cmd, TargetSpaceCommand):
+            raise ValueError(f"Expected TargetSpaceCommand but got {type(cmd).__name__}")
+
+        target_by_coords = board.get_position(cmd.position)
+        if target_by_coords != target_by_idx:
+            raise ValueError(f"Target command targetted {target_by_idx} but {cmd} targetted {target_by_coords}")
+
+        if not target_log_entries:
+            target_log_entries = self.__next_generator(log_entries)
+        yield from self.__process_block_rolls(targeting_player, target_by_idx, cmd, cmds, moved,
+                                              target_log_entries, log_entries, board)
+
+    def __process_block_rolls(self, targeting_player, target_by_idx, block, cmds, moved,
+                              target_log_entries, log_entries, board, frenzied_block=False):
+        cmd = None
         if Skills.FOUL_APPEARANCE in target_by_idx.skills:
-            if not target_log_entries:
-                target_log_entries = self.__next_generator(log_entries)
             log_entry = next(target_log_entries)
             yield from self._process_action_result(log_entry, FoulAppearanceEntry, target_log_entries, cmds,
                                                    targeting_player, ActionType.FOUL_APPEARANCE, board)
 
-        if not target_log_entries:
-            target_log_entries = self.__next_generator(log_entries)
-        if isinstance(cmd, TargetSpaceCommand):
-            dumped_off = False
-            if Skills.DUMP_OFF in target_by_idx.skills and board.get_ball_carrier() == target_by_idx:
-                dumped_off = True
-                dumpoff_cmd = next(cmds)
-                if dumpoff_cmd.team != target_by_idx.team.team_type:
-                    raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
-                throw_cmd = next(cmds)
-                yield from self._process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board, False)
-            if moved and board.get_distance_moved(targeting_player) >= targeting_player.MA:
-                if not target_log_entries:
-                    target_log_entries = self.__next_generator(log_entries)
+        dumped_off = False
+        if Skills.DUMP_OFF in target_by_idx.skills and board.get_ball_carrier() == target_by_idx:
+            dumped_off = True
+            dumpoff_cmd = next(cmds)
+            if dumpoff_cmd.team != target_by_idx.team.team_type:
+                raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
+            throw_cmd = next(cmds)
+            yield from self._process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board, False)
+        if moved and board.get_distance_moved(targeting_player) >= targeting_player.MA:
+            log_entry = next(target_log_entries)
+            success = True
+            rerolled = False
+            for event in self._process_action_result(log_entry, GoingForItEntry, target_log_entries, cmds,
+                                                     targeting_player, ActionType.GOING_FOR_IT, board):
+                yield event
+                if isinstance(event, Action):
+                    success = event.result == ActionResult.SUCCESS
+                elif isinstance(event, Reroll):
+                    rerolled = True
+            if dumped_off and rerolled:
                 log_entry = next(target_log_entries)
-                success = True
-                rerolled = False
                 for event in self._process_action_result(log_entry, GoingForItEntry, target_log_entries, cmds,
                                                          targeting_player, ActionType.GOING_FOR_IT, board):
                     yield event
                     if isinstance(event, Action):
                         success = event.result == ActionResult.SUCCESS
-                    elif isinstance(event, Reroll):
-                        rerolled = True
-                if dumped_off and rerolled:
-                    log_entry = next(target_log_entries)
-                    for event in self._process_action_result(log_entry, GoingForItEntry, target_log_entries, cmds,
-                                                             targeting_player, ActionType.GOING_FOR_IT, board):
-                        yield event
-                        if isinstance(event, Action):
-                            success = event.result == ActionResult.SUCCESS
 
-                if not success:
-                    log_entry = next(target_log_entries)
-                    yield from self._process_armour_roll(log_entry, target_log_entries,
-                                                         targeting_player, board)
-                    return
+            if not success:
+                log_entry = next(target_log_entries)
+                yield from self._process_armour_roll(log_entry, target_log_entries,
+                                                     targeting_player, board)
+                return
 
-            block = cmd
-            blocking_player = targeting_player
+        blocking_player = targeting_player
+        block_dice = next(target_log_entries)
+        block_choice = next(cmds)
+        if isinstance(block_choice, ProRerollCommand):
+            reroll = next(target_log_entries)
+            yield Action(blocking_player, ActionType.PRO, reroll.result, board)
+            if reroll.result == ActionResult.SUCCESS:
+                yield Reroll(reroll.team, 'Pro')
+                _ = next(target_log_entries)  # Burn the random duplication
+            elif len(block_dice.results) == 2 and block_dice.results[0] == block_dice.results[1]:
+                _ = next(cmds)  # Burn the reroll prompt that shows as a block dice choice
             block_dice = next(target_log_entries)
             block_choice = next(cmds)
-            if isinstance(block_choice, ProRerollCommand):
-                reroll = next(target_log_entries)
-                yield Action(blocking_player, ActionType.PRO, reroll.result, board)
-                if reroll.result == ActionResult.SUCCESS:
-                    yield Reroll(reroll.team, 'Pro')
-                    _ = next(target_log_entries)  # Burn the random duplication
-                elif len(block_dice.results) == 2 and block_dice.results[0] == block_dice.results[1]:
-                    _ = next(cmds)  # Burn the reroll prompt that shows as a block dice choice
-                block_dice = next(target_log_entries)
-                block_choice = next(cmds)
-            elif isinstance(block_choice, RerollCommand):
-                board.use_reroll(blocking_player.team.team_type)
-                reroll = next(target_log_entries)
-                yield Reroll(reroll.team, 'Team Reroll')
-                block_dice = next(target_log_entries)
-                block_choice = next(cmds)
-            target_by_coords = board.get_position(block.position)
-            if target_by_coords != target_by_idx:
-                raise ValueError(f"Target command targetted {target_by_idx} but {block} targetted {target_by_coords}")
-            chosen_block_dice = block_dice.results[block_choice.dice_idx]
-            yield Block(blocking_player, target_by_idx,
-                        block_dice.results, chosen_block_dice)
+        elif isinstance(block_choice, RerollCommand):
+            board.use_reroll(blocking_player.team.team_type)
+            reroll = next(target_log_entries)
+            yield Reroll(reroll.team, 'Team Reroll')
+            block_dice = next(target_log_entries)
+            block_choice = next(cmds)
+        chosen_block_dice = block_dice.results[block_choice.dice_idx]
+        yield Block(blocking_player, target_by_idx,
+                    block_dice.results, chosen_block_dice)
 
-            if chosen_block_dice == BlockResult.PUSHED or chosen_block_dice == BlockResult.DEFENDER_DOWN \
-               or chosen_block_dice == BlockResult.DEFENDER_STUMBLES:
-                origin_coords = blocking_player.position
-                old_coords = target_by_coords.position
-                pushbacks = calculate_pushbacks(origin_coords, old_coords, board)
-                if len(pushbacks) != 1 or Skills.FRENZY not in blocking_player.skills:
-                    cmd = next(cmds)
-                    board.reset_position(old_coords)
-                    pushing_player = blocking_player
-                    pushed_player = target_by_coords
-                    while True:
-                        if isinstance(cmd, PushbackCommand):
-                            new_coords = cmd.position
-                            dest_content = board.get_position(new_coords)
-                            origin_coords = pushed_player.position
-                            board.set_position(new_coords, pushed_player)
-                            yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
-                            if not dest_content:
-                                if Skills.FRENZY not in blocking_player.skills \
-                                   and Skills.FEND not in target_by_idx.skills:
-                                    cmd = next(cmds)
-                                elif Skills.FEND in target_by_idx.skills:
-                                    skill_entry = next(target_log_entries)
-                                    validate_skill_log_entry(skill_entry, target_by_idx, Skills.FEND)
-                                    yield Skill(target_by_idx, Skills.FEND)
-                                break
-                            cmd = next(cmds)
-                            pushing_player = pushed_player
-                            pushed_player = dest_content
-                            old_coords = new_coords
-                        elif isinstance(cmd, FollowUpChoiceCommand):
-                            # FollowUp without Pushback means they only had one space to go to
-                            new_coords = calculate_pushback(origin_coords, old_coords, board)
-                            board.set_position(new_coords, pushed_player)
-                            yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
+        block_position = target_by_idx.position
+
+        if chosen_block_dice == BlockResult.PUSHED or chosen_block_dice == BlockResult.DEFENDER_DOWN \
+           or chosen_block_dice == BlockResult.DEFENDER_STUMBLES:
+            origin_coords = blocking_player.position
+            old_coords = target_by_idx.position
+            pushbacks = calculate_pushbacks(origin_coords, old_coords, board)
+            if len(pushbacks) != 1 or Skills.FRENZY not in blocking_player.skills:
+                cmd = next(cmds)
+                board.reset_position(old_coords)
+                pushing_player = blocking_player
+                pushed_player = target_by_idx
+                while True:
+                    if isinstance(cmd, PushbackCommand):
+                        new_coords = cmd.position
+                        dest_content = board.get_position(new_coords)
+                        origin_coords = pushed_player.position
+                        board.set_position(new_coords, pushed_player)
+                        yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
+                        if not dest_content:
+                            if Skills.FRENZY not in blocking_player.skills \
+                               and Skills.FEND not in target_by_idx.skills:
+                                cmd = next(cmds)
+                            elif Skills.FEND in target_by_idx.skills:
+                                skill_entry = next(target_log_entries)
+                                validate_skill_log_entry(skill_entry, target_by_idx, Skills.FEND)
+                                yield Skill(target_by_idx, Skills.FEND)
                             break
-                        elif isinstance(cmd, MovementCommand):
-                            yield from self._process_movement(pushing_player, cmd, cmds,
-                                                              target_log_entries, log_entries, board)
-                            break
-                        else:
-                            raise ValueError("Expected PushbackCommand after "
-                                             f"{chosen_block_dice} but got {type(cmd).__name__}")
-                else:
-                    # Frenzy with one destination won't have a Pushback (one dest) or a
-                    # FollowUp (because Frenzy always does) so it needs special handling
-                    board.set_position(pushbacks[0], target_by_coords)
-                    board.reset_position(old_coords)
+                        cmd = next(cmds)
+                        pushing_player = pushed_player
+                        pushed_player = dest_content
+                        old_coords = new_coords
+                    elif isinstance(cmd, FollowUpChoiceCommand):
+                        # FollowUp without Pushback means they only had one space to go to
+                        new_coords = calculate_pushback(origin_coords, old_coords, board)
+                        board.set_position(new_coords, pushed_player)
+                        yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
+                        break
+                    elif isinstance(cmd, MovementCommand):
+                        yield from self._process_movement(pushing_player, cmd, cmds,
+                                                          target_log_entries, log_entries, board)
+                        break
+                    else:
+                        raise ValueError("Expected PushbackCommand after "
+                                         f"{chosen_block_dice} but got {type(cmd).__name__}")
+            else:
+                # Frenzy with one destination won't have a Pushback (one dest) or a
+                # FollowUp (because Frenzy always does) so it needs special handling
+                board.set_position(pushbacks[0], target_by_idx)
+                board.reset_position(old_coords)
 
-                # Follow-up
-                if (Skills.FRENZY in blocking_player.skills and Skills.FEND not in target_by_idx.skills) or \
-                   (isinstance(cmd, FollowUpChoiceCommand) and cmd.choice):
-                    old_coords = blocking_player.position
-                    board.reset_position(old_coords)
-                    board.set_position(block.position, blocking_player)
-                    yield FollowUp(blocking_player, target_by_idx, old_coords, block.position, board)
+            # Follow-up
+            if (Skills.FRENZY in blocking_player.skills and Skills.FEND not in target_by_idx.skills) or \
+               (isinstance(cmd, FollowUpChoiceCommand) and cmd.choice):
+                old_coords = blocking_player.position
+                board.reset_position(old_coords)
+                board.set_position(block_position, blocking_player)
+                yield FollowUp(blocking_player, target_by_idx, old_coords, block_position, board)
 
-            attacker_avoided = False
-            defender_avoided = False
+        attacker_avoided = False
+        defender_avoided = False
 
-            if chosen_block_dice == BlockResult.DEFENDER_STUMBLES and Skills.DODGE in target_by_idx.skills:
+        if chosen_block_dice == BlockResult.DEFENDER_STUMBLES and Skills.DODGE in target_by_idx.skills:
+            skill_entry = next(target_log_entries)
+            validate_skill_log_entry(skill_entry, target_by_idx, Skills.DODGE)
+            yield DodgeBlock(blocking_player, target_by_idx)
+            defender_avoided = True
+        elif chosen_block_dice == BlockResult.BOTH_DOWN:
+            if Skills.BLOCK in blocking_player.skills:
                 skill_entry = next(target_log_entries)
-                validate_skill_log_entry(skill_entry, target_by_idx, Skills.DODGE)
-                yield DodgeBlock(blocking_player, target_by_idx)
+                validate_skill_log_entry(skill_entry, blocking_player, Skills.BLOCK)
+                yield BlockBothDown(blocking_player)
+                attacker_avoided = True
+            if Skills.BLOCK in target_by_idx.skills:
+                skill_entry = next(target_log_entries)
+                validate_skill_log_entry(skill_entry, target_by_idx, Skills.BLOCK)
+                yield BlockBothDown(target_by_idx)
                 defender_avoided = True
-            elif chosen_block_dice == BlockResult.BOTH_DOWN:
-                if Skills.BLOCK in blocking_player.skills:
-                    skill_entry = next(target_log_entries)
-                    validate_skill_log_entry(skill_entry, blocking_player, Skills.BLOCK)
-                    yield BlockBothDown(blocking_player)
-                    attacker_avoided = True
-                if Skills.BLOCK in target_by_idx.skills:
-                    skill_entry = next(target_log_entries)
-                    validate_skill_log_entry(skill_entry, target_by_idx, Skills.BLOCK)
-                    yield BlockBothDown(target_by_idx)
-                    defender_avoided = True
 
-            attacker_injured = False
-            attacker_casualty = False
-            if (chosen_block_dice == BlockResult.ATTACKER_DOWN
-                or chosen_block_dice == BlockResult.BOTH_DOWN) \
-                    and not attacker_avoided:
-                armour_entry = next(target_log_entries)
-                for event in self._process_armour_roll(armour_entry, target_log_entries,
-                                                       blocking_player, board):
-                    yield event
-                    if isinstance(event, InjuryRoll):
-                        attacker_injured = event.result != InjuryRollResult.STUNNED
-                        attacker_casualty = event.result == InjuryRollResult.INJURED
-                        if attacker_injured and not attacker_casualty:
-                            yield from self._process_apothecary(blocking_player, event.result,
-                                                                CasualtyResult.NONE,
-                                                                cmds, target_log_entries, board)
+        attacker_injured = False
+        attacker_casualty = False
+        if (chosen_block_dice == BlockResult.ATTACKER_DOWN
+            or chosen_block_dice == BlockResult.BOTH_DOWN) \
+                and not attacker_avoided:
+            armour_entry = next(target_log_entries)
+            for event in self._process_armour_roll(armour_entry, target_log_entries,
+                                                   blocking_player, board):
+                yield event
+                if isinstance(event, InjuryRoll):
+                    attacker_injured = event.result != InjuryRollResult.STUNNED
+                    attacker_casualty = event.result == InjuryRollResult.INJURED
+                    if attacker_injured and not attacker_casualty:
+                        yield from self._process_apothecary(blocking_player, event.result,
+                                                            CasualtyResult.NONE,
+                                                            cmds, target_log_entries, board)
 
-            defender_injured = False
-            defender_casualty = False
-            if (chosen_block_dice == BlockResult.DEFENDER_DOWN or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
-                or chosen_block_dice == BlockResult.BOTH_DOWN) \
-               and not defender_avoided:
-                armour_entry = next(target_log_entries)
-                pushed_into_ball = target_by_idx.position == board.get_ball_position()
-                for event in self._process_armour_roll(armour_entry, target_log_entries, target_by_idx, board):
-                    yield event
-                    if isinstance(event, InjuryRoll):
-                        defender_injured = event.result != InjuryRollResult.STUNNED
-                        defender_casualty = event.result == InjuryRollResult.INJURED
-                        if defender_injured and not defender_casualty:
-                            yield from self._process_apothecary(target_by_idx, event.result,
-                                                                CasualtyResult.NONE,
-                                                                cmds, target_log_entries, board)
-                if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
-                    yield from self._process_ball_movement(target_log_entries, blocking_player, board)
-            elif target_by_idx.position == OFF_PITCH_POSITION:
-                event = self._process_injury_roll(target_log_entries, target_by_idx, board)
-                defender_injured = event.result != InjuryRollResult.STUNNED
-                defender_casualty = event.result == InjuryRollResult.INJURED
-                if defender_injured and not defender_casualty:
-                    yield from self._process_apothecary(target_by_idx, event.result,
-                                                        CasualtyResult.NONE,
-                                                        cmds, target_log_entries, board)
-                if board.get_ball_carrier() == target_by_idx:
-                    board.set_ball_position(block.position)  # Drop the ball so the throw-in works
-                    yield from self._process_ball_movement(target_log_entries, blocking_player, board)
+        defender_injured = False
+        defender_casualty = False
+        if (chosen_block_dice == BlockResult.DEFENDER_DOWN or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
+           or chosen_block_dice == BlockResult.BOTH_DOWN) \
+           and not defender_avoided:
+            armour_entry = next(target_log_entries)
+            pushed_into_ball = target_by_idx.position == board.get_ball_position()
+            for event in self._process_armour_roll(armour_entry, target_log_entries, target_by_idx, board):
+                yield event
+                if isinstance(event, InjuryRoll):
+                    defender_injured = event.result != InjuryRollResult.STUNNED
+                    defender_casualty = event.result == InjuryRollResult.INJURED
+                    if defender_injured and not defender_casualty:
+                        yield from self._process_apothecary(target_by_idx, event.result,
+                                                            CasualtyResult.NONE,
+                                                            cmds, target_log_entries, board)
+            if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
+                yield from self._process_ball_movement(target_log_entries, blocking_player, board)
+        elif target_by_idx.position == OFF_PITCH_POSITION:
+            event = self._process_injury_roll(target_log_entries, target_by_idx, board)
+            defender_injured = event.result != InjuryRollResult.STUNNED
+            defender_casualty = event.result == InjuryRollResult.INJURED
+            if defender_injured and not defender_casualty:
+                yield from self._process_apothecary(target_by_idx, event.result,
+                                                    CasualtyResult.NONE,
+                                                    cmds, target_log_entries, board)
+            if board.get_ball_carrier() == target_by_idx:
+                board.set_ball_position(block_position)  # Drop the ball so the throw-in works
+                yield from self._process_ball_movement(target_log_entries, blocking_player, board)
 
-            if isinstance(cmd, MovementCommand):
-                yield from self._process_movement(blocking_player, cmd, cmds,
-                                                  target_log_entries, log_entries, board)
-            if attacker_casualty:
-                yield from self._process_casualty(blocking_player, cmds, target_log_entries, board)
+        if isinstance(cmd, MovementCommand):
+            yield from self._process_movement(blocking_player, cmd, cmds,
+                                              target_log_entries, log_entries, board)
+        if attacker_casualty:
+            yield from self._process_casualty(blocking_player, cmds, target_log_entries, board)
 
-            if defender_casualty:
-                yield from self._process_casualty(target_by_idx, cmds, target_log_entries, board)
-            log_entry = next(target_log_entries, None)
-            while log_entry:
-                log_entry_type = type(log_entry)
-                if log_entry_type is TurnOverEntry:
-                    validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
-                    yield from board.change_turn(blocking_player.team.team_type, log_entry.reason)
-                else:
-                    raise NotImplementedError(f"Unhandled log entry - {log_entry}")
-                log_entry = next(target_log_entries, None)
+        if defender_casualty:
+            yield from self._process_casualty(target_by_idx, cmds, target_log_entries, board)
+
+        if attacker_casualty:
+            log_entry = next(target_log_entries)
+            validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
+            yield from board.change_turn(blocking_player.team.team_type, log_entry.reason)
+        elif not frenzied_block and Skills.FRENZY in blocking_player.skills and \
+                (defender_avoided or chosen_block_dice == BlockResult.PUSHED):
+            if board.get_distance_moved(targeting_player) >= targeting_player.MA + 1:
+                # Can't Frenzy when we hit our GFI limit
+                return
+            log_entry = next(target_log_entries)
+            validate_skill_log_entry(log_entry, targeting_player, Skills.FRENZY)
+            yield Skill(targeting_player, Skills.FRENZY)
+            yield from self.__process_block_rolls(targeting_player, target_by_idx, block, cmds, moved,
+                                                  target_log_entries, log_entries, board, True)
 
     def _process_throw(self, player, target_by_idx, cmds, target_log_entries, log_entries, board):
         cmd = next(cmds)

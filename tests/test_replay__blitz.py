@@ -526,11 +526,81 @@ def test_gfi_blitz_ball_carrier_with_dumpoff_to_noone_fails_gfi_bug(board):
     assert not next(cmds, None)
     assert not next(log_entries, None)
 
-    # Throw(team=TeamType.AWAY, player=5, required=3+, roll=6, result=ThrowResult.ACCURATE_PASS),
-    # Bounce(direction=ScatterDirection.NE),
-    # GoingForIt(team=TeamType.HOME, player=12, required=3+ Blizzard, roll=1, result==ActionResult.FAILURE),
-    # Reroll(team=TeamType.HOME),
-    # GoingForIt(team=TeamType.HOME, player=12, required=3+ Blizzard, roll=6, result=ActionResult.SUCCESS),
-    # GoigForIt(team=TeamType.HOME, player=12, required=3+ Blizzard, roll=2, result=ActionResult.FAILURE),
-    # ArmourValueRoll(team=TeamType.HOME, player=12, required=9+, oll=4, result=ActionResult.FAILURE),
-    # TurnOver(team=TeamType.HOME, reason=Knocked Down!)]
+
+def test_frenzy_blitz_beyond_gfi_limit(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.FRENZY)
+    board.set_position(Position(2, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 7]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8])
+    ])
+    log_entries = iter_([
+        # Movement GFI action
+        GoingForItEntry(player.team.team_type, player.number, "2+", "2", ActionResult.SUCCESS),
+        # Blocking GFI action
+        GoingForItEntry(player.team.team_type, player.number, "2+", "2", ActionResult.SUCCESS),
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
+        # We can't Frenzy and follow-up because we ran out of GFI
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Blitz)
+    assert event.blitzing_player == player
+    assert event.blitzed_player == opponent
+
+    for _ in range(4):
+        event = next(events)
+        # Movement tests should check valid movement
+        assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.PUSHED]
+    assert event.result == BlockResult.PUSHED
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
