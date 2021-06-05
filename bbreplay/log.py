@@ -227,6 +227,11 @@ class TentacledEntry(ActionResultEntry):
                f"required={self.required}, roll={self.roll}, result={self.result})"
 
 
+class LeapEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Leap", team, player, required, roll, result)
+
+
 class ThrowEntry(TeamPlayerEntry):
     def __init__(self, team, player, required, roll, result):
         super().__init__(team, player)
@@ -314,6 +319,7 @@ OTHER_ENTRY_MAP = {
     "Appearance": FoulAppearanceEntry,
     "Catch": CatchEntry,
     "KO": KORecoveryEntry,
+    "Leap": LeapEntry,
     "Stupid": StupidEntry,
     "Tentacles": TentacledRollEntry,
     "Value": ArmourValueRollEntry,

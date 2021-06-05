@@ -8,7 +8,7 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
     KickoffEvent, Role, ThrowResult, _norths, _souths, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
+from .log import LeapEntry, parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry
 from .state import GameState
@@ -19,9 +19,10 @@ from .teams import create_team
 class ActionType(Enum):
     CATCH = auto()
     DODGE = auto()
-    GOING_FOR_IT = auto()
-    PRO = auto()
     FOUL_APPEARANCE = auto()
+    GOING_FOR_IT = auto()
+    LEAP = auto()
+    PRO = auto()
     REALLY_STUPID = auto()
     WILD_ANIMAL = auto()
 
@@ -831,13 +832,19 @@ class Replay:
                 failed_movement = event.result != ActionResult.SUCCESS
             yield event
         move_log_entries = stupid_unused.log_entries
+        leap = False
 
         for movement in moves:
             target_space = movement.position
             if failed_movement:
+                if leap:
+                    leap = False
+                    board.set_position(target_space, player)
                 yield FailedMovement(player, start_space, target_space)
                 start_space = target_space
                 continue
+
+            leap = False
 
             if board.get_distance_moved(player) >= player.MA:
                 if not move_log_entries:
@@ -913,11 +920,34 @@ class Replay:
                     elif isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.DIVING_TACKLE:
                         diving_tackle_entry = log_entry
                         continue
+                    elif isinstance(log_entry, LeapEntry):
+                        leap = True
+                        validate_log_entry(log_entry, LeapEntry, player.team.team_type, player.number)
+                        yield Action(player, ActionType.LEAP, log_entry.result, board)
+                        if log_entry.result == ActionResult.SUCCESS:
+                            failed_movement = False
+                            break
+                        failed_movement = True
+                        actions, new_result = self._process_action_reroll(cmds, move_log_entries, player, board,
+                                                                          Skills.DODGE)
+                        yield from actions
+                        if new_result:
+                            yield Action(player, ActionType.DODGE, new_result, board)
+                            failed_movement = new_result != ActionResult.SUCCESS
+                        if failed_movement:
+                            log_entry = next(move_log_entries)
+                            yield from self._process_armour_roll(log_entry, move_log_entries, player, board)
+                            log_entry = next(move_log_entries)
+                            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                            turnover = log_entry.reason
+                        break
                     else:
                         raise ValueError("Looking for dodge-related log entries but got "
                                          f"{type(log_entry).__name__}")
 
-            if target_space == board.get_ball_position() and not pickup_entry:
+            if leap:
+                continue
+            elif target_space == board.get_ball_position() and not pickup_entry:
                 if not failed_movement:
                     if not move_log_entries:
                         move_log_entries = self.__next_generator(log_entries)

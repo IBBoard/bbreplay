@@ -1059,3 +1059,168 @@ def test_single_failed_tentacled_with_more_moves(board):
     assert player.position == end_move
     assert not board.is_prone(player)
     assert not next(events, None)
+
+
+def test_leap_success(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.LEAP)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        # Leap shows up as two movement commands and goes through any players
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 9, 7])
+    ]
+    log_entries = [
+        LeapEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.player == player
+    assert event.action == ActionType.LEAP
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(9, 7)
+    assert player.position == Position(9, 7)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
+def test_leap_failure(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.LEAP)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        # Leap shows up as two movement commands and goes through any players
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 9, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    log_entries = [
+        LeapEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.player == player
+    assert event.action == ActionType.LEAP
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(9, 7)
+    assert player.position == Position(9, 7)
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
+
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
+def test_leap_failure_with_more_movement(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.LEAP)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    cmds = [
+        # Leap shows up as two movement commands and goes through any players
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 9, 7]),
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 10, 7]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 11, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    log_entries = [
+        LeapEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.player == player
+    assert event.action == ActionType.LEAP
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(9, 7)
+    assert player.position == Position(9, 7)
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(9, 7)
+    assert event.target_space == Position(10, 7)
+    assert player.position == Position(9, 7)
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(10, 7)
+    assert event.target_space == Position(11, 7)
+    assert player.position == Position(9, 7)
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
+
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
