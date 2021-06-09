@@ -8,8 +8,8 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
     KickoffEvent, Role, ThrowResult, _norths, _souths, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import LeapEntry, parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
-    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, \
+from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
+    PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
@@ -990,8 +990,20 @@ class Replay:
                 yield DivingTackle(diving_player, start_space)
 
             if pickup_entry:
-                yield Pickup(player, movement.position, pickup_entry.result)
-                if pickup_entry.result != ActionResult.SUCCESS:
+                result = pickup_entry.result
+                if result == ActionResult.SUCCESS:
+                    board.set_ball_carrier(player)
+                yield Pickup(player, movement.position, result)
+                if result != ActionResult.SUCCESS:
+                    actions, new_result = self._process_action_reroll(cmds, move_log_entries, player, board,
+                                                                      reroll_skill=Skills.SURE_HANDS)
+                    yield from actions
+                    if new_result:
+                        result = new_result
+                        if result == ActionResult.SUCCESS:
+                            board.set_ball_carrier(player)
+                        yield Pickup(player, movement.position, result)
+                if result != ActionResult.SUCCESS:
                     failed_movement = True
                     find_turnover = True
                     for event in self._process_ball_movement(move_log_entries, player, board):
@@ -1003,8 +1015,6 @@ class Replay:
                         validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                         yield from board.change_turn(player.team.team_type, log_entry.reason)
                     # Else we already found the turnover during the pickup
-                else:
-                    board.set_ball_carrier(player)
                 pickup_entry = None
 
             start_space = target_space
