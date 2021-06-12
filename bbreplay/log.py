@@ -244,14 +244,32 @@ class ThrowEntry(TeamPlayerEntry):
                f"result={self.result})"
 
 
-class SkillEntry:
+class SkillEntry(TeamPlayerEntry):
     def __init__(self, team, player, skill):
-        self.team = team
-        self.player = int(player)
+        super().__init__(team, player)
         self.skill = enum_name_to_enum(skill, Skills)
 
     def __repr__(self):
         return f'Skill(team={self.team}, player={self.player}, skill={self.skill})'
+
+
+def create_skill_roll_entry(skill):
+    def __create_skill_roll_entry(team, player, required, roll, result):
+        return SkillRollEntry(team, player, skill.name, required, roll, result)
+    return __create_skill_roll_entry
+
+
+class SkillRollEntry(TeamPlayerEntry):
+    def __init__(self, team, player, skill, required, roll, result):
+        super().__init__(team, player)
+        self.skill = enum_name_to_enum(skill, Skills)
+        self.required = required
+        self.roll = roll
+        self.result = ActionResult[result.upper()]
+
+    def __repr__(self):
+        return f"SkillRoll(team={self.team}, player={self.player}, skill={self.skill}, " \
+               f"required={self.required}, roll={self.roll}, result={self.result})"
 
 
 class RerollEntry(TeamEntry):
@@ -320,6 +338,7 @@ OTHER_ENTRY_MAP = {
     "Catch": CatchEntry,
     "KO": KORecoveryEntry,
     "Leap": LeapEntry,
+    "Loner": create_skill_roll_entry(Skills.LONER),
     "Stupid": StupidEntry,
     "Tentacles": TentacledRollEntry,
     "Value": ArmourValueRollEntry,

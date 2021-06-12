@@ -10,7 +10,7 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
-    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry
+    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, SkillRollEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
@@ -52,6 +52,7 @@ Pass = namedtuple('Pass', ['player', 'target', 'result', 'board'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Skill = namedtuple('Skill', ['player', 'skill'])
+SkillRoll = namedtuple('SkillRoll', ['player', 'skill', 'result', 'board'])
 Reroll = namedtuple('Reroll', ['team', 'type'])
 Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 'board'])
 Scatter = namedtuple('Scatter', ['start_space', 'end_space', 'board'])
@@ -405,24 +406,33 @@ class Replay:
                         raise ValueError("Expected DiceChoiceCommand after ProRerollCommand "
                                          f"but got {type(cmd).__name__}")
         elif board.can_reroll(player.team.team_type):
-            cmd = next(cmds)
-            if isinstance(cmd, DeclineRerollCommand):
-                cmd = next(cmds)
-                if not isinstance(cmd, DiceChoiceCommand):
-                    raise ValueError("Expected DiceChoiceCommand after DeclineRerollCommand "
-                                     f"but got {type(cmd).__name__}")
-                pass
-            elif isinstance(cmd, RerollCommand):
+            can_reroll = True
+            if Skills.LONER in player.skills:
                 log_entry = next(log_entries)
-                validate_log_entry(log_entry, RerollEntry, player.team.team_type)
-                board.use_reroll(player.team.team_type)
-                actions.append(Reroll(cmd.team, 'Team Reroll'))
-                reroll_success = True
-            elif isinstance(cmd, DiceChoiceCommand):
-                # Sometimes we only get cmd_type=19 even though most of the time we get cmd_type=51 for declined reroll
-                pass
-            else:
-                raise ValueError(f"Non-reroll command {type(cmd).__name__} found after failed action")
+                validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
+                actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
+                can_reroll = log_entry.result == ActionResult.SUCCESS
+
+            if can_reroll:
+                cmd = next(cmds)
+                if isinstance(cmd, DeclineRerollCommand):
+                    cmd = next(cmds)
+                    if not isinstance(cmd, DiceChoiceCommand):
+                        raise ValueError("Expected DiceChoiceCommand after DeclineRerollCommand "
+                                         f"but got {type(cmd).__name__}")
+                    pass
+                elif isinstance(cmd, RerollCommand):
+                    log_entry = next(log_entries)
+                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                    board.use_reroll(player.team.team_type)
+                    actions.append(Reroll(cmd.team, 'Team Reroll'))
+                    reroll_success = True
+                elif isinstance(cmd, DiceChoiceCommand):
+                    # Sometimes we only get cmd_type=19 even though most of the time
+                    # we get cmd_type=51 for declined reroll
+                    pass
+                else:
+                    raise ValueError(f"Non-reroll command {type(cmd).__name__} found after failed action")
         if modifying_skill:
             log_entry = next(log_entries)
             validate_log_entry(log_entry, SkillEntry, other_team(player.team.team_type))
