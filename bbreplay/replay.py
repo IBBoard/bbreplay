@@ -10,7 +10,8 @@ from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills,
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
-    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, SkillRollEntry
+    ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, \
+    SkillRollEntry, ApothecaryLogEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
@@ -467,6 +468,8 @@ class Replay:
         if player.position == OFF_PITCH_POSITION:
             # Assume we're using older rules where apothecaries can't help players in the crowd
             return
+        if injury == InjuryRollResult.STUNNED:
+            raise ValueError("Apothecary cannot help stunned players")
         cmd = next(cmds)
         if not isinstance(cmd, ApothecaryCommand):
             raise ValueError(f"Expected ApothecaryCommand after injury but got {type(cmd).__name__}")
@@ -476,8 +479,12 @@ class Replay:
         if not cmd.used:
             # Let them suffer their fate!
             return
+        apothecary_log_entry = next(log_entries)
+        validate_log_entry(apothecary_log_entry, ApothecaryLogEntry, player.team.team_type, player.number)
         if casualty_result == CasualtyResult.NONE:
-            raise NotImplementedError("Not seen apothecary on KO")
+            yield Apothecary(player, InjuryRollResult.STUNNED, CasualtyResult.NONE)
+            yield InjuryRoll(player, InjuryRollResult.STUNNED)
+            return
         new_casualty_roll = next(log_entries)
         yield Apothecary(player, injury, new_casualty_roll.result)
         cmd = next(cmds)
@@ -489,9 +496,9 @@ class Replay:
         if cmd.result != injury and cmd.result != new_casualty_roll.result:
             raise ValueError(f"Expected ApothecaryChoiceCommand result of {injury} or "
                              f"{new_casualty_roll.result} but got {cmd.result}")
-        yield Casualty(player, cmd.result)
         if cmd.result == CasualtyResult.BADLY_HURT:
             board.unset_injured(player)
+        yield Casualty(player, cmd.result)
 
     def _process_uncontrollable_skills(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         yield from self._process_stupidity(player, cmd, cmds, cur_log_entries, log_entries, board, unused)
