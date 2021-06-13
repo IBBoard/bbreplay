@@ -253,7 +253,6 @@ class GameState:
         self.__used_reroll = True
 
     def can_reroll(self, team):
-        print(self.rerolls[team.value])
         return self.rerolls[team.value] > 0 and not self.__used_reroll
 
     def add_reroll(self, team):
