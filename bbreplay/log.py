@@ -383,7 +383,7 @@ pickup_re = re.compile(f"{TEAM_PLAYER} Pick-up {{AG}} +\\(([0-9]+\\+)\\) : .*([0
                        " (Success|Failure)")
 throw_re = re.compile(f"{TEAM_PLAYER} Launch {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
                       " (Fumble|(?:Inaccurate|Accurate) pass)!")
-dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
+dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{(?:AG|ST)}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
 # We're specific about skills because some like Horns and Stunty aren't important to us and just change roll results
 skill_re = re.compile(f"{TEAM_PLAYER} uses (Dodge|Block|Diving Tackle|Fend|Frenzy|Sure Hands)")
