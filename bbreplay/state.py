@@ -170,6 +170,8 @@ class GameState:
 
     def set_ball_position(self, position):
         self.__ball_carrier = None
+        if position.x < 0 or position.x >= PITCH_WIDTH or position.y < 0 or position.y >= PITCH_LENGTH:
+            position = OFF_PITCH_POSITION
         self.__ball_position = position
 
     def set_ball_carrier(self, player):
