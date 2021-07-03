@@ -21,7 +21,7 @@ def home_player_1():
 
 @pytest.fixture
 def home_team(home_player_1):
-    home_team = Team("Home Halflings", "Halfling", 40000, 3, 3, TeamType.HOME)
+    home_team = Team("Home Halflings", "Halfling", 40000, 3, 3, 0, TeamType.HOME)
     home_team.add_player(0, home_player_1)
     return home_team
 
@@ -33,7 +33,7 @@ def away_player_1():
 
 @pytest.fixture
 def away_team(away_player_1):
-    away_team = Team("Away Amazons", "Amazons", 40000, 3, 3, TeamType.AWAY)
+    away_team = Team("Away Amazons", "Amazons", 40000, 3, 3, 0, TeamType.AWAY)
     away_team.add_player(0, away_player_1)
     return away_team
 

@@ -442,21 +442,26 @@ class Replay:
             new_result = log_entry.result
         return actions, new_result
 
-    def _process_armour_roll(self, roll_entry, log_entries, player, board):
+    def _process_armour_roll(self, player, cmds, roll_entry, log_entries, board):
         validate_log_entry(roll_entry, ArmourValueRollEntry,
                            player.team.team_type, player.number)
         board.set_prone(player)
         yield PlayerDown(player)
         yield ArmourRoll(player, roll_entry.result)
         if roll_entry.result == ActionResult.SUCCESS:
-            yield self._process_injury_roll(log_entries, player, board)
+            yield from self._process_injury_roll(player, cmds, log_entries, board)
 
-    def _process_injury_roll(self, log_entries, player, board):
+    def _process_injury_roll(self, player, cmds, log_entries, board):
         injury_roll = next(log_entries)
         if injury_roll.result != InjuryRollResult.STUNNED:
             board.reset_position(player.position)
             board.set_injured(player)
-        return InjuryRoll(player, injury_roll.result)
+        yield InjuryRoll(player, injury_roll.result)
+        if injury_roll.result == InjuryRollResult.INJURED:
+            yield from self._process_casualty(player, cmds, log_entries, board)
+        elif injury_roll.result == InjuryRollResult.STUNNED:
+            yield from self._process_apothecary(player, injury_roll.result, CasualtyResult.NONE,
+                                                cmds, log_entries, board)
 
     def _process_casualty(self, player, cmds, log_entries, board):
         casualty_roll = next(log_entries)
@@ -467,6 +472,8 @@ class Replay:
     def _process_apothecary(self, player, injury, casualty_result, cmds, log_entries, board):
         if player.position == OFF_PITCH_POSITION:
             # Assume we're using older rules where apothecaries can't help players in the crowd
+            return
+        if not board.has_apothecary(player.team.team_type):
             return
         if injury == InjuryRollResult.STUNNED:
             raise ValueError("Apothecary cannot help stunned players")
@@ -610,8 +617,10 @@ class Replay:
 
             if not success:
                 log_entry = next(target_log_entries)
-                yield from self._process_armour_roll(log_entry, target_log_entries,
-                                                     targeting_player, board)
+                yield from self._process_armour_roll(targeting_player, cmds, log_entry, target_log_entries, board)
+                log_entry = next(target_log_entries)
+                validate_log_entry(log_entry, TurnOverEntry, targeting_player.team.team_type)
+                yield from board.change_turn(targeting_player.team.team_type, log_entry.reason)
                 return
 
         blocking_player = targeting_player
@@ -716,41 +725,24 @@ class Replay:
                 yield BlockBothDown(target_by_idx)
                 defender_avoided = True
 
-        attacker_injured = False
-        attacker_casualty = False
+        attacker_down = False
         if (chosen_block_dice == BlockResult.ATTACKER_DOWN
             or chosen_block_dice == BlockResult.BOTH_DOWN) \
                 and not attacker_avoided:
+            attacker_down = True
             armour_entry = next(target_log_entries)
-            for event in self._process_armour_roll(armour_entry, target_log_entries,
-                                                   blocking_player, board):
-                yield event
-                if isinstance(event, InjuryRoll):
-                    attacker_injured = event.result != InjuryRollResult.STUNNED
-                    attacker_casualty = event.result == InjuryRollResult.INJURED
-                    if attacker_injured and not attacker_casualty:
-                        yield from self._process_apothecary(blocking_player, event.result,
-                                                            CasualtyResult.NONE,
-                                                            cmds, target_log_entries, board)
+            yield from self._process_armour_roll(blocking_player, cmds, armour_entry, target_log_entries, board)
 
-        defender_injured = False
-        defender_casualty = False
+        ball_bounces = False
         if (chosen_block_dice == BlockResult.DEFENDER_DOWN or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
            or chosen_block_dice == BlockResult.BOTH_DOWN) \
            and not defender_avoided:
             armour_entry = next(target_log_entries)
             pushed_into_ball = target_by_idx.position == board.get_ball_position()
-            for event in self._process_armour_roll(armour_entry, target_log_entries, target_by_idx, board):
-                yield event
-                if isinstance(event, InjuryRoll):
-                    defender_injured = event.result != InjuryRollResult.STUNNED
-                    defender_casualty = event.result == InjuryRollResult.INJURED
-                    if defender_injured and not defender_casualty:
-                        yield from self._process_apothecary(target_by_idx, event.result,
-                                                            CasualtyResult.NONE,
-                                                            cmds, target_log_entries, board)
+            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, target_log_entries, board)
+
             if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
-                yield from self._process_ball_movement(target_log_entries, blocking_player, board)
+                ball_bounces = True
         elif target_by_idx.position == OFF_PITCH_POSITION:
             event = self._process_injury_roll(target_log_entries, target_by_idx, board)
             defender_injured = event.result != InjuryRollResult.STUNNED
@@ -761,18 +753,16 @@ class Replay:
                                                     cmds, target_log_entries, board)
             if board.get_ball_carrier() == target_by_idx:
                 board.set_ball_position(block_position)  # Drop the ball so the throw-in works
-                yield from self._process_ball_movement(target_log_entries, blocking_player, board)
+                ball_bounces = True
 
         if isinstance(cmd, MovementCommand):
             yield from self._process_movement(blocking_player, cmd, cmds,
                                               target_log_entries, log_entries, board)
-        if attacker_casualty:
-            yield from self._process_casualty(blocking_player, cmds, target_log_entries, board)
 
-        if defender_casualty:
-            yield from self._process_casualty(target_by_idx, cmds, target_log_entries, board)
+        if ball_bounces:
+            yield from self._process_ball_movement(target_log_entries, blocking_player, board)
 
-        if attacker_casualty:
+        if attacker_down:
             log_entry = next(target_log_entries)
             validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
             yield from board.change_turn(blocking_player.team.team_type, log_entry.reason)
@@ -875,7 +865,7 @@ class Replay:
                         result = event.result
                 if result == ActionResult.FAILURE:
                     failed_movement = True
-                    yield from self._process_armour_roll(next(move_log_entries), move_log_entries, player, board)
+                    yield from self._process_armour_roll(player, cmds, next(move_log_entries), move_log_entries, board)
                     log_entry = next(move_log_entries)
                     validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                     turnover = log_entry.reason
@@ -906,7 +896,7 @@ class Replay:
                             failed_movement = new_result != ActionResult.SUCCESS
                         if failed_movement:
                             log_entry = next(move_log_entries)
-                            yield from self._process_armour_roll(log_entry, move_log_entries, player, board)
+                            yield from self._process_armour_roll(player, cmds, log_entry, move_log_entries, board)
                             log_entry = next(move_log_entries)
                             validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                             turnover = log_entry.reason
@@ -953,7 +943,7 @@ class Replay:
                             failed_movement = new_result != ActionResult.SUCCESS
                         if failed_movement:
                             log_entry = next(move_log_entries)
-                            yield from self._process_armour_roll(log_entry, move_log_entries, player, board)
+                            yield from self._process_armour_roll(player, cmds, log_entry, move_log_entries, board)
                             log_entry = next(move_log_entries)
                             validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                             turnover = log_entry.reason

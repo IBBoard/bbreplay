@@ -21,7 +21,7 @@ def home_player_1():
 
 @pytest.fixture
 def home_team(home_player_1):
-    home_team = Team("Home Halflings", "Halfling", 40000, 3, 3, TeamType.HOME)
+    home_team = Team("Home Halflings", "Halfling", 40000, 3, 3, 0, TeamType.HOME)
     home_team.add_player(0, home_player_1)
     return home_team
 
@@ -33,7 +33,7 @@ def away_player_1():
 
 @pytest.fixture
 def away_team(away_player_1):
-    away_team = Team("Away Amazons", "Amazons", 40000, 3, 3, TeamType.AWAY)
+    away_team = Team("Away Amazons", "Amazons", 40000, 3, 3, 0, TeamType.AWAY)
     away_team.add_player(0, away_player_1)
     return away_team
 
@@ -47,6 +47,7 @@ def board(home_team, away_team):
 
 
 def test_apothecary_recovers_casualty(board):
+    board.apothecaries[TeamType.HOME.value] = 1
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
     player = home_team.get_player(0)
@@ -81,6 +82,7 @@ def test_apothecary_recovers_casualty(board):
 
 
 def test_apothecary_reduces_casualty(board):
+    board.apothecaries[TeamType.HOME.value] = 1
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
     player = home_team.get_player(0)
@@ -115,6 +117,7 @@ def test_apothecary_reduces_casualty(board):
 
 
 def test_apothecary_reduces_KO(board):
+    board.apothecaries[TeamType.HOME.value] = 1
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
     player = home_team.get_player(0)
@@ -146,6 +149,7 @@ def test_apothecary_reduces_KO(board):
 
 
 def test_apothecary_declined(board):
+    board.apothecaries[TeamType.HOME.value] = 1
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
     player = home_team.get_player(0)

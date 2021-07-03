@@ -22,6 +22,7 @@ class GameState:
         self.score = [0, 0]
         self.turn_team = None
         self.rerolls = [home_team.rerolls, away_team.rerolls]
+        self.apothecaries = [home_team.apothecaries, away_team.apothecaries]
         self.__reset_board()
         self.__turn = 0
         self.__prone = set()
@@ -257,6 +258,12 @@ class GameState:
 
     def add_reroll(self, team):
         self.rerolls[team.value] += 1
+
+    def has_apothecary(self, team):
+        return self.apothecaries[team.value] > 0
+
+    def use_apothecary(self, team):
+        self.apothecaries[team.value] -= 1
 
     def __reset_board(self):
         self.__board = [[None] * PITCH_WIDTH for _ in range(PITCH_LENGTH)]

@@ -12,7 +12,7 @@ MAX_PLAYER_COUNT = 16
 def create_team(db, team_type):
     table_prefix = prefix_for_teamtype(team_type)
     cur = db.cursor()
-    cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity, iRerolls '
+    cur.execute('SELECT team.strName, race.DATA_CONSTANT, iValue, iPopularity, iRerolls, bApothecary '
                 f'FROM {table_prefix}_Team_Listing team INNER JOIN {table_prefix}_Races race ON idRaces = race.ID')
     team = Team(*cur.fetchone(), team_type)
     cur.execute('SELECT Match_strSave FROM SavedGameInfo')
@@ -62,12 +62,13 @@ def create_team(db, team_type):
 
 
 class Team:
-    def __init__(self, name, race, team_value, fame, rerolls, team_type):
+    def __init__(self, name, race, team_value, fame, rerolls, apothecary, team_type):
         self.name = name
         self.race = race
         self.team_value = team_value
         self.fame = fame
         self.rerolls = rerolls
+        self.apothecaries = apothecary
         self.team_type = team_type
         self._players = [None] * MAX_PLAYER_COUNT
         self._player_number_map = {}

@@ -448,6 +448,11 @@ def parse_log_entry(log_entry, home_abbrev, away_abbrev):
 
 
 def parse_log_entries(log_path):
+    with open(log_path, 'r') as f:
+        return parse_log_entry_lines(f)
+
+
+def parse_log_entry_lines(lines):
     log_entries = []
     partial_entry = None
     home_abbrev = None
@@ -456,67 +461,63 @@ def parse_log_entries(log_path):
     match_started = False
     in_block = False
     toss_randomisation = TossRandomisationEntry()
-    casualty_events = 0
+    turnover_log_entry = None
 
-    with open(log_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not match_started:
-                if line == "|  +- Enter CStateMatchTossCreateResults":
-                    match_started = True
-                else:
-                    continue
-            if line.startswith("|  +- Enter CStateMatch"):
-                in_block = True
-            elif line.startswith("|  +- Exit CStateMatch"):
-                if event_entries:
-                    log_entries.append(event_entries)
-                event_entries = []
-                casualty_events = 0
-                in_block = False
-                continue
-            elif not in_block:
-                continue
-
-            result = gamelog_re.search(line)
-            if result:
-                log_entry = parse_log_entry(result.group(1), home_abbrev, away_abbrev)
-                if not log_entry:
-                    # Some even we don't care about yet, so skip it
-                    continue
-                elif isinstance(log_entry, PartialEntry):
-                    partial_entry = log_entry
-                else:
-                    if not home_abbrev and isinstance(log_entry, MatchLogEntry):
-                        home_abbrev = log_entry.home_abbrev
-                        away_abbrev = log_entry.away_abbrev
-                    if partial_entry:
-                        log_entry = partial_entry.complete(log_entry)
-                        partial_entry = None
-                    if isinstance(log_entry, CasualtyRollEntry):
-                        casualty_events += 1
-                        event_entries.append(log_entry)
-                    elif casualty_events == 0:
-                        event_entries.append(log_entry)
-                    else:
-                        # Keep casualty rolls at the end to make our parsing easier
-                        event_entries.insert(-casualty_events, log_entry)
+    for line in lines:
+        line = line.strip()
+        if not match_started:
+            if line == "|  +- Enter CStateMatchTossCreateResults":
+                match_started = True
             else:
-                result = block_dice_re.search(line)
-                if result:
-                    block_dice = [enum_name_to_enum(block_string.strip(' []'), BlockResult)
-                                  for block_string in result.group(0).split('-')]
-                    block_result = partial_entry.complete(block_dice)
-                    event_entries.append(block_result)
+                continue
+        if line.startswith("|  +- Enter CStateMatch"):
+            in_block = True
+        elif line.startswith("|  +- Exit CStateMatch"):
+            if event_entries:
+                if turnover_log_entry:
+                    event_entries.append(turnover_log_entry)
+                log_entries.append(event_entries)
+            event_entries = []
+            in_block = False
+            continue
+        elif not in_block:
+            continue
+
+        result = gamelog_re.search(line)
+        if result:
+            log_entry = parse_log_entry(result.group(1), home_abbrev, away_abbrev)
+            if not log_entry:
+                # Some even we don't care about yet, so skip it
+                continue
+            elif isinstance(log_entry, PartialEntry):
+                partial_entry = log_entry
+            else:
+                if not home_abbrev and isinstance(log_entry, MatchLogEntry):
+                    home_abbrev = log_entry.home_abbrev
+                    away_abbrev = log_entry.away_abbrev
+                if partial_entry:
+                    log_entry = partial_entry.complete(log_entry)
                     partial_entry = None
-                    continue
-                result = toss_randomisation_team_re.search(line)
-                if result:
-                    toss_randomisation.team = TeamType(int(result.group(1)))
-                    continue
-                result = toss_randomisation_result_re.search(line)
-                if result:
-                    toss_randomisation.result = CoinToss(int(result.group(1)))
-                    log_entries.append([toss_randomisation])
-                    continue
+                if isinstance(log_entry, TurnOverEntry):
+                    turnover_log_entry = log_entry
+                else:
+                    event_entries.append(log_entry)
+        else:
+            result = block_dice_re.search(line)
+            if result:
+                block_dice = [enum_name_to_enum(block_string.strip(' []'), BlockResult)
+                              for block_string in result.group(0).split('-')]
+                block_result = partial_entry.complete(block_dice)
+                event_entries.append(block_result)
+                partial_entry = None
+                continue
+            result = toss_randomisation_team_re.search(line)
+            if result:
+                toss_randomisation.team = TeamType(int(result.group(1)))
+                continue
+            result = toss_randomisation_result_re.search(line)
+            if result:
+                toss_randomisation.result = CoinToss(int(result.group(1)))
+                log_entries.append([toss_randomisation])
+                continue
     return log_entries
