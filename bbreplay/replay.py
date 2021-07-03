@@ -459,9 +459,10 @@ class Replay:
         yield InjuryRoll(player, injury_roll.result)
         if injury_roll.result == InjuryRollResult.INJURED:
             yield from self._process_casualty(player, cmds, log_entries, board)
-        elif injury_roll.result == InjuryRollResult.STUNNED:
+        elif injury_roll.result == InjuryRollResult.KO:
             yield from self._process_apothecary(player, injury_roll.result, CasualtyResult.NONE,
                                                 cmds, log_entries, board)
+        # Else they're stunned and we can't do anything
 
     def _process_casualty(self, player, cmds, log_entries, board):
         casualty_roll = next(log_entries)

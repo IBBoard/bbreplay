@@ -169,4 +169,31 @@ def test_apothecary_declined(board):
     assert not next(log_entries, None)
 
 
+def test_apothecary_not_used_for_stunned(board):
+    board.apothecaries[TeamType.HOME.value] = 1
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(6, 7), player)
+    cmds = iter_([
+    ])
+    log_entries = iter_([
+        InjuryRollEntry(player.team.team_type, player.number, "1", InjuryRollResult.STUNNED.name)
+    ])
+    events = replay._process_injury_roll(player, cmds, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, InjuryRoll)
+    assert event.player == player
+    assert event.result == InjuryRollResult.STUNNED
+
+    assert not board.is_injured(player)
+    assert player.position == Position(6, 7)
+    assert board.get_position(Position(6, 7)) == player
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
 # TODO: Test apothecary followed by TurnOver
