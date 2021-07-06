@@ -59,6 +59,7 @@ Bounce = namedtuple('Bounce', ['start_space', 'end_space', 'scatter_direction', 
 Scatter = namedtuple('Scatter', ['start_space', 'end_space', 'board'])
 ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'distance', 'board'])
 Touchdown = namedtuple('Touchdown', ['player', 'board'])
+Touchback = namedtuple('Touchback', ['player', 'board'])
 
 END_REASON_TOUCHDOWN = 'Touchdown!'
 END_REASON_ABANDON = 'Abandon Match'
@@ -198,8 +199,8 @@ class Replay:
             kickoff_log_events = next(log_entries)
         # Else leave it for the kickoff event
 
-        yield from self._process_team_setup(board.kicking_team, cmds, log_entries, board)
-        yield from self._process_team_setup(board.receiving_team, cmds, log_entries, board)
+        yield from self._process_team_setup(board.kicking_team, cmds, board)
+        yield from self._process_team_setup(board.receiving_team, cmds, board)
         board.setup_complete()
         yield SetupComplete(board)
 
@@ -221,7 +222,7 @@ class Replay:
         yield KickoffEventTuple(kickoff_result)
         ball_bounces = True
         if kickoff_result == KickoffEvent.PERFECT_DEFENCE:
-            yield from self._process_team_setup(board.kicking_team, cmds, log_entries, board)
+            yield from self._process_team_setup(board.kicking_team, cmds, board)
             board.setup_complete()
             yield SetupComplete(board)
         elif kickoff_result == KickoffEvent.HIGH_KICK:
@@ -257,40 +258,45 @@ class Replay:
 
         yield from board.kickoff()
 
-        if board.get_ball_position() == OFF_PITCH_POSITION:
-            # Ball didn't get set, so it must have been a timer-based kick
-            # We've only seen this happen and go off the pitch so far, so handle that situation
-            # Dispose of the other PreKickoffCompleteCommand
-            touchback = next(cmds)
-            if not isinstance(touchback, TouchbackCommand):
-                raise ValueError(f"Expected TouchbackCommand but got {type(touchback).__name__}")
-            board.set_ball_carrier(self.get_team(touchback.team).get_player(touchback.player_idx))
-            ball_bounces = False
-            touchback_log_entries = next(log_entries)
-            for log_entry in touchback_log_entries:
+        half_pitch_length = PITCH_LENGTH // 2
+
+        target_half = kickoff_cmd.position.y // half_pitch_length
+        landed_half = ball_dest.y // half_pitch_length
+
+        touchback = board.get_ball_position() == OFF_PITCH_POSITION or target_half != landed_half
+
+        if ball_bounces and not touchback:
+            # TODO: Handle no bounce when it gets caught straight away
+            for log_entry in next(log_entries):
                 if not isinstance(log_entry, BounceLogEntry):
                     raise ValueError(f"Expected Bounce log entries but got {type(log_entry).__name__}")
+                old_position = ball_dest
+                ball_dest = ball_dest.scatter(log_entry.direction)
+                board.set_ball_position(ball_dest)
+                yield Bounce(old_position, ball_dest, log_entry.direction, board)
+            if ball_dest == OFF_PITCH_POSITION:
+                touchback = True
 
-        if ball_bounces:
-            # TODO: Handle no bounce when it gets caught straight away
-            kickoff_bounce = next(log_entries)[0]
-            # TODO: Handle second bounce for "Changing Weather" event rolling "Nice" again
-            ball_dest = ball_dest.scatter(kickoff_bounce.direction)
-            board.set_ball_position(ball_dest)
+        if touchback:
+            cmd = next(cmds)
+            while isinstance(cmd, PreKickoffCompleteCommand):
+                cmd = next(cmds)
+            if not isinstance(cmd, TouchbackCommand):
+                raise ValueError(f"Expected TouchbackCommand but got {type(cmd).__name__}")
+            touchback_player = self.get_team(cmd.team).get_player(cmd.player_idx)
+            board.set_ball_carrier(touchback_player)
+            yield Touchback(touchback_player, board)
 
-    def _process_team_setup(self, team, cmds, log_entries, board):
+    def _process_team_setup(self, team_type, cmds, board):
         cmd = next(cmds)
         cmd_type = type(cmd)
-        team = None
+        team = self.get_team(team_type)
         while cmd_type is not SetupCompleteCommand:
             if cmd_type is not SetupCommand:
                 cmd = next(cmds)
                 cmd_type = type(cmd)
                 continue
             # else…
-
-            if team is None:
-                team = self.get_team(cmd.team)
 
             player = team.get_player(cmd.player_idx)
             old_coords = player.position
@@ -315,7 +321,7 @@ class Replay:
             if endzone_contents:
                 board[FAR_ENDZONE_IDX][i] = None
                 endzone_contents.position = OFF_PITCH_POSITION
-        yield TeamSetupComplete(team.team_type, team.get_players())
+        yield TeamSetupComplete(team_type, team.get_players())
 
     def _process_turn(self, cmds, log_entries, board, start_next_turn=True):
         cmd = None
