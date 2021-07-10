@@ -415,10 +415,11 @@ class Replay:
         elif board.can_reroll(player.team.team_type):
             can_reroll = True
             if Skills.LONER in player.skills:
-                log_entry = next(log_entries)
-                validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
-                actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
-                can_reroll = log_entry.result == ActionResult.SUCCESS
+                log_entry = next(log_entries, None)
+                if log_entry:
+                    validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
+                    actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
+                    can_reroll = log_entry.result == ActionResult.SUCCESS
 
             if can_reroll:
                 cmd = next(cmds)
@@ -546,12 +547,13 @@ class Replay:
                 cur_log_entries = self.__next_generator(log_entries)
             log_entry = next(cur_log_entries)
             validate_log_entry(log_entry, WildAnimalEntry, cmd.team, player.number)
-            board.wild_animal_test(player)
+            board.wild_animal_test(player, log_entry.result)
             yield Action(player, ActionType.WILD_ANIMAL, log_entry.result, board)
             if log_entry.result != ActionResult.SUCCESS:
                 actions, new_result = self._process_action_reroll(cmds, cur_log_entries, player, board)
                 yield from actions
                 if new_result:
+                    board.wild_animal_test(player, new_result)
                     yield Action(player, ActionType.WILD_ANIMAL, new_result, board)
 
         if unused:
@@ -576,6 +578,10 @@ class Replay:
             if board.is_prone(targeting_player):
                 board.unset_prone(targeting_player)
                 yield Blitz(targeting_player, target_by_idx)
+
+        if board.is_wild_animal(targeting_player):
+            # If they're wild then they failed their roll
+            return
 
         if not isinstance(cmd, TargetSpaceCommand):
             raise ValueError(f"Expected TargetSpaceCommand but got {type(cmd).__name__}")

@@ -29,6 +29,7 @@ class GameState:
         self.__injured = set()
         self.__stupid = set()
         self.__tested_stupid = set()
+        self.__wild_animal = set()
         self.__tested_wild_animal = set()
         self.__ball_position = OFF_PITCH_POSITION
         self.__ball_carrier = None
@@ -73,6 +74,7 @@ class GameState:
         self.__reset_board()
         self.__prone.clear()
         self.__stupid.clear()
+        self.__wild_animal.clear()
         for team_setup in self.__setups:
             deployed_subs = set()
             subs = (player for player, position in team_setup if position.is_offpitch())
@@ -128,6 +130,7 @@ class GameState:
             raise ValueError(f'Out of order start turn - expected {self.turn_team.team_type} but got {team}')
         self.__tested_stupid.clear()
         self.__tested_wild_animal.clear()
+        self.__wild_animal.clear()
         self.__moves.clear()
         self.__used_reroll = False
         yield StartTurn(team, self.turn, self)
@@ -218,18 +221,24 @@ class GameState:
     def is_stupid(self, player):
         return player in self.__stupid
 
-    def stupidity_test(self, player, result):
-        self.__tested_stupid.add(player)
+    def __do_test(self, player, result, tested_players, failed_players):
+        tested_players.add(player)
         if result != ActionResult.SUCCESS:
-            self.__stupid.add(player)
+            failed_players.add(player)
         elif self.is_stupid(player):
-            self.__stupid.remove(player)
+            failed_players.remove(player)
+
+    def stupidity_test(self, player, result):
+        self.__do_test(player, result, self.__tested_stupid, self.__stupid)
 
     def tested_stupid(self, player):
         return player in self.__tested_stupid
 
-    def wild_animal_test(self, player):
-        self.__tested_wild_animal.add(player)
+    def wild_animal_test(self, player, result):
+        self.__do_test(player, result, self.__tested_wild_animal, self.__wild_animal)
+
+    def is_wild_animal(self, player):
+        return player in self.__wild_animal
 
     def tested_wild_animal(self, player):
         return player in self.__tested_wild_animal

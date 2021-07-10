@@ -82,6 +82,24 @@ def test_reroll_with_failed_loner(board):
     assert new_result is None
 
 
+def test_skip_reroll_with_loner(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.LONER)
+    cmds = [
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+    ]
+    log_entries = [
+    ]
+    cmds_iter = iter_(cmds)
+    log_entries_iter = iter_(log_entries)
+    actions, new_result = replay._process_action_reroll(cmds_iter, log_entries_iter, player, board)
+
+    assert len(actions) == 0
+    assert new_result is None
+
+
 def test_reroll_with_success_on_successful_loner(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
