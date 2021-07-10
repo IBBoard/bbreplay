@@ -515,6 +515,8 @@ class Replay:
         yield Casualty(player, cmd.result)
 
     def _process_uncontrollable_skills(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+        if board.quick_snap_turn:
+            return
         yield from self._process_stupidity(player, cmd, cmds, cur_log_entries, log_entries, board, unused)
         if unused:
             cur_log_entries = unused.log_entries
