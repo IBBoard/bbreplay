@@ -1180,7 +1180,9 @@ def find_next_known_command(generator):
 
 
 def is_dodge(board, player, destination):
-    if player.position == destination:
+    if board.quick_snap_turn:
+        return False
+    elif player.position == destination:
         return False
     else:
         entities = board.get_surrounding_players(player.position)

@@ -32,8 +32,8 @@ class GameState:
         self.__tested_wild_animal = set()
         self.__ball_position = OFF_PITCH_POSITION
         self.__ball_carrier = None
-        self.__double_nice_weather = False
         self.weather = None
+        self.quick_snap_turn = False
         self.__setups = [[], []]
         self.__last_setup_turn = 0
         self.__moves = defaultdict(int)
@@ -54,6 +54,7 @@ class GameState:
 
     def quick_snap(self):
         self.__turn -= 1
+        self.quick_snap_turn = True
 
     def halftime(self):
         self.__receiving_team = other_team(self.__receiving_team)
@@ -136,6 +137,7 @@ class GameState:
             raise ValueError(f'Out of order end turn - expected {self.turn_team.team_type} but got {team}')
         yield EndTurn(self.turn_team.team_type, self.turn, reason, self)
         self.__turn += 1
+        self.quick_snap_turn = False
         if self.__turn == 32:
             yield EndMatch(self)
             return
