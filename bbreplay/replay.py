@@ -263,7 +263,7 @@ class Replay:
         target_half = kickoff_cmd.position.y // half_pitch_length
         landed_half = ball_dest.y // half_pitch_length
 
-        touchback = board.get_ball_position() == OFF_PITCH_POSITION or target_half != landed_half
+        touchback = board.get_ball_position().is_offpitch() or target_half != landed_half
 
         if ball_bounces and not touchback:
             # TODO: Handle no bounce when it gets caught straight away
@@ -274,7 +274,7 @@ class Replay:
                 ball_dest = ball_dest.scatter(log_entry.direction)
                 board.set_ball_position(ball_dest)
                 yield Bounce(old_position, ball_dest, log_entry.direction, board)
-            if ball_dest == OFF_PITCH_POSITION:
+            if ball_dest.is_offpitch():
                 touchback = True
 
         if touchback:
@@ -477,7 +477,7 @@ class Replay:
                                             cmds, log_entries, board)
 
     def _process_apothecary(self, player, injury, casualty_result, cmds, log_entries, board):
-        if player.position == OFF_PITCH_POSITION:
+        if player.position.is_offpitch():
             # Assume we're using older rules where apothecaries can't help players in the crowd
             return
         if not board.has_apothecary(player.team.team_type):
@@ -750,7 +750,7 @@ class Replay:
 
             if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
                 ball_bounces = True
-        elif target_by_idx.position == OFF_PITCH_POSITION:
+        elif target_by_idx.position.is_offpitch():
             event = self._process_injury_roll(target_log_entries, target_by_idx, board)
             defender_injured = event.result != InjuryRollResult.STUNNED
             defender_casualty = event.result == InjuryRollResult.INJURED
@@ -1133,7 +1133,7 @@ class Replay:
                 else:
                     board.set_ball_position(ball_position)
                 yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
-                if ball_position == OFF_PITCH_POSITION:
+                if ball_position.is_offpitch():
                     if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH:
                         offset = 0
                         # Throw-ins from fumbled pickups seem to come from the space where the ball

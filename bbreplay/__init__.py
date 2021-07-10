@@ -210,6 +210,7 @@ class Position:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.__offpitch = x < 0 or x >= PITCH_WIDTH or y < 0 or y >= PITCH_LENGTH
 
     def scatter(self, direction, distance=1):
         global _wests, _easts, _norths, _souths
@@ -226,10 +227,6 @@ class Position:
         elif direction in _souths:
             new_y -= distance
 
-        if new_x < 0 or new_x >= PITCH_WIDTH or new_y < 0 or new_y >= PITCH_LENGTH:
-            new_x = -1
-            new_y = -1
-
         return Position(new_x, new_y)
 
     def throwin(self, direction, distance):
@@ -245,6 +242,9 @@ class Position:
             return OFF_PITCH_POSITION
         else:
             return Position(LAST_COLUMN_IDX - self.x, FAR_ENDZONE_IDX - self.y)
+
+    def is_offpitch(self):
+        return self.__offpitch
 
     def __eq__(self, other):
         if not other:

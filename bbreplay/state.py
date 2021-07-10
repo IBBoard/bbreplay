@@ -74,7 +74,7 @@ class GameState:
         self.__stupid.clear()
         for team_setup in self.__setups:
             deployed_subs = set()
-            subs = (player for player, position in team_setup if position == OFF_PITCH_POSITION)
+            subs = (player for player, position in team_setup if position.is_offpitch())
             for player, position in team_setup:
                 if player in deployed_subs:
                     continue
@@ -157,7 +157,7 @@ class GameState:
         return self.__moves[player]
 
     def set_position(self, position, contents):
-        if position != OFF_PITCH_POSITION:
+        if not position.is_offpitch():
             self.__board[position.y][position.x] = contents
         if contents:
             contents.position = position

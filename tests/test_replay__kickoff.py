@@ -210,7 +210,7 @@ def test_touchback_for_off_pitch_kick(board):
     assert event.target == Position(0, 0)
     assert event.scatter_direction == ScatterDirection.SW
     assert event.scatter_distance == 6
-    assert board.get_ball_position() == OFF_PITCH_POSITION
+    assert board.get_ball_position().is_offpitch()
 
     event = next(events)
     assert isinstance(event, KickoffEventTuple)
@@ -280,7 +280,7 @@ def test_touchback_for_off_pitch_bounce(board):
     assert isinstance(event, Bounce)
     assert event.scatter_direction == ScatterDirection.S
     assert event.start_space == Position(0, 0)
-    assert event.end_space == OFF_PITCH_POSITION
+    assert event.end_space.is_offpitch()
 
     event = next(events)
     assert isinstance(event, Touchback)

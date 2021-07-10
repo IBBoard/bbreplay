@@ -48,7 +48,7 @@ class Positionable:
         self.position = OFF_PITCH_POSITION
 
     def is_on_pitch(self):
-        return self.position != OFF_PITCH_POSITION
+        return not self.position.is_offpitch()
 
 
 def create_player(team, number, name, move, strength, agility, armour_value, level, spp, value):
