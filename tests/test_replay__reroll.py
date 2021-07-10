@@ -162,3 +162,33 @@ def test_reroll_with_failure_on_successful_loner(board):
     assert event.type == "Team Reroll"
 
     assert new_result is ActionResult.FAILURE
+
+
+def test_skill_reroll_not_allowed_with_cancelling_skill(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.DODGE)
+    board.set_position(Position(12, 12), player)
+    opponent = away_team.get_player(0)
+    opponent.skills.append(Skills.TACKLE)
+    board.set_position(Position(13, 13), opponent)
+
+    cmds = [
+        RerollCommand(1, 1, TeamType.HOME, 1, [])
+    ]
+    log_entries = [
+        RerollEntry(TeamType.HOME),
+        DodgeEntry(TeamType.HOME, 1, "2+", "1", ActionResult.FAILURE.name)
+    ]
+    cmds_iter = iter_(cmds)
+    log_entries_iter = iter_(log_entries)
+    actions, new_result = replay._process_action_reroll(cmds_iter, log_entries_iter, player, board,
+                                                        reroll_skill=Skills.DODGE, cancelling_skill=Skills.TACKLE)
+
+    event = actions[0]
+    assert isinstance(event, Reroll)
+    assert event.team == player.team.team_type
+    assert event.type == "Team Reroll"
+
+    assert new_result == ActionResult.FAILURE

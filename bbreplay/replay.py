@@ -389,11 +389,14 @@ class Replay:
             if new_result:
                 yield Action(player, action_type, new_result, board)
 
-    def _process_action_reroll(self, cmds, log_entries, player, board, reroll_skill=None, modifying_skill=None):
+    def _process_action_reroll(self, cmds, log_entries, player, board, reroll_skill=None,
+                               cancelling_skill=None, modifying_skill=None):
         actions = []
         new_result = None
         reroll_success = False
-        if reroll_skill and reroll_skill in player.skills:
+        if reroll_skill and reroll_skill in player.skills \
+           and not any(cancelling_skill in opponent.skills
+                       for opponent in board.get_surrounding_players(player.position)):
             log_entry = next(log_entries)
             validate_log_entry(log_entry, SkillEntry, player.team.team_type, player.number)
             actions.append(Reroll(player.team.team_type, reroll_skill.name.title()))
@@ -904,7 +907,8 @@ class Replay:
                         failed_movement = True
                         modifying_skill = Skills.DIVING_TACKLE if diving_tackle_entry else None
                         actions, new_result = self._process_action_reroll(cmds, move_log_entries, player, board,
-                                                                          Skills.DODGE, modifying_skill)
+                                                                          Skills.DODGE, modifying_skill=modifying_skill,
+                                                                          cancelling_skill=Skills.TACKLE)
                         yield from actions
                         if new_result:
                             yield Action(player, ActionType.DODGE, new_result, board)
