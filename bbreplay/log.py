@@ -473,9 +473,10 @@ def parse_log_entry_lines(lines):
         if line.startswith("|  +- Enter CStateMatch"):
             in_block = True
         elif line.startswith("|  +- Exit CStateMatch"):
+            if turnover_log_entry:
+                event_entries.append(turnover_log_entry)
+                turnover_log_entry = None
             if event_entries:
-                if turnover_log_entry:
-                    event_entries.append(turnover_log_entry)
                 log_entries.append(event_entries)
             event_entries = []
             in_block = False

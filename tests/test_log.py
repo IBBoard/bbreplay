@@ -1,8 +1,10 @@
-from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, InjuryRollEntry, TurnOverEntry, parse_log_entry_lines
+from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, InjuryRollEntry, TurnOverEntry, WildAnimalEntry, \
+    parse_log_entry_lines
 
 
+STARTING_LINE = "|  +- Enter CStateMatchTossCreateResults"
 STARTING_LINES = [
-    "|  +- Enter CStateMatchTossCreateResults",
+    STARTING_LINE,
     "|  +- Enter CStateMatch"
 ]
 ENDING_LINES = [
@@ -38,3 +40,36 @@ def test_parse_apothecary_puts_turnover_at_end():
     assert isinstance(next(log_entries), ApothecaryLogEntry)
     assert isinstance(next(log_entries), TurnOverEntry)
     assert not next(log_entries, None)
+
+
+def test_turnover_gets_cleared():
+    log_lines = [
+        STARTING_LINE,
+        "|  +- Enter CStateMatchActionTT",
+        "|  |",
+        "|  | Release CStateMatchSelectTT",
+        "|  | GameLog(-1): ORK suffer a TURNOVER! : Knocked Down!",
+        "|  | Init CStateMatchSelectTT",
+        "|  |",
+        "|  +- Exit CStateMatchActionTT"
+        "|",
+        "|",
+        "|  +- Enter CStateMatchActionTT",
+        "|  |",
+        "|  | Release CStateMatchSelectTT",
+        "|  | GameLog(02): WAR #05 Pinky Wild Animal  (4+) : 2 -> Failure",
+        "|  | Init CStateMatchSelectTT",
+        "|  |",
+        "|  +- Exit CStateMatchActionTT"
+    ]
+    all_log_entries = iter(parse_log_entry_lines(log_lines))
+    log_entries = next(all_log_entries)
+    print(log_entries)
+    assert len(log_entries) == 1
+    assert isinstance(log_entries[0], TurnOverEntry)
+
+    log_entries = next(all_log_entries)
+    assert len(log_entries) == 1
+    assert isinstance(log_entries[0], WildAnimalEntry)
+
+    assert not next(all_log_entries, None)
