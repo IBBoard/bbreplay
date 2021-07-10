@@ -804,7 +804,7 @@ class Replay:
             target_log_entries = unused.log_entries
         pass_cmd = cmd
         player_pos = player.position
-        if abs(pass_cmd.x - player_pos.x) > 1 or pass_cmd.y - player_pos.y > 1:
+        if pass_cmd.x - player_pos.x != 0 or pass_cmd.y - player_pos.y != 0:
             yield from self._process_pass(player, pass_cmd, cmds, target_log_entries, board)
             if not board.get_ball_carrier():
                 log_entry = next(target_log_entries)
