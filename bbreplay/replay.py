@@ -861,6 +861,8 @@ class Replay:
 
         for movement in moves:
             target_space = movement.position
+            if (abs(target_space.x - start_space.x) > 1 or abs(target_space.y - start_space.y) > 1) and not leap:
+                raise ValueError(f"Unexpected large move for {player.name} from {start_space} to {target_space}")
             if failed_movement:
                 if leap:
                     leap = False
