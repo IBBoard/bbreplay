@@ -50,6 +50,7 @@ Apothecary = namedtuple('Apothecary', ['player', 'new_injury', 'casualty'])
 DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 Pass = namedtuple('Pass', ['player', 'target', 'result', 'board'])
+Handoff = namedtuple('Handoff', ['player', 'target', 'board'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Skill = namedtuple('Skill', ['player', 'skill'])
@@ -811,7 +812,7 @@ class Replay:
             target_log_entries = unused.log_entries
         pass_cmd = cmd
         player_pos = player.position
-        if pass_cmd.x - player_pos.x != 0 or pass_cmd.y - player_pos.y != 0:
+        if abs(pass_cmd.x - player_pos.x) > 1 or abs(pass_cmd.y - player_pos.y) > 1:
             yield from self._process_pass(player, pass_cmd, cmds, target_log_entries, board)
             if not board.get_ball_carrier():
                 log_entry = next(target_log_entries)
@@ -819,14 +820,20 @@ class Replay:
                 yield EndTurn(player.team, board.turn, log_entry.reason, board)
         else:
             # Else hand-off - doesn't have the pass part, just the catch
+            yield Handoff(player, target_by_idx, board)
             catch_entry = next(target_log_entries)
             target_by_coords = board.get_position(pass_cmd.position)
+            if target_by_coords != target_by_idx:
+                raise ValueError(f"Expected catch for {target_by_coords.team_type} #{target_by_coords.number} "
+                                 f"but got {target_by_idx.team_type} #{target_by_idx.number}")
             validate_log_entry(catch_entry, CatchEntry, pass_cmd.team, target_by_coords.number)
             if catch_entry.result == ActionResult.SUCCESS:
                 board.set_ball_carrier(target_by_idx)
+                yield Action(target_by_idx, ActionType.CATCH, catch_entry.result, board)
             else:
                 log_entry = next(log_entries)
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+                yield Action(target_by_idx, ActionType.CATCH, catch_entry.result, board)
                 yield EndTurn(player.team, board.turn, log_entry.reason, board)
 
     def _process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
