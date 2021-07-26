@@ -39,6 +39,7 @@ class GameState:
         self.__last_setup_turn = 0
         self.__moves = defaultdict(int)
         self.__used_reroll = False
+        self.__leader_reroll = [False, False]
         self.__kicked_off = False
 
     @property
@@ -102,9 +103,15 @@ class GameState:
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.teams[TeamType.HOME.value].get_players()):
             self.add_reroll(TeamType.HOME)
+            self.__leader_reroll[TeamType.HOME.value] = True
+        else:
+            self.__leader_reroll[TeamType.HOME.value] = False
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                for player in self.teams[TeamType.AWAY.value].get_players()):
             self.add_reroll(TeamType.AWAY)
+            self.__leader_reroll[TeamType.AWAY.value] = True
+        else:
+            self.__leader_reroll[TeamType.AWAY.value] = False
         self.__last_setup_turn = self.turn
         self.__kicked_off = False
 
@@ -265,12 +272,16 @@ class GameState:
             raise ValueError("Already used a team reroll this turn!")
         self.rerolls[team.value] -= 1
         self.__used_reroll = True
+        self.__leader_reroll[team.value] = False
 
     def can_reroll(self, team):
         return self.rerolls[team.value] > 0 and not self.__used_reroll
 
     def add_reroll(self, team):
         self.rerolls[team.value] += 1
+
+    def has_leader_reroll(self, team):
+        return self.__leader_reroll[team.value]
 
     def has_apothecary(self, team):
         return self.apothecaries[team.value] > 0

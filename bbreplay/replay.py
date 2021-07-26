@@ -11,7 +11,7 @@ from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, \
-    SkillRollEntry, ApothecaryLogEntry
+    SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
@@ -417,12 +417,19 @@ class Replay:
                                          f"but got {type(cmd).__name__}")
         elif board.can_reroll(player.team.team_type):
             can_reroll = True
-            if Skills.LONER in player.skills:
-                log_entry = next(log_entries, None)
-                if log_entry:
-                    validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
-                    actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
-                    can_reroll = log_entry.result == ActionResult.SUCCESS
+            has_leader_reroll = board.has_leader_reroll(player.team.team_type)
+            if has_leader_reroll:
+                expected_class = LeaderRerollEntry
+                reroll_type = 'Leader Reroll'
+            else:
+                expected_class = RerollEntry
+                reroll_type = 'Team Reroll'
+                if Skills.LONER in player.skills and not has_leader_reroll:
+                    log_entry = next(log_entries, None)
+                    if log_entry:
+                        validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
+                        actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
+                        can_reroll = log_entry.result == ActionResult.SUCCESS
 
             if can_reroll:
                 cmd = next(cmds)
@@ -434,9 +441,9 @@ class Replay:
                     pass
                 elif isinstance(cmd, RerollCommand):
                     log_entry = next(log_entries)
-                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                    validate_log_entry(log_entry, expected_class, player.team.team_type)
                     board.use_reroll(player.team.team_type)
-                    actions.append(Reroll(cmd.team, 'Team Reroll'))
+                    actions.append(Reroll(cmd.team, reroll_type))
                     reroll_success = True
                 elif isinstance(cmd, DiceChoiceCommand):
                     # Sometimes we only get cmd_type=19 even though most of the time
