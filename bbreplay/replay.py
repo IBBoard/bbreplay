@@ -672,6 +672,21 @@ class Replay:
         yield Block(blocking_player, target_by_idx,
                     block_dice.results, chosen_block_dice)
 
+        if chosen_block_dice == BlockResult.BOTH_DOWN and Skills.JUGGERNAUT in blocking_player.skills:
+            jugg_cmd = next(cmds)
+            if jugg_cmd.team != blocking_player.team.team_type \
+               or blocking_player.team.get_player_number(jugg_cmd.player_idx) != blocking_player.number:
+                raise ValueError("Expected ApothecaryCommand for "
+                                 f"{blocking_player.team.team_type} #{blocking_player.number} but got "
+                                 f"{jugg_cmd.team} #{blocking_player.team.get_player_number(jugg_cmd.player_idx)}")
+            if jugg_cmd.choice:
+                chosen_block_dice = BlockResult.PUSHED
+                skill_entry = next(target_log_entries)
+                validate_skill_log_entry(skill_entry, blocking_player, Skills.JUGGERNAUT)
+                yield Skill(blocking_player, Skills.JUGGERNAUT)
+                attacker_avoided = True
+                defender_avoided = True
+
         block_position = target_by_idx.position
 
         if chosen_block_dice == BlockResult.PUSHED or chosen_block_dice == BlockResult.DEFENDER_DOWN \

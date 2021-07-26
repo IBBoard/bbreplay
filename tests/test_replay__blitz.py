@@ -692,3 +692,140 @@ def test_frenzy_blitz_beyond_gfi_limit(board):
     assert not next(events, None)
     assert not next(cmds, None)
     assert not next(log_entries, None)
+
+
+def test_blitz_with_juggernaut_stopping_both_down(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.JUGGERNAUT)
+    board.set_position(Position(6, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        JuggernautChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 1]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.BOTH_DOWN]),
+        SkillEntry(player.team.team_type, player.number, Skills.JUGGERNAUT.name)
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Blitz)
+    assert event.blitzing_player == player
+    assert event.blitzed_player == opponent
+
+    event = next(events)
+    # Movement tests should check valid movement
+    assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.BOTH_DOWN]
+    # We still get a BOTH DOWN result, but then we use the skill and do the pushback
+    assert event.result == BlockResult.BOTH_DOWN
+
+    event = next(events)
+    assert isinstance(event, Skill)
+    assert event.player == player
+    assert event.skill == Skills.JUGGERNAUT
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    assert not board.is_prone(player)
+    assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_blitz_with_declined_juggernaut_not_stopping_both_down(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.JUGGERNAUT)
+    board.set_position(Position(6, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        JuggernautChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.BOTH_DOWN]),
+        ArmourValueRollEntry(player.team.team_type, player.number, "9+", "8", ActionResult.FAILURE),
+        ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE),
+        TurnOverEntry(player.team.team_type, "Knocked Down!")
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Blitz)
+    assert event.blitzing_player == player
+    assert event.blitzed_player == opponent
+
+    event = next(events)
+    # Movement tests should check valid movement
+    assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.BOTH_DOWN]
+    assert event.result == BlockResult.BOTH_DOWN
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == opponent
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == opponent
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
+
+    assert board.is_prone(player)
+    assert board.is_prone(opponent)
+
+    assert not next(cmds, None)
+    assert not next(log_entries, None)

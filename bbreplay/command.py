@@ -227,6 +227,17 @@ class PushbackCommand(Command):
             f'data={self._data})'
 
 
+class JuggernautChoiceCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.team = player_idx_to_type(data[0])  # Override the team
+        self.player_idx = data[1]
+        self.choice = data[2] == 1
+
+    def __repr__(self):
+        return f'JuggernautChoice(team={self.team}, player={self.player_idx}, choice={self.choice}, data={self._data})'
+
+
 class DumpOffCommand(SimpleCommand):
     def __init__(self, id, turn, team, command_type, data):
         super().__init__("DumpOff", id, turn, team, command_type, data)
@@ -351,7 +362,8 @@ MOVE_MAP = {
     91: UnknownVerboseCommand,
     # Block related? After DiceChoice and before PushbackCommand
     92: UnknownVerboseCommand,
-    94: NetworkCommand
+    94: NetworkCommand,
+    104: JuggernautChoiceCommand
 }
 
 
