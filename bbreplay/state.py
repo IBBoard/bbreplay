@@ -2,7 +2,8 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple, defaultdict
-from . import BEFORE_HALFWAY_IDX, FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX, other_team, Skills, TeamType, Weather, ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
+from . import BEFORE_HALFWAY_IDX, FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX, other_team, Skills, TeamType, Weather, \
+    ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
 
 WeatherTuple = namedtuple('Weather', ['result'])
