@@ -2,7 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple, defaultdict
-from . import other_team, Skills, TeamType, Weather, ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
+from . import BEFORE_HALFWAY_IDX, FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX, other_team, Skills, TeamType, Weather, ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
 
 
 WeatherTuple = namedtuple('Weather', ['result'])
@@ -41,6 +41,7 @@ class GameState:
         self.__used_reroll = False
         self.__leader_reroll = [False, False]
         self.__kicked_off = False
+        self.__touchdown_row = [-1, -1]
 
     @property
     def turn(self):
@@ -112,8 +113,16 @@ class GameState:
             self.__leader_reroll[TeamType.AWAY.value] = True
         else:
             self.__leader_reroll[TeamType.AWAY.value] = False
+        if any(pos.y > BEFORE_HALFWAY_IDX for _, pos in self.__setups[TeamType.HOME.value]):
+            self.__touchdown_row = [NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX]
+        else:
+            self.__touchdown_row = [FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX]
         self.__last_setup_turn = self.turn
         self.__kicked_off = False
+
+    def is_touchdown_state(self):
+        ball_carrier = self.get_ball_carrier()
+        return ball_carrier and ball_carrier.position.y == self.__touchdown_row[ball_carrier.team.team_type.value]
 
     def touchdown(self, player):
         team = player.team.team_type

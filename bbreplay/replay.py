@@ -355,11 +355,6 @@ class Replay:
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
                 yield from self._process_movement(player, cmd, cmds, None, log_entries, board)
-                if board.get_ball_carrier() == player and \
-                   (player.position.y == NEAR_ENDZONE_IDX or player.position.y == FAR_ENDZONE_IDX):
-                    board.touchdown(player)
-                    yield Touchdown(player, board)
-                    end_reason = END_REASON_TOUCHDOWN
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
             elif cmd_type is DeclineRerollCommand or (cmd_type is DiceChoiceCommand
@@ -372,7 +367,12 @@ class Replay:
                 end_reason = END_REASON_ABANDON
             else:
                 raise NotImplementedError(f"No handling for {cmd}")
-                break
+
+            if board.is_touchdown_state():
+                player = board.get_ball_carrier()
+                board.touchdown(player)
+                yield Touchdown(player, board)
+                end_reason = END_REASON_TOUCHDOWN
 
         if end_reason == END_REASON_ABANDON:
             yield from board.abandon_match(cmd.team)
