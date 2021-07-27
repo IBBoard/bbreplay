@@ -262,6 +262,15 @@ class ThrowCommand(Command):
         return f'Throw(team={self.team}, player={self.player_idx}, position={self.x},{self.y})'
 
 
+class InterceptCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self._value = data[0]
+
+    def __repr__(self):
+        return f'Intercept(team={self.team},  value={self._value}, data={self._data})'
+
+
 class RerollCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         # 0 and 1 MIGHT be team and player IDX, but it doesn't always match
@@ -339,7 +348,7 @@ MOVE_MAP = {
     8: SetupCommand,
     9: SetupCompleteCommand,
     10: KickoffCommand,
-    # 13: Intercept?
+    13: InterceptCommand,
     14: PreKickoffCompleteCommand,
     16: TouchbackCommand,
     17: EndTurnCommand,

@@ -51,6 +51,7 @@ DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 Pass = namedtuple('Pass', ['player', 'target', 'result', 'board'])
 Handoff = namedtuple('Handoff', ['player', 'target', 'board'])
+Interception = namedtuple('Interception', ['player', 'result', 'board'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
 Tentacle = namedtuple('Tentacle', ['dodging_player', 'tentacle_player', 'result'])
 Skill = namedtuple('Skill', ['player', 'skill'])
@@ -1087,12 +1088,23 @@ class Replay:
     def _process_pass(self, player, cmd, cmds, log_entries, board, can_reroll=True):
         if board.get_ball_carrier() != player:
             raise ValueError(f"Got Pass command for {player} but ball carrier is {board.get_ball_carrier()}")
-        throw_log_entry = next(log_entries)
+
+        log_entry = next(log_entries)
+        if isinstance(log_entry, CatchEntry):
+            # Interception
+            intercepting_team = other_team(player.team.team_type)
+            validate_log_entry(log_entry, CatchEntry, intercepting_team)
+            intercepting_player = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
+            yield Interception(intercepting_player, log_entry.result, board)
+            throw_log_entry = next(log_entries)
+        else:
+            throw_log_entry = log_entry
+
         validate_log_entry(throw_log_entry, ThrowEntry, player.team.team_type, player.number)
         throw_command = cmd
         result = throw_log_entry.result
         yield Pass(player, throw_command.position, result, board)
-        _ = next(cmds)  # XXX: Throw away the next command - cmd_type=13 from the opposition with no other data
+        _ = next(cmds)  # Throw away the interception command, which we seem to get even if it's not possible
 
         if throw_log_entry.result != ThrowResult.ACCURATE_PASS and can_reroll:
             actions, result = self._process_action_reroll(cmds, log_entries, player, board)
