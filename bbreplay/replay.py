@@ -1097,7 +1097,14 @@ class Replay:
             validate_log_entry(log_entry, CatchEntry, intercepting_team)
             intercepting_player = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
             yield Interception(intercepting_player, log_entry.result, board)
-            throw_log_entry = next(log_entries)
+            if log_entry.result == ActionResult.SUCCESS:
+                board.set_ball_carrier(intercepting_player)
+                turn_over_entry = next(log_entries)
+                _ = next(cmds)  # Throw away the interception command
+                yield EndTurn(player.team.team_type, player.number, turn_over_entry.reason, board)
+                return
+            else:
+                throw_log_entry = next(log_entries)
         else:
             throw_log_entry = log_entry
 
