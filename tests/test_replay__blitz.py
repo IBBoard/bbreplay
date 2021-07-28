@@ -105,6 +105,197 @@ def test_blitz_pushback_followup(board):
     assert not next(log_entries, None)
 
 
+def test_blitz_pushback_fend_prevents_followup(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(6, 7), player)
+    opponent = away_team.get_player(0)
+    opponent.skills.append(Skills.FEND)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
+        SkillEntry(opponent.team.team_type, opponent.number, Skills.FEND.name)
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Blitz)
+    assert event.blitzing_player == player
+    assert event.blitzed_player == opponent
+
+    event = next(events)
+    # Movement tests should check valid movement
+    assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.PUSHED]
+    assert event.result == BlockResult.PUSHED
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, Skill)
+    assert event.player == opponent
+    assert event.skill == Skills.FEND
+
+    assert player.position == Position(7, 7)
+    assert opponent.position == Position(9, 8)
+
+    assert not board.is_prone(player)
+    assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_blitz_single_destination_pushback_fend_prevents_followup(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(6, 7), player)
+    opponent = away_team.get_player(0)
+    opponent.skills.append(Skills.FEND)
+    board.set_position(Position(8, 7), opponent)
+    opponent_2 = Player(2, "Player2A", 4, 4, 4, 4, 1, 0, 40000, [])
+    board.set_position(Position(9, 6), opponent_2)
+    opponent_3 = Player(3, "Player3A", 4, 4, 4, 4, 1, 0, 40000, [])
+    board.set_position(Position(9, 7), opponent_3)
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        # Even though there's only one valid space, we still get a pushback
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
+        SkillEntry(opponent.team.team_type, opponent.number, Skills.FEND.name)
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Blitz)
+    assert event.blitzing_player == player
+    assert event.blitzed_player == opponent
+
+    event = next(events)
+    # Movement tests should check valid movement
+    assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.PUSHED]
+    assert event.result == BlockResult.PUSHED
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, Skill)
+    assert event.player == opponent
+    assert event.skill == Skills.FEND
+
+    assert player.position == Position(7, 7)
+    assert opponent.position == Position(9, 8)
+
+    assert not board.is_prone(player)
+    assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_blitz_pushback_juggernaut_cancels_fend(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.JUGGERNAUT)
+    board.set_position(Position(6, 7), player)
+    opponent = away_team.get_player(0)
+    opponent.skills.append(Skills.FEND)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Blitz)
+    assert event.blitzing_player == player
+    assert event.blitzed_player == opponent
+
+    event = next(events)
+    # Movement tests should check valid movement
+    assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.PUSHED]
+    assert event.result == BlockResult.PUSHED
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    assert player.position == Position(8, 7)
+    assert opponent.position == Position(9, 8)
+
+    assert not board.is_prone(player)
+    assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
 def test_gfi_blitz_pushback_followup(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
