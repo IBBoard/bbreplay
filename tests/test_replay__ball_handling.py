@@ -198,8 +198,8 @@ def test_bounce_from_spell_with_multiple_hits(board):
         FireballEntry(TeamType.HOME, 1, "4+", "4", ActionResult.SUCCESS.name),
         ArmourValueRollEntry(TeamType.HOME, 1, "8+", "9", ActionResult.SUCCESS.name),
         InjuryRollEntry(TeamType.HOME, 1, "6", InjuryRollResult.STUNNED.name),
-        BounceLogEntry(ScatterDirection.NW.value),
-        FireballEntry(TeamType.HOME, 2, "4+", "4", ActionResult.FAILURE.name)
+        FireballEntry(TeamType.HOME, 2, "4+", "4", ActionResult.FAILURE.name),
+        BounceLogEntry(ScatterDirection.NW.value)
     ]
     log_entries_iter = iter_(log_entries)
     events = replay._process_spell(cmd, log_entries_iter, board)
@@ -230,16 +230,16 @@ def test_bounce_from_spell_with_multiple_hits(board):
     assert event.result == InjuryRollResult.STUNNED
 
     event = next(events)
-    assert isinstance(event, Bounce)
-    assert event.start_space == Position(7, 7)
-    assert event.end_space == Position(6, 8)
-    assert event.scatter_direction == ScatterDirection.NW
-
-    event = next(events)
     assert isinstance(event, Action)
     assert event.player == player_2
     assert event.action == ActionType.SPELL_HIT
     assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.start_space == Position(7, 7)
+    assert event.end_space == Position(6, 8)
+    assert event.scatter_direction == ScatterDirection.NW
 
     assert board.get_ball_carrier() is None
     assert board.get_ball_position() == Position(6, 8)

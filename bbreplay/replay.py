@@ -1251,9 +1251,10 @@ class Replay:
         target = cmd.position
         yield Spell(target, log_entry.spell_type, board)
         ball_carrier = board.get_ball_carrier()
+        bounces = []
         while log_entry:
             if isinstance(log_entry, BounceLogEntry):
-                yield from self._process_ball_movement(log_entries, ball_carrier, board)
+                bounces.append(log_entry)
             elif not isinstance(log_entry, SpellEntry):
                 raise ValueError(f"Expected SpellEntry but got {type(log_entry).__name__}")
             else:
@@ -1264,6 +1265,9 @@ class Replay:
                     yield from self._process_armour_roll(player, None, log_entry, log_entries, board)
 
             log_entry = next(log_entries, None)
+
+        if bounces:
+            yield from self._process_ball_movement(self.__generator(bounces), ball_carrier, board)
 
 
 def find_next_known_command(generator):
