@@ -200,6 +200,17 @@ class KORecoveryEntry(ActionResultEntry):
         super().__init__("KORecovery", team, player, required, roll, result)
 
 
+class SpellEntry(ActionResultEntry):
+    def __init__(self, name, team, player, required, roll, result):
+        super().__init__(name, team, player, required, roll, result)
+        self.spell_type = name
+
+
+class FireballEntry(SpellEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Fireball", team, player, required, roll, result)
+
+
 class TentacleUseEntry(PartialEntry):
     def __init__(self, team, player):
         self.team = team
@@ -344,6 +355,7 @@ OTHER_ENTRY_MAP = {
     "Animal": WildAnimalEntry,
     "Appearance": FoulAppearanceEntry,
     "Catch": CatchEntry,
+    "Fireball": FireballEntry,
     "KO": KORecoveryEntry,
     "Leap": LeapEntry,
     "Loner": create_skill_roll_entry(Skills.LONER),
@@ -462,6 +474,8 @@ def parse_log_entry_lines(lines):
     in_block = False
     toss_randomisation = TossRandomisationEntry()
     turnover_log_entry = None
+    is_spell = False
+    was_spell = False
 
     for line in lines:
         line = line.strip()
@@ -472,7 +486,22 @@ def parse_log_entry_lines(lines):
                 continue
         if line.startswith("|  +- Enter CStateMatch"):
             in_block = True
+            was_spell = is_spell
+            is_spell = line.endswith("CStateMatchWizardUseSpellTT")
         elif line.startswith("|  +- Exit CStateMatch"):
+            if is_spell:
+                i = 0
+                max_i = len(event_entries)
+                # We need to move the bounces to the end, because the game logs the bounce before logging
+                # that an adjacent player has *also* been flattened, which would give a second bounce
+                # instead of a catch if we processed it straight away
+                while i < max_i:
+                    if isinstance(event_entries[i], BounceLogEntry):
+                        event_entries.append(event_entries.pop(i))
+                        max_i -= 1
+                    else:
+                        i += 1
+
             if turnover_log_entry:
                 event_entries.append(turnover_log_entry)
                 turnover_log_entry = None
@@ -501,6 +530,11 @@ def parse_log_entry_lines(lines):
                     partial_entry = None
                 if isinstance(log_entry, TurnOverEntry):
                     turnover_log_entry = log_entry
+                elif was_spell:
+                    if isinstance(log_entry, BounceLogEntry):
+                        log_entries[-1].append(log_entry)
+                    else:
+                        was_spell = False
                 else:
                     event_entries.append(log_entry)
         else:

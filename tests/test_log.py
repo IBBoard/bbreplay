@@ -1,5 +1,6 @@
-from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, InjuryRollEntry, TurnOverEntry, WildAnimalEntry, \
-    parse_log_entry_lines
+from bbreplay import ScatterDirection
+from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, BounceLogEntry, FireballEntry, InjuryRollEntry, \
+    TurnOverEntry, WildAnimalEntry, parse_log_entry_lines
 
 
 STARTING_LINE = "|  +- Enter CStateMatchTossCreateResults"
@@ -71,5 +72,40 @@ def test_turnover_gets_cleared():
     log_entries = next(all_log_entries)
     assert len(log_entries) == 1
     assert isinstance(log_entries[0], WildAnimalEntry)
+
+    assert not next(all_log_entries, None)
+
+
+def test_spell_ball_bounce_gets_rearranged():
+    log_lines = [
+        STARTING_LINE,
+        "|  +- Enter CStateMatchWizardUseSpellTT",
+        "|  | GameLog(02): ORK #03 Roknast Fireball (4+) : 5 -> Success",
+        "|  | GameLog(02): ORK #03 Roknast Armour Value  (10+) : 4 + 6 = 10 -> Success",
+        "|  | GameLog(02): ORK #03 Roknast Injury  : 1 + 4 + 1 {Mighty Blow} = 6 -> Stunned",
+        "|  | GameLog(02): Bounce (D8) : 3",
+        "|  | GameLog(02): ORK #10 Granik Fireball (4+) : 6 -> Success",
+        "|  | GameLog(02): ORK #10 Granik Armour Value  (10+) : 5 + 3 = 8 -> Failure",
+        "|  +- Exit CStateMatchWizardUseSpellTT",
+        "|  +- Enter CStateMatchSelectTT",
+        "|  | Release CStateMatchWizardUseSpellTT",
+        "|  | GameLog(02): Bounce (D8) : 7",
+        "|  | GameLog(00): WAR #05 Pinky uses Blitz!",
+        "|  |",
+        "|  +- Exit CStateMatchSelectTT",
+    ]
+    all_log_entries = iter(parse_log_entry_lines(log_lines))
+    log_entries = next(all_log_entries)
+    print(log_entries)
+    assert len(log_entries) == 7
+    assert isinstance(log_entries[0], FireballEntry)
+    assert isinstance(log_entries[1], ArmourValueRollEntry)
+    assert isinstance(log_entries[2], InjuryRollEntry)
+    assert isinstance(log_entries[3], FireballEntry)
+    assert isinstance(log_entries[4], ArmourValueRollEntry)
+    assert isinstance(log_entries[5], BounceLogEntry)
+    assert log_entries[5].direction == ScatterDirection(3)
+    assert isinstance(log_entries[6], BounceLogEntry)
+    assert log_entries[6].direction == ScatterDirection(7)
 
     assert not next(all_log_entries, None)

@@ -11,7 +11,7 @@ from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, \
-    SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry
+    SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry, SpellEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
@@ -25,6 +25,7 @@ class ActionType(Enum):
     LEAP = auto()
     PRO = auto()
     REALLY_STUPID = auto()
+    SPELL_HIT = auto()
     WILD_ANIMAL = auto()
 
 
@@ -62,6 +63,7 @@ Scatter = namedtuple('Scatter', ['start_space', 'end_space', 'board'])
 ThrowIn = namedtuple('ThrowIn', ['start_space', 'end_space', 'direction', 'distance', 'board'])
 Touchdown = namedtuple('Touchdown', ['player', 'board'])
 Touchback = namedtuple('Touchback', ['player', 'board'])
+Spell = namedtuple('Spell', ['target', 'spell', 'board'])
 
 END_REASON_TOUCHDOWN = 'Touchdown!'
 END_REASON_ABANDON = 'Abandon Match'
@@ -355,6 +357,9 @@ class Replay:
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
                 yield from self._process_movement(player, cmd, cmds, None, log_entries, board)
+            elif isinstance(cmd, SpellCommand):
+                spell_log_entries = self.__next_generator(log_entries)
+                yield from self._process_spell(cmd, spell_log_entries, board)
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
             elif cmd_type is DeclineRerollCommand or (cmd_type is DiceChoiceCommand
@@ -1179,7 +1184,10 @@ class Replay:
         while True:
             previous_entry = log_entry
             log_entry = next(log_entries, None)
-            if isinstance(log_entry, TurnOverEntry):
+            if not log_entry:
+                # Ball bounces due to spells don't trigger a turn over
+                break
+            elif isinstance(log_entry, TurnOverEntry):
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                 turn_over = board.change_turn(log_entry.team, log_entry.reason)
             elif isinstance(log_entry, BounceLogEntry):
@@ -1233,6 +1241,29 @@ class Replay:
                                  f"ThrowInDirectionLogEntry but got {type(log_entry).__name__}")
         if turn_over:
             yield from turn_over
+
+    def _process_spell(self, cmd, log_entries, board):
+        # Fireball and lightning may not be too different, as there's just a different number of targets
+        # with a different roll, and we don't care about the roll value
+        log_entry = next(log_entries)
+        if not isinstance(log_entry, SpellEntry):
+            raise ValueError(f"Expected SpellEntry but got {type(log_entry).__name__}")
+        target = cmd.position
+        yield Spell(target, log_entry.spell_type, board)
+        ball_carrier = board.get_ball_carrier()
+        while log_entry:
+            if isinstance(log_entry, BounceLogEntry):
+                yield from self._process_ball_movement(log_entries, ball_carrier, board)
+            elif not isinstance(log_entry, SpellEntry):
+                raise ValueError(f"Expected SpellEntry but got {type(log_entry).__name__}")
+            else:
+                player = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
+                yield Action(player, ActionType.SPELL_HIT, log_entry.result, board)
+                if log_entry.result == ActionResult.SUCCESS:
+                    log_entry = next(log_entries)
+                    yield from self._process_armour_roll(player, None, log_entry, log_entries, board)
+
+            log_entry = next(log_entries, None)
 
 
 def find_next_known_command(generator):

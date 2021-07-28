@@ -318,6 +318,25 @@ class ApothecaryChoiceCommand(Command):
         return f'ApothecaryChoice(team={self.team}, player={self.player}, result={self.result}, data={self._data})'
 
 
+class SpellCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        # 0 is team, 1 appears to be 0, 2 appears to be 255, 3 and 4 are coordinates, 5 appears to be 1
+        # One of these must indicate fireball vs lightning
+        self.position = Position(data[3], data[4])
+
+    @property
+    def x(self):
+        return self.position.x
+
+    @property
+    def y(self):
+        return self.position.y
+
+    def __repr__(self):
+        return f'Spell(team={self.team}, position={self.x},{self.y})'
+
+
 class NetworkCommand(SimpleCommand):
     # These commands are only seen in online games and never in local exhibitions
     def __init__(self, id, turn, team, command_type, data):
@@ -361,6 +380,7 @@ MOVE_MAP = {
     29: ApothecaryCommand,
     30: ThrowCommand,
     33: UnknownVerboseCommand,
+    42: SpellCommand,
     45: FollowUpChoiceCommand,
     46: PushbackCommand,
     49: DumpOffCommand,
