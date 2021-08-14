@@ -792,13 +792,7 @@ class Replay:
             if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
                 ball_bounces = True
         elif target_by_idx.position.is_offpitch():
-            event = self._process_injury_roll(target_log_entries, target_by_idx, board)
-            defender_injured = event.result != InjuryRollResult.STUNNED
-            defender_casualty = event.result == InjuryRollResult.INJURED
-            if defender_injured and not defender_casualty:
-                yield from self._process_apothecary(target_by_idx, event.result,
-                                                    CasualtyResult.NONE,
-                                                    cmds, target_log_entries, board)
+            yield from self._process_injury_roll(target_by_idx, cmds, target_log_entries, board)
             if board.get_ball_carrier() == target_by_idx:
                 board.set_ball_position(block_position)  # Drop the ball so the throw-in works
                 ball_bounces = True
