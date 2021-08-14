@@ -1172,11 +1172,9 @@ class Replay:
 
     def _process_ball_movement(self, log_entries, player, board):
         log_entry = None
-        previous_entry = None
         previous_ball_position = board.get_ball_position()
         turn_over = None
         while True:
-            previous_entry = log_entry
             log_entry = next(log_entries, None)
             if not log_entry:
                 # Ball bounces due to spells don't trigger a turn over
@@ -1186,11 +1184,6 @@ class Replay:
                 turn_over = board.change_turn(log_entry.team, log_entry.reason)
             elif isinstance(log_entry, BounceLogEntry):
                 old_ball_position = board.get_ball_position()
-                if isinstance(previous_entry, BounceLogEntry) and board.get_position(old_ball_position) \
-                   and not board.get_ball_carrier():
-                    # We sometimes get odd double results where there's two bounces but no catch attempt
-                    # but actually the ball just did the second bounce
-                    old_ball_position = previous_ball_position
                 ball_position = old_ball_position.scatter(log_entry.direction)
                 if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH \
                    or ball_position.y < 0 or ball_position.y >= PITCH_LENGTH:
