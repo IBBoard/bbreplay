@@ -139,7 +139,7 @@ class BlockLogEntry(TeamPlayerEntry, PartialEntry):
         return self
 
     def __repr__(self):
-        return f"Block(team={self.team}, player={self.player}, results={self.results})"
+        return f"Block(team={self.team}, player_num={self.player}, results={self.results})"
 
 
 class ActionResultEntry(TeamPlayerEntry):
@@ -151,7 +151,7 @@ class ActionResultEntry(TeamPlayerEntry):
         self.result = ActionResult[result.upper()] if isinstance(result, str) else result
 
     def __repr__(self):
-        return f"{self.__name}(team={self.team}, player={self.player}, required={self.required}, "\
+        return f"{self.__name}(team={self.team}, player_num={self.player}, required={self.required}, "\
                f"roll={self.roll}, result={self.result})"
 
 
@@ -233,8 +233,8 @@ class TentacledEntry(ActionResultEntry):
         self.attacking_player = attacking_player
 
     def __repr__(self):
-        return f"Tentacled(team={self.team}, player={self.player}, " \
-               f"attacking_team={self.attacking_team}, attacking_player={self.attacking_player}, " \
+        return f"Tentacled(team={self.team}, player_num={self.player}, " \
+               f"attacking_team={self.attacking_team}, attacking_player_num={self.attacking_player}, " \
                f"required={self.required}, roll={self.roll}, result={self.result})"
 
 
@@ -251,7 +251,7 @@ class ThrowEntry(TeamPlayerEntry):
         self.result = enum_name_to_enum(result, ThrowResult)
 
     def __repr__(self):
-        return f"Throw(team={self.team}, player={self.player}, required={self.required}, roll={self.roll}, " \
+        return f"Throw(team={self.team}, player_num={self.player}, required={self.required}, roll={self.roll}, " \
                f"result={self.result})"
 
 
@@ -261,7 +261,7 @@ class SkillEntry(TeamPlayerEntry):
         self.skill = enum_name_to_enum(skill, Skills)
 
     def __repr__(self):
-        return f'Skill(team={self.team}, player={self.player}, skill={self.skill})'
+        return f'Skill(team={self.team}, player_num={self.player}, skill={self.skill})'
 
 
 def create_skill_roll_entry(skill):
@@ -279,7 +279,7 @@ class SkillRollEntry(TeamPlayerEntry):
         self.result = ActionResult[result.upper()]
 
     def __repr__(self):
-        return f"SkillRoll(team={self.team}, player={self.player}, skill={self.skill}, " \
+        return f"SkillRoll(team={self.team}, player_num={self.player}, skill={self.skill}, " \
                f"required={self.required}, roll={self.roll}, result={self.result})"
 
 
@@ -298,7 +298,7 @@ class LeaderRerollEntry(RerollEntry):
         self.player = int(player)
 
     def __repr__(self):
-        return f'LeaderReroll(team={self.team}, player={self.player})'
+        return f'LeaderReroll(team={self.team}, player_num={self.player})'
 
 
 # This could be a ActionResultEntry but it's more important that we treat it like a RerollEntry
@@ -311,7 +311,7 @@ class ProRerollEntry(RerollEntry):
         self.result = ActionResult[result.upper()]
 
     def __repr__(self):
-        return f"ProReroll(team={self.team}, player={self.player}, required={self.required}, "\
+        return f"ProReroll(team={self.team}, player_num={self.player}, required={self.required}, "\
                f"roll={self.roll}, result={self.result})"
 
 
@@ -322,7 +322,7 @@ class InjuryRollEntry(TeamPlayerEntry):
         self.result = InjuryRollResult[result.upper()]
 
     def __repr__(self):
-        return f"InjuryRoll(team={self.team}, player={self.player}, roll={self.roll}, result={self.result})"
+        return f"InjuryRoll(team={self.team}, player_num={self.player}, roll={self.roll}, result={self.result})"
 
 
 class CasualtyRollEntry(TeamPlayerEntry):
@@ -331,7 +331,7 @@ class CasualtyRollEntry(TeamPlayerEntry):
         self.result = enum_name_to_enum(result, CasualtyResult)
 
     def __repr__(self):
-        return f"CasualtyRoll(team={self.team}, player={self.player}, result={self.result})"
+        return f"CasualtyRoll(team={self.team}, player_num={self.player}, result={self.result})"
 
 
 class ApothecaryLogEntry(TeamPlayerEntry):
@@ -339,7 +339,7 @@ class ApothecaryLogEntry(TeamPlayerEntry):
         super().__init__(team, player)
 
     def __repr__(self):
-        return f"Apothecary(team={self.team}, player={self.player})"
+        return f"Apothecary(team={self.team}, player_num={self.player})"
 
 
 class TurnOverEntry(TeamEntry):

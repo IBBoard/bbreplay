@@ -53,7 +53,7 @@ class SetupCommand(Command):
         return self.position.y
 
     def __repr__(self):
-        return f'Setup(team={self.team}, player={self.player_idx}, pos={self.x},{self.y}, data={self._data})'
+        return f'Setup(team={self.team}, player_idx={self.player_idx}, pos={self.x},{self.y}, data={self._data})'
 
 
 class SetupCompleteCommand(SimpleCommand):
@@ -107,7 +107,7 @@ class PlayerCommand(Command):
         return self.position.y
 
     def __repr__(self):
-        return f'UnknownPlayerCommand(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+        return f'UnknownPlayerCommand(team={self.team}, player_idx={self.player_idx}, sequence={self.sequence}, ' \
             f'action_type={self.action_type}, target={self.x},{self.y}, data={self._data})'
 
 
@@ -116,7 +116,7 @@ class MovementCommand(PlayerCommand):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'Movement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+        return f'Movement(team={self.team}, player_idx={self.player_idx}, sequence={self.sequence}, ' \
             f'move_to={self.x},{self.y}, data={self._data})'
 
 
@@ -126,7 +126,7 @@ class EndMovementCommand(MovementCommand):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'EndMovement(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+        return f'EndMovement(team={self.team}, player_idx={self.player_idx}, sequence={self.sequence}, ' \
             f'move_to={self.x},{self.y}, data={self._data})'
 
 
@@ -135,7 +135,7 @@ class TargetSpaceCommand(PlayerCommand):
         super().__init__(id, turn, team, command_type, data)
 
     def __repr__(self):
-        return f'TargetSpace(team={self.team}, player={self.player_idx}, sequence={self.sequence}, ' \
+        return f'TargetSpace(team={self.team}, player_idx={self.player_idx}, sequence={self.sequence}, ' \
             f'target={self.x},{self.y}, data={self._data})'
 
 
@@ -168,7 +168,7 @@ class TouchbackCommand(Command):
         self.player_idx = data[1]
 
     def __repr__(self):
-        return f'Touchback(team={self.team}, player={self.player_idx}, data={self._data})'
+        return f'Touchback(team={self.team}, player_idx={self.player_idx}, data={self._data})'
 
 
 class DiceChoiceCommand(Command):
@@ -179,7 +179,7 @@ class DiceChoiceCommand(Command):
         self.dice_idx = data[2]
 
     def __repr__(self):
-        return f'DiceChoice(team={self.team}, player={self.player_idx}, dice_idx={self.dice_idx}, ' \
+        return f'DiceChoice(team={self.team}, player_idx={self.player_idx}, dice_idx={self.dice_idx}, ' \
             f'data={self._data})'
 
 
@@ -194,8 +194,8 @@ class TargetPlayerCommand(Command):
         # data[8] is often 0 but sometimes 1
 
     def __repr__(self):
-        return f'TargetPlayerCommand(team={self.team}, player={self.player_idx}, ' \
-               f'target_team={self.target_team}, target_player={self.target_player}, data={self._data})'
+        return f'TargetPlayerCommand(team={self.team}, player_idx={self.player_idx}, ' \
+               f'target_team={self.target_team}, target_player_idx={self.target_player}, data={self._data})'
 
 
 class FollowUpChoiceCommand(Command):
@@ -223,8 +223,8 @@ class PushbackCommand(Command):
         return self.position.y
 
     def __repr__(self):
-        return f'Pushback(team={self.team}, pushing_player={self.player_idx}, push_destination={self.x},{self.y}, ' \
-            f'data={self._data})'
+        return f'Pushback(team={self.team}, pushing_player_idx={self.player_idx}, push_destination={self.x},{self.y},' \
+            f' data={self._data})'
 
 
 class JuggernautChoiceCommand(Command):
@@ -235,7 +235,8 @@ class JuggernautChoiceCommand(Command):
         self.choice = data[2] == 1
 
     def __repr__(self):
-        return f'JuggernautChoice(team={self.team}, player={self.player_idx}, choice={self.choice}, data={self._data})'
+        return f'JuggernautChoice(team={self.team}, player_idx={self.player_idx}, choice={self.choice}, ' \
+            f'data={self._data})'
 
 
 class DumpOffCommand(SimpleCommand):
@@ -259,7 +260,7 @@ class ThrowCommand(Command):
         return self.position.y
 
     def __repr__(self):
-        return f'Throw(team={self.team}, player={self.player_idx}, position={self.x},{self.y})'
+        return f'Throw(team={self.team}, player_idx={self.player_idx}, position={self.x},{self.y})'
 
 
 class InterceptCommand(Command):
@@ -286,7 +287,7 @@ class ProRerollCommand(SimpleTeamOverrideCommand):
         self.player = data[1]
 
     def __repr__(self):
-        return f'ProReroll(team={self.team}, player={self.player}, data={self._data})'
+        return f'ProReroll(team={self.team}, player_idx={self.player}, data={self._data})'
 
 
 class DeclineRerollCommand(Command):
@@ -305,7 +306,7 @@ class ApothecaryCommand(Command):
         self.used = data[2] == 1
 
     def __repr__(self):
-        return f'Apothecary(team={self.team}, player={self.player}, used={self.used}, data={self._data})'
+        return f'Apothecary(team={self.team}, player_idx={self.player}, used={self.used}, data={self._data})'
 
 
 class ApothecaryChoiceCommand(Command):
@@ -315,7 +316,7 @@ class ApothecaryChoiceCommand(Command):
         self.result = CasualtyResult(data[2])
 
     def __repr__(self):
-        return f'ApothecaryChoice(team={self.team}, player={self.player}, result={self.result}, data={self._data})'
+        return f'ApothecaryChoice(team={self.team}, player_idx={self.player}, result={self.result}, data={self._data})'
 
 
 class SpellCommand(Command):
