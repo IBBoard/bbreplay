@@ -1188,8 +1188,9 @@ class Replay:
                     ball_position = OFF_PITCH_POSITION
                 else:
                     board.set_ball_position(ball_position)
-                yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
+                bounce_event = Bounce(old_ball_position, ball_position, log_entry.direction, board)
                 if ball_position.is_offpitch():
+                    yield bounce_event
                     if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH:
                         offset = 0
                         # Throw-ins from fumbled pickups seem to come from the space where the ball
@@ -1203,18 +1204,34 @@ class Replay:
                     # Continue to find the throw-in
                     continue
                 elif board.get_position(ball_position):
-                    # Bounced to an occupied space, so we need to continue
+                    # Bounced to an occupied space, so we need to continue for a catch or a bounce off a prone body
                     previous_ball_position = old_ball_position
+                    player_in_space = board.get_position(ball_position)
+                    if board.is_prone(player_in_space):
+                        yield bounce_event
+                        continue
+                    log_entry = next(log_entries)
+                    if isinstance(log_entry, CatchEntry):
+                        yield bounce_event
+                        catcher = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
+                        yield Action(catcher, ActionType.CATCH, log_entry.result, board)
+                        if log_entry.result == ActionResult.SUCCESS:
+                            board.set_ball_carrier(catcher)
+                            break
+                        # Else it bounces again
+                    elif isinstance(log_entry, BounceLogEntry):
+                        # The first bounce was a ghost bounce that never happened, so ignore it and
+                        # generate the correct bounce
+                        ball_position = old_ball_position.scatter(log_entry.direction)
+                        board.set_ball_position(ball_position)
+                        yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
+                        # XXX: This doesn't take account of off-pitch etc
+                    else:
+                        raise ValueError(f"Expected CatchEntry or BounceEntry after bounce, got {type(log_entry).name}")
                 else:
+                    yield bounce_event
                     # Bounced to an empty space
                     break
-            elif isinstance(log_entry, CatchEntry):
-                catcher = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
-                yield Action(catcher, ActionType.CATCH, log_entry.result, board)
-                if log_entry.result == ActionResult.SUCCESS:
-                    board.set_ball_carrier(catcher)
-                    break
-                # Else it bounces again
             elif isinstance(log_entry, ThrowInDirectionLogEntry):
                 distance_entry = next(log_entries)
                 ball_position = previous_ball_position.throwin(log_entry.direction, distance_entry.distance)

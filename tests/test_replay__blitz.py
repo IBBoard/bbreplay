@@ -529,6 +529,89 @@ def test_gfi_blitz_ball_carrier_downed(board):
     assert not next(log_entries, None)
 
 
+def test_bug8_blitz_into_ball_with_false_double_bounce(board):
+    # A bounce to an occupied square without a catch has to indicate a dud scatter
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(6, 7), player)
+    player_2 = Player(2, "Player2H", 4, 4, 4, 4, 1, 0, 40000, [])
+    home_team.add_player(1, player_2)
+    board.set_position(Position(10, 9), player_2)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    board.set_ball_position(Position(9, 8))
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.DEFENDER_DOWN]),
+        ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE),
+        BounceLogEntry(ScatterDirection.NE.value),
+        BounceLogEntry(ScatterDirection.N.value)
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Blitz)
+    assert event.blitzing_player == player
+    assert event.blitzed_player == opponent
+
+    event = next(events)
+    # Movement tests should check valid movement
+    assert isinstance(event, Movement)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.DEFENDER_DOWN]
+    assert event.result == BlockResult.DEFENDER_DOWN
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == opponent
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == opponent
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.scatter_direction == ScatterDirection.N
+    assert event.start_space == Position(9, 8)
+    assert event.end_space == Position(9, 9)
+
+    assert not board.is_prone(player)
+    assert board.is_prone(opponent)
+    assert board.get_ball_position() == Position(9, 9)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
 def test_gfi_blitz_ball_carrier_with_dumpoff_to_noone_downed(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
