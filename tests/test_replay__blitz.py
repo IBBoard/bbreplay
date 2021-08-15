@@ -738,7 +738,8 @@ def test_gfi_blitz_failure_with_casualty(board):
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
-        RerollCommand(1, 1, TeamType.HOME, 1, [])
+        RerollCommand(1, 1, TeamType.HOME, 1, []),
+        ApothecaryCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0])
     ])
     log_entries = iter_([
         GoingForItEntry(player.team.team_type, player.number, "2+", "2", ActionResult.FAILURE),

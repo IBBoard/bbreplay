@@ -169,6 +169,28 @@ def test_apothecary_declined(board):
     assert not next(log_entries, None)
 
 
+def test_apothecary_not_available(board):
+    # Zero apothecaries is the default, but be explicit
+    board.apothecaries[TeamType.HOME.value] = 0
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(6, 7), player)
+    board.set_injured(player)
+    cmds = iter_([
+        ApothecaryCommand(1, 1, TeamType.HOME, 1, [0, 0, 0])
+    ])
+    log_entries = iter_([
+    ])
+    events = replay._process_apothecary(player, InjuryRollResult.INJURED, CasualtyResult.DEAD, cmds, log_entries, board)
+
+    assert board.is_injured(player)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
 def test_apothecary_not_used_for_stunned(board):
     board.apothecaries[TeamType.HOME.value] = 1
     home_team, away_team = board.teams

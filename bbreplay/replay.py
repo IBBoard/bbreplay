@@ -498,8 +498,6 @@ class Replay:
         if player.position.is_offpitch():
             # Assume we're using older rules where apothecaries can't help players in the crowd
             return
-        if not board.has_apothecary(player.team.team_type):
-            return
         if injury == InjuryRollResult.STUNNED:
             raise ValueError("Apothecary cannot help stunned players")
         cmd = next(cmds)
