@@ -262,7 +262,8 @@ def test_bounce_from_spell_with_bounce_off_prone(board):
         FireballEntry(TeamType.HOME, 1, "4+", "4", ActionResult.SUCCESS.name),
         ArmourValueRollEntry(TeamType.HOME, 1, "8+", "9", ActionResult.SUCCESS.name),
         InjuryRollEntry(TeamType.HOME, 1, "6", InjuryRollResult.STUNNED.name),
-        FireballEntry(TeamType.HOME, 2, "4+", "4", ActionResult.FAILURE.name),
+        FireballEntry(TeamType.HOME, 2, "4+", "4", ActionResult.SUCCESS.name),
+        ArmourValueRollEntry(TeamType.HOME, 2, "8+", "9", ActionResult.FAILURE.name),
         BounceLogEntry(ScatterDirection.SW.value),
         BounceLogEntry(ScatterDirection.E.value)
     ]
@@ -298,6 +299,15 @@ def test_bounce_from_spell_with_bounce_off_prone(board):
     assert isinstance(event, Action)
     assert event.player == player_2
     assert event.action == ActionType.SPELL_HIT
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player_2
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player_2
     assert event.result == ActionResult.FAILURE
 
     event = next(events)
