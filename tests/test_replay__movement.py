@@ -1,5 +1,5 @@
 import pytest
-from bbreplay import TeamType, Position
+from bbreplay import ScatterDirection, TeamType, Position
 from bbreplay.command import *
 from bbreplay.player import Player
 from bbreplay.replay import *
@@ -196,6 +196,64 @@ def test_single_failed_dodge(board):
     assert isinstance(event, ArmourRoll)
     assert event.player == player
     assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
+def test_single_failed_dodge_into_ball(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    defender = away_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    board.set_position(Position(8, 7), defender)
+    board.set_ball_position(Position(6, 7))
+    cmds = [
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    log_entries = [
+        DodgeEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!"),
+        BounceLogEntry(ScatterDirection.S.value)
+    ]
+    cmd = cmds[0]
+    cmds_iter = iter_(cmds[1:])
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.DODGE
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.scatter_direction == ScatterDirection.S
+    assert event.start_space == Position(6, 7)
+    assert event.end_space == Position(6, 6)
 
     event = next(events)
     assert isinstance(event, FailedMovement)
