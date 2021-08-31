@@ -269,17 +269,21 @@ class Replay:
 
         touchback = board.get_ball_position().is_offpitch() or target_half != landed_half
 
-        if ball_bounces and not touchback:
-            # TODO: Handle no bounce when it gets caught straight away
-            for log_entry in next(log_entries):
-                if not isinstance(log_entry, BounceLogEntry):
-                    raise ValueError(f"Expected Bounce log entries but got {type(log_entry).__name__}")
-                old_position = ball_dest
-                ball_dest = ball_dest.scatter(log_entry.direction)
-                board.set_ball_position(ball_dest)
-                yield Bounce(old_position, ball_dest, log_entry.direction, board)
-            if ball_dest.is_offpitch():
-                touchback = True
+        if ball_bounces:
+            if touchback:
+                _ = next(log_entries)
+            else:
+                for log_entry in next(log_entries):
+                    if not isinstance(log_entry, BounceLogEntry):
+                        raise ValueError(f"Expected Bounce log entries but got {type(log_entry).__name__}")
+                    old_position = ball_dest
+                    ball_dest = ball_dest.scatter(log_entry.direction)
+                    board.set_ball_position(ball_dest)
+                    yield Bounce(old_position, ball_dest, log_entry.direction, board)
+                if ball_dest.is_offpitch():
+                    touchback = True
+        # else
+        # TODO: Handle no bounce when it gets caught straight away (but not via "High Kick" event)
 
         if touchback:
             cmd = next(cmds)

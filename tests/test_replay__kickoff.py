@@ -190,6 +190,9 @@ def test_touchback_for_off_pitch_kick(board):
         ],
         [
             KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value)
+        ],
+        [
+            BounceLogEntry(ScatterDirection.NW.value)
         ]
     ])
     events = replay._process_kickoff(cmds, log_entries, board)
@@ -307,6 +310,9 @@ def test_touchback_for_own_half_kick(board):
         ],
         [
             KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value)
+        ],
+        [
+            BounceLogEntry(ScatterDirection.W.value)
         ]
     ])
     events = replay._process_kickoff(cmds, log_entries, board)
@@ -361,6 +367,9 @@ def test_touchback_for_own_half_kick_other_direction(board):
         ],
         [
             KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value)
+        ],
+        [
+            BounceLogEntry(ScatterDirection.W.value)
         ]
     ])
     events = replay._process_kickoff(cmds, log_entries, board)
