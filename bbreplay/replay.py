@@ -534,20 +534,20 @@ class Replay:
             board.unset_injured(player)
         yield Casualty(player, cmd.result)
 
-    def _process_uncontrollable_skills(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+    def _process_uncontrollable_skills(self, player, cmds, cur_log_entries, log_entries, board, unused=None):
         if board.quick_snap_turn:
             return
-        yield from self._process_stupidity(player, cmd, cmds, cur_log_entries, log_entries, board, unused)
+        yield from self._process_stupidity(player, cmds, cur_log_entries, log_entries, board, unused)
         if unused:
             cur_log_entries = unused.log_entries
-        yield from self._process_wild_animal(player, cmd, cmds, cur_log_entries, log_entries, board, unused)
+        yield from self._process_wild_animal(player, cmds, cur_log_entries, log_entries, board, unused)
 
-    def _process_stupidity(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+    def _process_stupidity(self, player, cmds, cur_log_entries, log_entries, board, unused=None):
         if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
             if not cur_log_entries:
                 cur_log_entries = self.__next_generator(log_entries)
             log_entry = next(cur_log_entries)
-            validate_log_entry(log_entry, StupidEntry, cmd.team, player.number)
+            validate_log_entry(log_entry, StupidEntry, player.team.team_type, player.number)
             board.stupidity_test(player, log_entry.result)
             yield Action(player, ActionType.REALLY_STUPID, log_entry.result, board)
             if log_entry.result != ActionResult.SUCCESS:
@@ -560,12 +560,12 @@ class Replay:
         if unused:
             unused.log_entries = cur_log_entries
 
-    def _process_wild_animal(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+    def _process_wild_animal(self, player, cmds, cur_log_entries, log_entries, board, unused=None):
         if Skills.WILD_ANIMAL in player.skills and not board.tested_wild_animal(player):
             if not cur_log_entries:
                 cur_log_entries = self.__next_generator(log_entries)
             log_entry = next(cur_log_entries)
-            validate_log_entry(log_entry, WildAnimalEntry, cmd.team, player.number)
+            validate_log_entry(log_entry, WildAnimalEntry, player.team.team_type, player.number)
             board.wild_animal_test(player, log_entry.result)
             yield Action(player, ActionType.WILD_ANIMAL, log_entry.result, board)
             if log_entry.result != ActionResult.SUCCESS:
@@ -591,7 +591,7 @@ class Replay:
             target_log_entries = unused.log_entries
         else:
             unused = ReturnWrapper()
-            yield from self._process_uncontrollable_skills(targeting_player, cmd, cmds,
+            yield from self._process_uncontrollable_skills(targeting_player, cmds,
                                                            target_log_entries, log_entries, board, unused)
             target_log_entries = unused.log_entries
             if board.is_prone(targeting_player):
@@ -822,7 +822,20 @@ class Replay:
                                                   target_log_entries, log_entries, board, True)
 
     def _process_throw(self, player, target_by_idx, cmds, target_log_entries, log_entries, board):
+        stupid_unused = ReturnWrapper()
+        failed_throw = False
+        for event in self._process_uncontrollable_skills(player, cmds, target_log_entries, log_entries, board,
+                                                         stupid_unused):
+            if isinstance(event, Action):
+                failed_throw = event.result != ActionResult.SUCCESS
+            yield event
+
+        if failed_throw:
+            return
+
+        log_entries = stupid_unused.log_entries
         cmd = next(cmds)
+
         if isinstance(cmd, MovementCommand):
             unused = ReturnWrapper()
             yield from self._process_movement(player, cmd, cmds, target_log_entries, log_entries, board, unused)
@@ -883,7 +896,7 @@ class Replay:
             unused.command = cmd
 
         stupid_unused = ReturnWrapper()
-        for event in self._process_uncontrollable_skills(player, cmd, cmds, move_log_entries, log_entries,
+        for event in self._process_uncontrollable_skills(player, cmds, move_log_entries, log_entries,
                                                          board, stupid_unused):
             if isinstance(event, Action):
                 failed_movement = event.result != ActionResult.SUCCESS
