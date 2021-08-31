@@ -11,7 +11,7 @@ from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, \
-    SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry, SpellEntry
+    SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry, SpellEntry, ThrowTeammateEntry, LandingEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
@@ -22,6 +22,7 @@ class ActionType(Enum):
     DODGE = auto()
     FOUL_APPEARANCE = auto()
     GOING_FOR_IT = auto()
+    LANDING = auto()
     LEAP = auto()
     PRO = auto()
     REALLY_STUPID = auto()
@@ -51,6 +52,7 @@ Apothecary = namedtuple('Apothecary', ['player', 'new_injury', 'casualty'])
 DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 Pass = namedtuple('Pass', ['player', 'target', 'result', 'board'])
+ThrowTeammate = namedtuple('ThrowTeammate', ['player', 'thrown_player', 'target', 'result', 'board'])
 Handoff = namedtuple('Handoff', ['player', 'target', 'board'])
 Interception = namedtuple('Interception', ['player', 'result', 'board'])
 PlayerDown = namedtuple('PlayerDown', ['player'])
@@ -350,6 +352,15 @@ class Replay:
                 if is_block:
                     yield from self._process_block(targeting_player, target_by_idx, cmds,
                                                    self.__next_generator(log_entries), log_entries, board)
+                elif not cmd.position.is_offpitch():
+                    # Regular throws use 255,255 but throw teammate uses the target coords
+                    for event in self._process_throw_teammate(targeting_player, target_by_idx, cmd, cmds,
+                                                              self.__next_generator(log_entries),
+                                                              log_entries, board):
+                        if isinstance(event, EndTurn):
+                            end_reason = event.reason
+                        else:
+                            yield event
                 else:
                     for event in self._process_throw(targeting_player, target_by_idx, cmds,
                                                      self.__next_generator(log_entries), log_entries, board):
@@ -866,6 +877,69 @@ class Replay:
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                 yield Action(target_by_idx, ActionType.CATCH, catch_entry.result, board)
                 yield EndTurn(player.team, board.turn, log_entry.reason, board)
+
+    def _process_throw_teammate(self, player, target_by_idx, cmd, cmds, target_log_entries, log_entries, board):
+        if Skills.THROW_TEAMMATE not in player.skills:
+            raise ValueError(f"Throw teammate attempted by {player.name} without Throw Teammate skill")
+        if Skills.RIGHT_STUFF not in target_by_idx.skills:
+            raise ValueError(f"Throw teammate attempted on {target_by_idx.name} without Right Stuff skill")
+
+        throw_command = cmd
+
+        stupid_unused = ReturnWrapper()
+        failed_throw = False
+        for event in self._process_uncontrollable_skills(player, cmds, target_log_entries, log_entries, board,
+                                                         stupid_unused):
+            if isinstance(event, Action):
+                failed_throw = event.result != ActionResult.SUCCESS
+            yield event
+
+        if failed_throw:
+            return
+
+        pickup_command = next(cmds)
+        if not isinstance(pickup_command, TargetSpaceCommand):
+            raise ValueError(f"Expected TargetSpaceCommand but got {pickup_command.__name__}")
+
+        target_by_coords = board.get_position(pickup_command.position)
+        if target_by_coords != target_by_idx:
+            raise ValueError(f"Target command targetted {target_by_idx} but {pickup_command} targetted "
+                             f"{target_by_coords}")
+
+        log_entries = stupid_unused.log_entries
+
+        if not log_entries:
+            target_log_entries = self.__next_generator(log_entries)
+
+        throw_log_entry = next(target_log_entries)
+        validate_log_entry(throw_log_entry, ThrowTeammateEntry, player.team.team_type, player.number)
+        result = throw_log_entry.result
+        yield ThrowTeammate(player, target_by_idx, throw_command.position, result, board)
+
+        # Only check rerolls for fumbles, because Accurate isn't possible
+        if throw_log_entry.result == ThrowResult.FUMBLE:
+            actions, result = self._process_action_reroll(cmds, log_entries, player, board)
+            yield from actions
+            if result is not None:
+                yield ThrowTeammate(player, target_by_idx, throw_command.position, result, board)
+
+        if result == ThrowResult.INACCURATE_PASS:
+            scatter_1 = next(log_entries)
+            scatter_2 = next(log_entries)
+            scatter_3 = next(log_entries)
+            landing_position = throw_command.position.scatter(scatter_1.direction).scatter(scatter_2.direction) \
+                                                     .scatter(scatter_3.direction)
+            board.set_position(landing_position, target_by_idx)
+            yield Scatter(throw_command.position, landing_position, board)
+        # else it was a fumble and players lands where they started
+
+        landing_entry = next(target_log_entries)
+        validate_log_entry(landing_entry, LandingEntry, target_by_idx.team.team_type, target_by_idx.number)
+        yield Action(target_by_idx, ActionType.LANDING, landing_entry.result, board)
+
+        if not landing_entry.result == ActionResult.SUCCESS:
+            armour_entry = next(target_log_entries)
+            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, target_log_entries, board)
 
     def _process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
         failed_movement = False

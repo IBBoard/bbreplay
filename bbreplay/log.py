@@ -255,6 +255,23 @@ class ThrowEntry(TeamPlayerEntry):
                f"result={self.result})"
 
 
+class ThrowTeammateEntry(TeamPlayerEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__(team, player)
+        self.required = required
+        self.roll = int(roll)
+        self.result = enum_name_to_enum(result, ThrowResult)
+
+    def __repr__(self):
+        return f"ThrowTeammate(team={self.team}, player_num={self.player}, required={self.required}, " \
+               f"roll={self.roll}, result={self.result})"
+
+
+class LandingEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("Landing", team, player, required, roll, result)
+
+
 class SkillEntry(TeamPlayerEntry):
     def __init__(self, team, player, skill):
         super().__init__(team, player)
@@ -362,6 +379,7 @@ OTHER_ENTRY_MAP = {
     "Stupid": StupidEntry,
     "Tentacles": TentacledRollEntry,
     "Value": ArmourValueRollEntry,
+    "Land": LandingEntry,
 }
 
 
@@ -395,6 +413,8 @@ pickup_re = re.compile(f"{TEAM_PLAYER} Pick-up {{AG}} +\\(([0-9]+\\+)\\) : .*([0
                        " (Success|Failure)")
 throw_re = re.compile(f"{TEAM_PLAYER} Launch {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
                       " (Fumble|(?:Inaccurate|Accurate) pass)!")
+throw_teammate_re = re.compile(f"{TEAM_PLAYER} Throw Team-Mate {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
+                               " (Fumble|Inaccurate pass)!")  # Throwing teammates is never accurate, even Crits
 dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{(?:AG|ST)}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
                       "(Success|Failure)")
 # We're specific about skills because some like Horns and Stunty aren't important to us and just change roll results
@@ -437,6 +457,7 @@ turn_regexes = [
     (throw_in_distance_re, ThrowInDistanceLogEntry),
     (ball_bounce_re, BounceLogEntry),
     (scatter_launch_re, ScatterLaunchEntry),
+    (throw_teammate_re, ThrowTeammateEntry),
     (other_success_failure_re, create_other_entry),
     (kickoff_event_re, KickoffEventLogEntry),
     (weather_re, WeatherLogEntry),

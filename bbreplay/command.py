@@ -190,12 +190,13 @@ class TargetPlayerCommand(Command):
         self.player_idx = data[1]
         self.target_team = player_idx_to_type(data[2])
         self.target_player = data[3]
-        # data[4] and data[5] are 255 and 255 *or* below ~20
+        self.position = Position(data[4], data[5])
         # data[8] is often 0 but sometimes 1
 
     def __repr__(self):
         return f'TargetPlayerCommand(team={self.team}, player_idx={self.player_idx}, ' \
-               f'target_team={self.target_team}, target_player_idx={self.target_player}, data={self._data})'
+               f'target_team={self.target_team}, target_player_idx={self.target_player}, ' \
+               f'position={self.position.x},{self.position.y}, data={self._data})'
 
 
 class FollowUpChoiceCommand(Command):
