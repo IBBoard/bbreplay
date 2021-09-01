@@ -1,4 +1,4 @@
-from bbreplay.log import LandingEntry, ScatterLaunchEntry, ThrowTeammateEntry
+from bbreplay.log import AlwaysHungryEntry, LandingEntry, ScatterLaunchEntry, ThrowTeammateEntry
 import pytest
 from bbreplay import ScatterDirection, TeamType, Position
 from bbreplay.command import *
@@ -212,6 +212,65 @@ def test_throwing_teammate_fumble_pickup_failed_landing(board):
 
     assert player_2.position == Position(7, 11)
     assert board.is_prone(player_2)
+
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
+def test_throwing_teammate_successful_always_hungry(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player_1 = home_team.get_player(0)
+    player_1.skills.append(Skills.THROW_TEAMMATE)
+    player_1.skills.append(Skills.ALWAYS_HUNGRY)
+    board.set_position(Position(7, 12), player_1)
+    player_2 = home_team.get_player(1)
+    player_2.skills.append(Skills.RIGHT_STUFF)
+    board.set_position(Position(7, 11), player_2)
+    cmds = [
+        TargetPlayerCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0, 1, 9, 18]),
+        TargetSpaceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0, 1, 26, 0, 0, 0, 7, 11, 0, 0])
+    ]
+    log_entries = [
+        AlwaysHungryEntry(TeamType.HOME, 1, "2+", 2, ActionResult.SUCCESS.name),
+        ThrowTeammateEntry(TeamType.HOME, 1, "6+", 6, ThrowResult.INACCURATE_PASS.name),
+        ScatterLaunchEntry(ScatterDirection.NW.value),
+        ScatterLaunchEntry(ScatterDirection.SE.value),
+        ScatterLaunchEntry(ScatterDirection.E.value),
+        LandingEntry(TeamType.HOME, 2, "4+", 4, ActionResult.SUCCESS.name)
+    ]
+    cmds_iter = iter_(cmds)
+    cmd = next(cmds_iter)
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_throw_teammate(player_1, player_2, cmd, cmds_iter, log_entries_iter, None, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.player == player_1
+    assert event.action == ActionType.ALWAYS_HUNGRY
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, ThrowTeammate)
+    assert event.player == player_1
+    assert event.thrown_player == player_2
+    assert event.target == Position(9, 18)
+    assert event.result == ThrowResult.INACCURATE_PASS
+
+    event = next(events)
+    assert isinstance(event, Scatter)
+    assert event.start_space == Position(9, 18)
+    assert event.end_space == Position(10, 18)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.player == player_2
+    assert event.action == ActionType.LANDING
+    assert event.result == ActionResult.SUCCESS
+
+    assert player_2.position == Position(10, 18)
+    assert not board.is_prone(player_2)
 
     assert not next(events, None)
     assert not next(cmds_iter, None)

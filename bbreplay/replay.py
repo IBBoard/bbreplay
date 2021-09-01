@@ -11,13 +11,15 @@ from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, \
-    SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry, SpellEntry, ThrowTeammateEntry, LandingEntry
+    SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry, SpellEntry, ThrowTeammateEntry, LandingEntry, \
+    AlwaysHungryEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
 
 
 class ActionType(Enum):
+    ALWAYS_HUNGRY = auto()
     CATCH = auto()
     DODGE = auto()
     FOUL_APPEARANCE = auto()
@@ -897,6 +899,18 @@ class Replay:
         if failed_throw:
             return
 
+        log_entries = stupid_unused.log_entries
+
+        if not log_entries:
+            target_log_entries = self.__next_generator(log_entries)
+
+        if Skills.ALWAYS_HUNGRY in player.skills:
+            always_hungry = next(target_log_entries)
+            validate_log_entry(always_hungry, AlwaysHungryEntry, player.team.team_type, player.number)
+            yield Action(player, ActionType.ALWAYS_HUNGRY, always_hungry.result, board)
+            if always_hungry.result == ActionResult.FAILURE:
+                raise NotImplementedError("Failed AlwaysHungry check not seen or implemented")
+
         pickup_command = next(cmds)
         if not isinstance(pickup_command, TargetSpaceCommand):
             raise ValueError(f"Expected TargetSpaceCommand but got {pickup_command.__name__}")
@@ -905,11 +919,6 @@ class Replay:
         if target_by_coords != target_by_idx:
             raise ValueError(f"Target command targetted {target_by_idx} but {pickup_command} targetted "
                              f"{target_by_coords}")
-
-        log_entries = stupid_unused.log_entries
-
-        if not log_entries:
-            target_log_entries = self.__next_generator(log_entries)
 
         throw_log_entry = next(target_log_entries)
         validate_log_entry(throw_log_entry, ThrowTeammateEntry, player.team.team_type, player.number)

@@ -272,6 +272,11 @@ class LandingEntry(ActionResultEntry):
         super().__init__("Landing", team, player, required, roll, result)
 
 
+class AlwaysHungryEntry(ActionResultEntry):
+    def __init__(self, team, player, required, roll, result):
+        super().__init__("AlwaysHungry", team, player, required, roll, result)
+
+
 class SkillEntry(TeamPlayerEntry):
     def __init__(self, team, player, skill):
         super().__init__(team, player)
@@ -380,6 +385,7 @@ OTHER_ENTRY_MAP = {
     "Tentacles": TentacledRollEntry,
     "Value": ArmourValueRollEntry,
     "Land": LandingEntry,
+    "Hungry": AlwaysHungryEntry,
 }
 
 
