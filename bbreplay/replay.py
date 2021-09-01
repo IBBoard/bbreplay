@@ -905,10 +905,14 @@ class Replay:
             target_log_entries = self.__next_generator(log_entries)
 
         if Skills.ALWAYS_HUNGRY in player.skills:
-            always_hungry = next(target_log_entries)
-            validate_log_entry(always_hungry, AlwaysHungryEntry, player.team.team_type, player.number)
-            yield Action(player, ActionType.ALWAYS_HUNGRY, always_hungry.result, board)
-            if always_hungry.result == ActionResult.FAILURE:
+            log_entry = next(target_log_entries)
+            success = True
+            for event in self._process_action_result(log_entry, AlwaysHungryEntry, target_log_entries, cmds,
+                                                     player, ActionType.ALWAYS_HUNGRY, board):
+                yield event
+                if isinstance(event, Action):
+                    success = event.result == ActionResult.SUCCESS
+            if not success:
                 raise NotImplementedError("Failed AlwaysHungry check not seen or implemented")
 
         pickup_command = next(cmds)
