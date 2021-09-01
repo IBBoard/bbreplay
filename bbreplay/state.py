@@ -175,6 +175,9 @@ class GameState:
         self.reset_position(from_space)
         self.set_position(to_space, player)
 
+    def throw_block(self, player):
+        self.__moves[player] += 1
+
     def get_distance_moved(self, player):
         return self.__moves[player]
 

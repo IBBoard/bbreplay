@@ -671,6 +671,7 @@ class Replay:
                 return
 
         blocking_player = targeting_player
+        board.throw_block(blocking_player)
         block_dice = next(target_log_entries)
         block_choice = next(cmds)
         if isinstance(block_choice, ProRerollCommand):
