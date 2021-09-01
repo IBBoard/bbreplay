@@ -826,7 +826,7 @@ class Replay:
             yield from board.change_turn(blocking_player.team.team_type, log_entry.reason)
         elif not frenzied_block and Skills.FRENZY in blocking_player.skills and \
                 (defender_avoided or chosen_block_dice == BlockResult.PUSHED):
-            if board.get_distance_moved(targeting_player) >= targeting_player.MA + 1:
+            if board.get_distance_moved(targeting_player) >= targeting_player.MA + 2:
                 # Can't Frenzy when we hit our GFI limit
                 return
             log_entry = next(target_log_entries)
