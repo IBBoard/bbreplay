@@ -285,8 +285,8 @@ def test_single_failed_dodge_into_ball(board):
     log_entries = [
         DodgeEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.FAILURE.name),
         ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
-        TurnOverEntry(TeamType.HOME, "Knocked Down!"),
-        BounceLogEntry(ScatterDirection.S.value)
+        BounceLogEntry(ScatterDirection.S.value),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
     cmd = cmds[0]
     cmds_iter = iter_(cmds[1:])

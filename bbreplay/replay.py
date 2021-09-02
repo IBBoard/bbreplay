@@ -964,7 +964,7 @@ class Replay:
         diving_tackle_entry = None
         start_space = player.position
         move_log_entries = None
-        turnover = None
+        turnover = False
         move_log_entries = cur_log_entries
         moves = []
         is_prone = board.is_prone(player)
@@ -1022,12 +1022,7 @@ class Replay:
                 if result == ActionResult.FAILURE:
                     failed_movement = True
                     yield from self._process_armour_roll(player, cmds, next(move_log_entries), move_log_entries, board)
-                    if is_ball_carrier:
-                        yield from self._process_ball_movement(move_log_entries, player, board)
-                        board.set_ball_carrier(None)
-                    log_entry = next(move_log_entries)
-                    validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                    turnover = log_entry.reason
+                    turnover = True
             if not failed_movement and is_dodge(board, player, target_space):
                 if not move_log_entries:
                     move_log_entries = self.__next_generator(log_entries)
@@ -1057,12 +1052,8 @@ class Replay:
                         if failed_movement:
                             log_entry = next(move_log_entries)
                             yield from self._process_armour_roll(player, cmds, log_entry, move_log_entries, board)
-                            if is_ball_carrier:
-                                yield from self._process_ball_movement(move_log_entries, player, board)
-                                board.set_ball_carrier(None)
-                            log_entry = next(move_log_entries)
-                            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                            turnover = log_entry.reason
+                            turnover = True
+                            break
                         break
                     elif isinstance(log_entry, TentacledEntry):
                         surrounding_players = board.get_surrounding_players(start_space)
@@ -1085,8 +1076,8 @@ class Replay:
                             yield from board.change_turn(log_entry.team, log_entry.reason)
                             move_log_entries = self.__next_generator(log_entries)
                             continue
-                        validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                        turnover = log_entry.reason
+                        else:
+                            raise ValueError("Unexpected in-line TurnOver entry during movement")
                     elif isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.DIVING_TACKLE:
                         diving_tackle_entry = log_entry
                         continue
@@ -1107,10 +1098,8 @@ class Replay:
                         if failed_movement:
                             log_entry = next(move_log_entries)
                             yield from self._process_armour_roll(player, cmds, log_entry, move_log_entries, board)
-                            log_entry = next(move_log_entries)
-                            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                            turnover = log_entry.reason
-                        break
+                            turnover = True
+                            break
                     else:
                         raise ValueError("Looking for dodge-related log entries but got "
                                          f"{type(log_entry).__name__}")
@@ -1139,6 +1128,9 @@ class Replay:
                 board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
             elif turnover:
+                if is_ball_carrier:
+                    yield from self._process_ball_movement(move_log_entries, player, board)
+                    board.set_ball_carrier(None)
                 board.move(player, start_space, target_space)
                 yield FailedMovement(player, start_space, target_space)
             else:
@@ -1188,9 +1180,9 @@ class Replay:
             start_space = target_space
 
         if turnover:
-            if is_ball_carrier:
-                yield from self._process_ball_movement(move_log_entries, player, board)
-            yield from board.change_turn(player.team.team_type, turnover)
+            log_entry = next(move_log_entries)
+            validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
+            yield from board.change_turn(player.team.team_type, log_entry.reason)
 
         if unused:
             unused.log_entries = move_log_entries
