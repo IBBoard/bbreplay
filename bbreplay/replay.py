@@ -1019,6 +1019,9 @@ class Replay:
                 if result == ActionResult.FAILURE:
                     failed_movement = True
                     yield from self._process_armour_roll(player, cmds, next(move_log_entries), move_log_entries, board)
+                    if is_ball_carrier:
+                        yield from self._process_ball_movement(move_log_entries, player, board)
+                        board.set_ball_carrier(None)
                     log_entry = next(move_log_entries)
                     validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                     turnover = log_entry.reason
@@ -1051,6 +1054,9 @@ class Replay:
                         if failed_movement:
                             log_entry = next(move_log_entries)
                             yield from self._process_armour_roll(player, cmds, log_entry, move_log_entries, board)
+                            if is_ball_carrier:
+                                yield from self._process_ball_movement(move_log_entries, player, board)
+                                board.set_ball_carrier(None)
                             log_entry = next(move_log_entries)
                             validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                             turnover = log_entry.reason
@@ -1130,8 +1136,6 @@ class Replay:
                 board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
             elif turnover:
-                if is_ball_carrier:
-                    board.set_ball_carrier(None)
                 board.move(player, start_space, target_space)
                 yield FailedMovement(player, start_space, target_space)
             else:
