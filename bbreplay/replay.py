@@ -517,6 +517,9 @@ class Replay:
             return
         if injury == InjuryRollResult.STUNNED:
             raise ValueError("Apothecary cannot help stunned players")
+        if not isinstance(cmds.peek(), ApothecaryCommand):
+            # Let them suffer their fate!
+            return
         cmd = next(cmds)
         if not isinstance(cmd, ApothecaryCommand):
             raise ValueError(f"Expected ApothecaryCommand after injury but got {type(cmd).__name__}")

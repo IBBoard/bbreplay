@@ -6,12 +6,7 @@ from bbreplay.player import Player
 from bbreplay.replay import *
 from bbreplay.state import GameState
 from bbreplay.teams import Team
-
-
-def iter_(iterable):
-    for item in iterable:
-        print(f"Consuming {type(item).__module__}.{item}")
-        yield item
+from . import iter_
 
 
 @pytest.fixture
