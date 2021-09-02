@@ -4,7 +4,7 @@
 import sqlite3
 from collections import namedtuple
 from enum import Enum, auto
-from . import other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
+from . import Peekable, other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
     KickoffEvent, Role, ThrowResult, _norths, _souths, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
@@ -124,7 +124,7 @@ class Replay:
             raise ValueError(f"Cannot get team for {team_type}")
 
     def __default_generator(self, data):
-        yield from data
+        return Peekable(x for x in data)
 
     def set_generator(self, generator):
         if generator:

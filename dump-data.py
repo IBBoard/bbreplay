@@ -3,14 +3,20 @@
 
 import argparse
 import os.path
-from bbreplay import TeamType
+from bbreplay import Peekable, TeamType
 from bbreplay.replay import create_replay
 
 
-def logging_generator(data):
-    for i, datum in enumerate(data):
-        print(f"\tConsuming {type(datum).__name__} {i}: {datum}")
-        yield datum
+class LoggingGenrator(Peekable):
+    def __init__(self, generator):
+        super().__init__(generator)
+        self.__i = 0
+
+    def next(self):
+        datum = super().next()
+        print(f"\tConsuming {type(datum).__name__} {self.__i}: {datum}")
+        self.__i += 1
+        return datum
 
 
 def print_team(team, debug):
@@ -41,7 +47,7 @@ if __name__ == '__main__':
     replay = create_replay(args.replay_file, args.log_file)
 
     if args.debug:
-        replay.set_generator(logging_generator)
+        replay.set_generator(LoggingGenrator)
 
     home_team, away_team = replay.get_teams()
     print_team(home_team, args.debug)

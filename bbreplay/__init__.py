@@ -258,6 +258,30 @@ class Position:
         return f"Position({self.x}, {self.y})"
 
 
+class Peekable:
+    def __init__(self, iterable):
+        self._generator = (item for item in iterable)
+        self._peeked = None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def next(self):
+        to_return = self._peeked
+        self._peeked = None
+        if to_return is None:
+            to_return = next(self._generator)
+        return to_return
+
+    def peek(self):
+        if self._peeked is None:
+            self._peeked = next(self._generator, None)
+        return self._peeked
+
+
 OFF_PITCH_POSITION = Position(-1, -1)
 
 PITCH_LENGTH = 26
