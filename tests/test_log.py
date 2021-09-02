@@ -1,6 +1,6 @@
 from bbreplay import ScatterDirection
 from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, BounceLogEntry, FireballEntry, InjuryRollEntry, \
-    TurnOverEntry, WildAnimalEntry, parse_log_entry_lines
+    TurnOverEntry, WildAnimalEntry, parse_log_entry_lines, CasualtyRollEntry
 
 
 STARTING_LINE = "|  +- Enter CStateMatchTossCreateResults"
@@ -41,6 +41,28 @@ def test_parse_apothecary_puts_turnover_at_end():
     assert isinstance(next(log_entries), ApothecaryLogEntry)
     assert isinstance(next(log_entries), TurnOverEntry)
     assert not next(log_entries, None)
+
+
+def test_bounce_does_not_happen_mid_injury():
+    log_lines = STARTING_LINES + \
+        [
+            "|  | GameLog(02): NAG #13 Anasfynn Armour Value  (8+) : 3 + 6 = 9 -> Success",
+            "|  | GameLog(02): NAG #13 Anasfynn Injury  : 5 + 5 = 10 -> Injured",
+            "|  | GameLog(02): Bounce (D8) : 6",
+            "|  | GameLog(02): NAG #13 Anasfynn Casualty  : Smashed Collar Bone -> Loses 1 point in Strength",
+            "|  | GameLog(13): NAG call on their Apothecary to attempt to heal #13 Anasfynn.",
+            "|  | GameLog(02): NAG #13 Anasfynn Casualty  : Badly Hurt -> No long term effect",
+            "|  | GameLog(13): NAG The Apothecary heals #13 Anasfynn.",
+            "|  | GameLog(12): WAN #07 Ebola-Gorz earns 2 SPP (Casualty)",
+        ] \
+        + ENDING_LINES
+    log_entries = iter(parse_log_entry_lines(log_lines)[0])
+    assert isinstance(next(log_entries), ArmourValueRollEntry)
+    assert isinstance(next(log_entries), InjuryRollEntry)
+    assert isinstance(next(log_entries), CasualtyRollEntry)
+    assert isinstance(next(log_entries), ApothecaryLogEntry)
+    assert isinstance(next(log_entries), CasualtyRollEntry)
+    assert isinstance(next(log_entries), BounceLogEntry)
 
 
 def test_turnover_gets_cleared():

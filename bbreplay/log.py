@@ -562,6 +562,9 @@ def parse_log_entry_lines(lines):
                         log_entries[-1].append(log_entry)
                     else:
                         was_spell = False
+                elif (isinstance(log_entry, CasualtyRollEntry) or isinstance(log_entry, ApothecaryLogEntry)) \
+                        and event_entries and isinstance(event_entries[-1], BounceLogEntry):
+                    event_entries.insert(-1, log_entry)
                 else:
                     event_entries.append(log_entry)
         else:
