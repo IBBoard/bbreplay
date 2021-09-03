@@ -440,41 +440,42 @@ class Replay:
                         raise ValueError("Expected DiceChoiceCommand after ProRerollCommand "
                                          f"but got {type(cmd).__name__}")
         elif board.can_reroll(player.team.team_type):
-            can_reroll = True
-            has_leader_reroll = board.has_leader_reroll(player.team.team_type)
-            if has_leader_reroll:
-                expected_class = LeaderRerollEntry
-                reroll_type = 'Leader Reroll'
-            else:
-                expected_class = RerollEntry
-                reroll_type = 'Team Reroll'
-                if Skills.LONER in player.skills and not has_leader_reroll:
-                    log_entry = next(log_entries, None)
-                    if log_entry:
-                        validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
-                        actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
-                        can_reroll = log_entry.result == ActionResult.SUCCESS
-
-            if can_reroll:
+            cmd = next(cmds)
+            if isinstance(cmd, DeclineRerollCommand):
                 cmd = next(cmds)
-                if isinstance(cmd, DeclineRerollCommand):
-                    cmd = next(cmds)
-                    if not isinstance(cmd, DiceChoiceCommand):
-                        raise ValueError("Expected DiceChoiceCommand after DeclineRerollCommand "
-                                         f"but got {type(cmd).__name__}")
-                    pass
-                elif isinstance(cmd, RerollCommand):
+                if not isinstance(cmd, DiceChoiceCommand):
+                    raise ValueError("Expected DiceChoiceCommand after DeclineRerollCommand "
+                                     f"but got {type(cmd).__name__}")
+                pass
+            elif isinstance(cmd, RerollCommand):
+                has_leader_reroll = board.has_leader_reroll(player.team.team_type)
+                if has_leader_reroll:
                     log_entry = next(log_entries)
-                    validate_log_entry(log_entry, expected_class, player.team.team_type)
-                    board.use_reroll(player.team.team_type)
-                    actions.append(Reroll(cmd.team, reroll_type))
-                    reroll_success = True
-                elif isinstance(cmd, DiceChoiceCommand):
-                    # Sometimes we only get cmd_type=19 even though most of the time
-                    # we get cmd_type=51 for declined reroll
-                    pass
+                    validate_log_entry(log_entry, LeaderRerollEntry, player.team.team_type)
+                    reroll_type = 'Leader Reroll'
                 else:
-                    raise ValueError(f"Non-reroll command {type(cmd).__name__} found after failed action")
+                    reroll_type = 'Team Reroll'
+
+                reroll_success = True
+
+                if Skills.LONER in player.skills:
+                    log_entry = next(log_entries)
+                    validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
+                    actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
+                    reroll_success = log_entry.result == ActionResult.SUCCESS
+
+                board.use_reroll(player.team.team_type)
+                actions.append(Reroll(cmd.team, reroll_type))
+
+                if not has_leader_reroll:
+                    log_entry = next(log_entries)
+                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+            elif isinstance(cmd, DiceChoiceCommand):
+                # Sometimes we only get cmd_type=19 even though most of the time
+                # we get cmd_type=51 for declined reroll
+                pass
+            else:
+                raise ValueError(f"Non-reroll command {type(cmd).__name__} found after failed action")
         if modifying_skill:
             log_entry = next(log_entries)
             validate_log_entry(log_entry, SkillEntry, other_team(player.team.team_type))
