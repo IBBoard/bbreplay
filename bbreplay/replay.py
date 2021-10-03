@@ -219,9 +219,7 @@ class Replay:
             board.set_ball_position(ball_dest)
             yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
         elif isinstance(kickoff_cmd, PreKickoffCompleteCommand):
-            # Kickoff happened automatically due to timeout
-            # Dispose of next PreKickoffCompleteCommand as well
-            _ = next(cmds)
+            raise ValueError("Detected kickoff due to timeout - unable to determine position of ball")
         else:
             raise ValueError(f"Unexpected command type at kickoff: {type(kickoff_cmd).__name__}")
 
