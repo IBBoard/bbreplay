@@ -377,3 +377,118 @@ def test_frenzy_against_block(board):
     assert not next(events, None)
     assert not next(cmds, None)
     assert not next(log_entries, None)
+
+
+def test_team_reroll_on_block_dice(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    board.setup_complete()
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        RerollCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.BOTH_DOWN]),
+        RerollEntry(TeamType.HOME),
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Reroll)
+    assert event.team == TeamType.HOME
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.PUSHED]
+    assert event.result == BlockResult.PUSHED
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    assert not board.is_prone(player)
+    assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_leader_reroll_on_block_dice(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.LEADER)
+    board.set_position(Position(7, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    board.setup_complete()
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        RerollCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.BOTH_DOWN]),
+        LeaderRerollEntry(TeamType.HOME, 1),
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Reroll)
+    assert event.team == TeamType.HOME
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.PUSHED]
+    assert event.result == BlockResult.PUSHED
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    assert not board.is_prone(player)
+    assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)

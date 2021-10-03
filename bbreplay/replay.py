@@ -411,6 +411,40 @@ class Replay:
             if new_result:
                 yield Action(player, action_type, new_result, board)
 
+    def __process_reroll_command(self, log_entries, player, board):
+        actions = []
+        reroll_success = False
+        team = player.team
+        team_type = player.team.team_type
+        has_leader_reroll = board.has_leader_reroll(team_type)
+        leader = None
+        if has_leader_reroll:
+            log_entry = next(log_entries)
+            validate_log_entry(log_entry, LeaderRerollEntry, team_type)
+            leader = team.get_player_by_number(log_entry.player)
+            reroll_type = 'Leader Reroll'
+        else:
+            reroll_type = 'Team Reroll'
+
+        reroll_success = True
+
+        if Skills.LONER in player.skills:
+            log_entry = next(log_entries)
+            validate_log_entry(log_entry, SkillRollEntry, team_type, player.number)
+            actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
+            reroll_success = log_entry.result == ActionResult.SUCCESS
+
+        if leader:
+            board.use_leader_reroll(team_type, leader)
+        else:
+            board.use_reroll(team_type)
+        actions.append(Reroll(team_type, reroll_type))
+
+        if not has_leader_reroll:
+            log_entry = next(log_entries)
+            validate_log_entry(log_entry, RerollEntry, team_type)
+        return reroll_success, actions
+
     def _process_action_reroll(self, cmds, log_entries, player, board, reroll_skill=None,
                                cancelling_skill=None, modifying_skill=None):
         actions = []
@@ -446,33 +480,7 @@ class Replay:
                                      f"but got {type(cmd).__name__}")
                 pass
             elif isinstance(cmd, RerollCommand):
-                has_leader_reroll = board.has_leader_reroll(player.team.team_type)
-                leader = None
-                if has_leader_reroll:
-                    log_entry = next(log_entries)
-                    validate_log_entry(log_entry, LeaderRerollEntry, player.team.team_type)
-                    leader = player.team.get_player_by_number(log_entry.player)
-                    reroll_type = 'Leader Reroll'
-                else:
-                    reroll_type = 'Team Reroll'
-
-                reroll_success = True
-
-                if Skills.LONER in player.skills:
-                    log_entry = next(log_entries)
-                    validate_log_entry(log_entry, SkillRollEntry, player.team.team_type, player.number)
-                    actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
-                    reroll_success = log_entry.result == ActionResult.SUCCESS
-
-                if leader:
-                    board.use_leader_reroll(player.team.team_type, leader)
-                else:
-                    board.use_reroll(player.team.team_type)
-                actions.append(Reroll(cmd.team, reroll_type))
-
-                if not has_leader_reroll:
-                    log_entry = next(log_entries)
-                    validate_log_entry(log_entry, RerollEntry, player.team.team_type)
+                reroll_success, actions = self.__process_reroll_command(log_entries, player, board)
             elif isinstance(cmd, DiceChoiceCommand):
                 # Sometimes we only get cmd_type=19 even though most of the time
                 # we get cmd_type=51 for declined reroll
@@ -692,9 +700,8 @@ class Replay:
             block_dice = next(target_log_entries)
             block_choice = next(cmds)
         elif isinstance(block_choice, RerollCommand):
-            board.use_reroll(blocking_player.team.team_type)
-            reroll = next(target_log_entries)
-            yield Reroll(reroll.team, 'Team Reroll')
+            _, actions = self.__process_reroll_command(target_log_entries, blocking_player, board)
+            yield from actions
             block_dice = next(target_log_entries)
             block_choice = next(cmds)
         chosen_block_dice = block_dice.results[block_choice.dice_idx]
