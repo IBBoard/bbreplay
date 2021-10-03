@@ -22,7 +22,7 @@ class GameState:
         self.__receiving_team = receiving_team
         self.score = [0, 0]
         self.turn_team = None
-        self.rerolls = [home_team.rerolls, away_team.rerolls]
+        self.__rerolls = [home_team.rerolls, away_team.rerolls]
         self.apothecaries = [home_team.apothecaries, away_team.apothecaries]
         self.__reset_board()
         self.__turn = 0
@@ -73,6 +73,15 @@ class GameState:
     def kicking_team(self):
         return other_team(self.__receiving_team)
 
+    @property
+    def rerolls(self):
+        home_rerolls, away_rerolls = self.__rerolls
+        if self.has_leader_reroll(TeamType.HOME):
+            home_rerolls += 1
+        if self.has_leader_reroll(TeamType.AWAY):
+            away_rerolls += 1
+        return (home_rerolls, away_rerolls)
+
     def prepare_setup(self):
         crossed_half_time = (self.turn <= HALF_TIME_TURN) != (self.__last_setup_turn <= HALF_TIME_TURN)
         self.__reset_board()
@@ -95,6 +104,7 @@ class GameState:
 
         if crossed_half_time:
             self.__used_leaders.clear()
+            self.__rerolls = [team.rerolls for team in self.teams]
 
         self.set_ball_position(OFF_PITCH_POSITION)
 
@@ -105,21 +115,21 @@ class GameState:
                 team_setup.append((player, player.position))
             self.__setups[team.team_type.value] = team_setup
         self.turn_team = self.teams[self.__receiving_team.value]
-        self.rerolls = [team.rerolls for team in self.teams]
+
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                and player not in self.__used_leaders
                for player in self.teams[TeamType.HOME.value].get_players()):
-            self.add_reroll(TeamType.HOME)
             self.__leader_reroll[TeamType.HOME.value] = True
         else:
             self.__leader_reroll[TeamType.HOME.value] = False
+
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
                and player not in self.__used_leaders
                for player in self.teams[TeamType.AWAY.value].get_players()):
-            self.add_reroll(TeamType.AWAY)
             self.__leader_reroll[TeamType.AWAY.value] = True
         else:
             self.__leader_reroll[TeamType.AWAY.value] = False
+
         if any(pos.y > BEFORE_HALFWAY_IDX for _, pos in self.__setups[TeamType.HOME.value]):
             self.__touchdown_row = [NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX]
         else:
@@ -291,19 +301,19 @@ class GameState:
             raise ValueError("Already used a team reroll this turn!")
         if self.__leader_reroll[team.value]:
             raise ValueError("Attempted to use a normal reroll when a leader reroll exists")
-        self.rerolls[team.value] -= 1
+        self.__rerolls[team.value] -= 1
         self.__used_reroll = True
 
     def use_leader_reroll(self, team, player):
         self.__used_leaders.add(player)
         self.__leader_reroll[team.value] = False
-        self.use_reroll(team)
+        self.__used_reroll = True
 
     def can_reroll(self, team):
         return self.rerolls[team.value] > 0 and not self.__used_reroll
 
     def add_reroll(self, team):
-        self.rerolls[team.value] += 1
+        self.__rerolls[team.value] += 1
 
     def has_leader_reroll(self, team):
         return self.__leader_reroll[team.value]

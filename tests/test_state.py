@@ -121,3 +121,50 @@ def test_leader_reroll_readded_in_second_half(board):
     board.setup_complete()
     assert board.has_leader_reroll(TeamType.HOME)
     assert board.rerolls[TeamType.HOME.value] == 4
+
+
+def test_leader_reroll_readded_with_second_leader(board):
+    home_team, _ = board.teams
+    player = home_team.get_player(0)
+    player.skills.append(Skills.LEADER)
+    board.set_position(Position(1, 1), player)
+    extra_player = Player(2, "Player2H", 4, 4, 4, 4, 1, 0, 40000, [Skills.LEADER])
+    home_team.add_player(1, extra_player)
+    board.set_position(Position(2, 2), extra_player)
+    board.setup_complete()
+    assert board.has_leader_reroll(TeamType.HOME)
+    assert board.rerolls[TeamType.HOME.value] == 4
+    [x for x in board.kickoff()]
+    board.use_leader_reroll(TeamType.HOME, player)
+    board.touchdown(player)
+    [x for x in board.end_turn(TeamType.HOME, "reason")]
+    board.prepare_setup()
+    board.setup_complete()
+    assert board.has_leader_reroll(TeamType.HOME)
+    assert board.rerolls[TeamType.HOME.value] == 4
+
+
+def test_rerolls_regen_at_halftime(board):
+    home_team, _ = board.teams
+    player = home_team.get_player(0)
+    board.setup_complete()
+    assert board.rerolls[TeamType.HOME.value] == 3
+    [x for x in board.kickoff()]
+    board.use_reroll(TeamType.HOME)
+    assert board.rerolls[TeamType.HOME.value] == 2
+    board.touchdown(player)
+    [x for x in board.end_turn(TeamType.HOME, "reason")]
+    board.prepare_setup()
+    board.setup_complete()
+    [x for x in board.kickoff()]
+    assert board.rerolls[TeamType.HOME.value] == 2
+    [x for x in board.end_turn(TeamType.AWAY, "reason")]
+    # And the other seven turns
+    for _ in range(7):
+        for team_type in [TeamType.HOME, TeamType.AWAY]:
+            [x for x in board.start_turn(team_type)]
+            [x for x in board.end_turn(team_type, "reason")]
+    board.halftime()
+    board.prepare_setup()
+    board.setup_complete()
+    assert board.rerolls[TeamType.HOME.value] == 3

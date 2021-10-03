@@ -50,7 +50,8 @@ def test_no_reroll_with_no_options(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
     player = home_team.get_player(0)
-    board.rerolls[TeamType.HOME.value] = 0
+    while board.can_reroll(TeamType.HOME):
+        board.use_reroll(TeamType.HOME)
     actions, new_result = replay._process_action_reroll(None, None, player, board)
 
     assert actions == []
