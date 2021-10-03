@@ -41,6 +41,7 @@ class GameState:
         self.__moves = defaultdict(int)
         self.__used_reroll = False
         self.__leader_reroll = [False, False]
+        self.__used_leaders = set()
         self.__kicked_off = False
         self.__touchdown_row = [-1, -1]
 
@@ -92,6 +93,9 @@ class GameState:
                     self.set_position(position, replacement_player)
                     deployed_subs.add(replacement_player)
 
+        if crossed_half_time:
+            self.__used_leaders.clear()
+
         self.set_ball_position(OFF_PITCH_POSITION)
 
     def setup_complete(self):
@@ -103,12 +107,14 @@ class GameState:
         self.turn_team = self.teams[self.__receiving_team.value]
         self.rerolls = [team.rerolls for team in self.teams]
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
+               and player not in self.__used_leaders
                for player in self.teams[TeamType.HOME.value].get_players()):
             self.add_reroll(TeamType.HOME)
             self.__leader_reroll[TeamType.HOME.value] = True
         else:
             self.__leader_reroll[TeamType.HOME.value] = False
         if any(player.is_on_pitch() and Skills.LEADER in player.skills
+               and player not in self.__used_leaders
                for player in self.teams[TeamType.AWAY.value].get_players()):
             self.add_reroll(TeamType.AWAY)
             self.__leader_reroll[TeamType.AWAY.value] = True
@@ -283,9 +289,15 @@ class GameState:
     def use_reroll(self, team):
         if self.__used_reroll:
             raise ValueError("Already used a team reroll this turn!")
+        if self.__leader_reroll[team.value]:
+            raise ValueError("Attempted to use a normal reroll when a leader reroll exists")
         self.rerolls[team.value] -= 1
         self.__used_reroll = True
+
+    def use_leader_reroll(self, team, player):
+        self.__used_leaders.add(player)
         self.__leader_reroll[team.value] = False
+        self.use_reroll(team)
 
     def can_reroll(self, team):
         return self.rerolls[team.value] > 0 and not self.__used_reroll

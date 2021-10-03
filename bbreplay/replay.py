@@ -447,9 +447,11 @@ class Replay:
                 pass
             elif isinstance(cmd, RerollCommand):
                 has_leader_reroll = board.has_leader_reroll(player.team.team_type)
+                leader = None
                 if has_leader_reroll:
                     log_entry = next(log_entries)
                     validate_log_entry(log_entry, LeaderRerollEntry, player.team.team_type)
+                    leader = player.team.get_player_by_number(log_entry.player)
                     reroll_type = 'Leader Reroll'
                 else:
                     reroll_type = 'Team Reroll'
@@ -462,7 +464,10 @@ class Replay:
                     actions.append(SkillRoll(player, Skills.LONER, log_entry.result, board))
                     reroll_success = log_entry.result == ActionResult.SUCCESS
 
-                board.use_reroll(player.team.team_type)
+                if leader:
+                    board.use_leader_reroll(player.team.team_type, leader)
+                else:
+                    board.use_reroll(player.team.team_type)
                 actions.append(Reroll(cmd.team, reroll_type))
 
                 if not has_leader_reroll:

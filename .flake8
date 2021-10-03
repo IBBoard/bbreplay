@@ -2,5 +2,5 @@
 max-line-length = 120
 per-file-ignores =
     bbreplay/replay.py:F403,F405
-    tests/test_replay__*:F403,F405
+    tests/test_*:F403,F405
     map.py:E222
