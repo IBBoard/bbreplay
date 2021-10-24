@@ -250,16 +250,16 @@ def test_single_failed_dodge_with_ball(board):
     assert event.result == ActionResult.FAILURE
 
     event = next(events)
-    assert isinstance(event, Bounce)
-    assert event.start_space == Position(7, 7)
-    assert event.end_space == Position(8, 6)
-    assert event.scatter_direction == ScatterDirection.SE
-
-    event = next(events)
     assert isinstance(event, FailedMovement)
     assert event.source_space == Position(7, 7)
     assert event.target_space == Position(6, 7)
     assert player.position == Position(6, 7)
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.start_space == Position(6, 7)
+    assert event.end_space == Position(7, 6)
+    assert event.scatter_direction == ScatterDirection.SE
     assert board.is_prone(player)
 
     event = next(events)
@@ -586,19 +586,20 @@ def test_going_for_it_fail_with_ball(board):
     assert event.result == ActionResult.FAILURE
 
     event = next(events)
-    assert isinstance(event, Bounce)
-    assert event.start_space == positions[move]
-    assert event.end_space == positions[move].add(1, 0)
-    assert event.scatter_direction == ScatterDirection.E
-
-    event = next(events)
     expected_start = positions[move]
-    expected_end = positions[move + 1]
+    move += 1
+    expected_end = positions[move]
     assert isinstance(event, FailedMovement)
     assert event.source_space == expected_start
     assert event.target_space == expected_end
     assert player.position == end_move
     assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.start_space == positions[move]
+    assert event.end_space == positions[move].add(1, 0)
+    assert event.scatter_direction == ScatterDirection.E
 
     event = next(events)
     assert isinstance(event, EndTurn)

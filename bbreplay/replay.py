@@ -1140,11 +1140,11 @@ class Replay:
                 board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
             elif turnover:
+                board.move(player, start_space, target_space)
+                yield FailedMovement(player, start_space, target_space)
                 if is_ball_carrier:
                     yield from self._process_ball_movement(move_log_entries, player, board)
                     board.set_ball_carrier(None)
-                board.move(player, start_space, target_space)
-                yield FailedMovement(player, start_space, target_space)
             else:
                 # Failure due to Tentacles etc
                 if is_prone:
