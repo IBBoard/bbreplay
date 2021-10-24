@@ -67,7 +67,7 @@ _souths = [ScatterDirection.SW, ScatterDirection.S, ScatterDirection.SE]
 
 class ThrowInDirection(Enum):
     DOWN_PITCH = 1
-    CENTER = 2
+    CENTRE = 2
     UP_PITCH = 3
 
 
