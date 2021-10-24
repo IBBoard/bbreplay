@@ -1298,11 +1298,7 @@ class Replay:
             elif isinstance(log_entry, BounceLogEntry):
                 old_ball_position = board.get_ball_position()
                 ball_position = old_ball_position.scatter(log_entry.direction)
-                if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH \
-                   or ball_position.y < 0 or ball_position.y >= PITCH_LENGTH:
-                    ball_position = OFF_PITCH_POSITION
-                else:
-                    board.set_ball_position(ball_position)
+                board.set_ball_position(ball_position)
                 bounce_event = Bounce(old_ball_position, ball_position, log_entry.direction, board)
                 if ball_position.is_offpitch():
                     yield bounce_event
