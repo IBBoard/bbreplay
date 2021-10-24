@@ -1343,7 +1343,8 @@ class Replay:
                     break
             elif isinstance(log_entry, ThrowInDirectionLogEntry):
                 distance_entry = next(log_entries)
-                ball_position = throwin(previous_ball_position, log_entry.direction, distance_entry.distance)
+                ball_position = throwin(previous_ball_position, board.get_play_direction(),
+                                        log_entry.direction, distance_entry.distance)
                 board.set_ball_position(ball_position)
                 yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance,
                               board)

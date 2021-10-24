@@ -71,6 +71,11 @@ class ThrowInDirection(Enum):
     UP_PITCH = 3
 
 
+class PlayDirection(Enum):
+    DOWN_PITCH = auto()
+    UP_PITCH = auto()
+
+
 class PlayerStatus(Enum):
     OKAY = auto()
     PRONE = auto()
@@ -254,9 +259,11 @@ def scatter(position, direction, distance=1):
     return Position(new_x, new_y)
 
 
-def throwin(position, direction, distance):
+def throwin(position, direction_of_play, direction, distance):
     dx = distance if position.x == 0 else -distance
     dy = (direction.value - 2) * distance
+    if direction_of_play == PlayDirection.UP_PITCH:
+        dy *= -1
     return position.add(dx, dy)
 
 

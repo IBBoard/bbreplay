@@ -2,8 +2,8 @@
 # Licensed under GPLv3 or later - see COPYING
 
 from collections import namedtuple, defaultdict
-from . import BEFORE_HALFWAY_IDX, FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX, other_team, Skills, TeamType, Weather, \
-    ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION
+from . import BEFORE_HALFWAY_IDX, FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX, PlayDirection, other_team, Skills, TeamType, \
+    ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION, Weather
 
 
 WeatherTuple = namedtuple('Weather', ['result'])
@@ -136,6 +136,10 @@ class GameState:
             self.__touchdown_row = [FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX]
         self.__last_setup_turn = self.turn
         self.__kicked_off = False
+
+    def get_play_direction(self):
+        return PlayDirection.DOWN_PITCH if self.__touchdown_row[self.__receiving_team.value] == FAR_ENDZONE_IDX \
+            else PlayDirection.UP_PITCH
 
     def is_touchdown_state(self):
         ball_carrier = self.get_ball_carrier()
