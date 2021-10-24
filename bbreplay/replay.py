@@ -5,7 +5,7 @@ import sqlite3
 from collections import namedtuple
 from enum import Enum, auto
 from . import Peekable, other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
-    KickoffEvent, Role, ThrowResult, _norths, _souths, \
+    scatter, throwin, KickoffEvent, Role, ThrowResult, _norths, _souths, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
 from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
@@ -215,7 +215,7 @@ class Replay:
         kickoff_cmd = find_next_known_command(cmds)
         if isinstance(kickoff_cmd, KickoffCommand):
             kickoff_direction, kickoff_scatter = kickoff_log_events
-            ball_dest = kickoff_cmd.position.scatter(kickoff_direction.direction, kickoff_scatter.distance)
+            ball_dest = scatter(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance)
             board.set_ball_position(ball_dest)
             yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
         elif isinstance(kickoff_cmd, PreKickoffCompleteCommand):
@@ -279,7 +279,7 @@ class Replay:
                     if not isinstance(log_entry, BounceLogEntry):
                         raise ValueError(f"Expected Bounce log entries but got {type(log_entry).__name__}")
                     old_position = ball_dest
-                    ball_dest = ball_dest.scatter(log_entry.direction)
+                    ball_dest = scatter(ball_dest, log_entry.direction)
                     board.set_ball_position(ball_dest)
                     yield Bounce(old_position, ball_dest, log_entry.direction, board)
                 if ball_dest.is_offpitch():
@@ -955,8 +955,9 @@ class Replay:
             scatter_1 = next(log_entries)
             scatter_2 = next(log_entries)
             scatter_3 = next(log_entries)
-            landing_position = throw_command.position.scatter(scatter_1.direction).scatter(scatter_2.direction) \
-                                                     .scatter(scatter_3.direction)
+            landing_position = scatter(throw_command.position, scatter_1.direction)
+            landing_position = scatter(landing_position, scatter_2.direction)
+            landing_position = scatter(landing_position, scatter_3.direction)
             board.set_position(landing_position, target_by_idx)
             yield Scatter(throw_command.position, landing_position, board)
         # else it was a fumble and players lands where they started
@@ -1234,7 +1235,7 @@ class Replay:
         if result == ThrowResult.FUMBLE:
             scatter_entry = next(log_entries)
             start_position = board.get_ball_position()
-            ball_position = start_position.scatter(scatter_entry.direction)
+            ball_position = scatter(start_position, scatter_entry.direction)
             board.set_ball_position(ball_position)
             yield Bounce(start_position, ball_position, scatter_entry.direction, board)
         elif result == ThrowResult.ACCURATE_PASS:
@@ -1244,8 +1245,9 @@ class Replay:
             scatter_1 = next(log_entries)
             scatter_2 = next(log_entries)
             scatter_3 = next(log_entries)
-            ball_position = throw_command.position.scatter(scatter_1.direction).scatter(scatter_2.direction) \
-                                                  .scatter(scatter_3.direction)
+            ball_position = scatter(throw_command.position, scatter_1.direction)
+            ball_position = scatter(ball_position, scatter_2.direction)
+            ball_position = scatter(ball_position, scatter_3.direction)
             board.set_ball_position(ball_position)
             yield Scatter(throw_command.position, ball_position, board)
         yield from self._process_catch(ball_position, log_entries, board, result != ThrowResult.FUMBLE)
@@ -1258,7 +1260,7 @@ class Replay:
                     # We've attempted a dump-off to a blank space or it scattered to a blank space
                     bounce_entry = next(log_entries)
                     start_position = board.get_ball_position()
-                    ball_position = start_position.scatter(bounce_entry.direction)
+                    ball_position = scatter(start_position, bounce_entry.direction)
                     board.set_ball_position(ball_position)
                     yield Bounce(start_position, ball_position, bounce_entry.direction, board)
                     bounce_on_empty = False
@@ -1279,7 +1281,7 @@ class Replay:
                 yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
             scatter_entry = next(log_entries)
             start_position = board.get_ball_position()
-            ball_position = start_position.scatter(scatter_entry.direction)
+            ball_position = scatter(start_position, scatter_entry.direction)
             board.set_ball_position(ball_position)
             yield Bounce(start_position, ball_position, scatter_entry.direction, board)
 
@@ -1293,7 +1295,7 @@ class Replay:
                 break
             elif isinstance(log_entry, BounceLogEntry):
                 old_ball_position = board.get_ball_position()
-                ball_position = old_ball_position.scatter(log_entry.direction)
+                ball_position = scatter(old_ball_position, log_entry.direction)
                 board.set_ball_position(ball_position)
                 bounce_event = Bounce(old_ball_position, ball_position, log_entry.direction, board)
                 if ball_position.is_offpitch():
@@ -1329,7 +1331,7 @@ class Replay:
                     elif isinstance(log_entry, BounceLogEntry):
                         # The first bounce was a ghost bounce that never happened, so ignore it and
                         # generate the correct bounce
-                        ball_position = old_ball_position.scatter(log_entry.direction)
+                        ball_position = scatter(old_ball_position, log_entry.direction)
                         board.set_ball_position(ball_position)
                         yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
                         # XXX: This doesn't take account of off-pitch etc
@@ -1341,7 +1343,7 @@ class Replay:
                     break
             elif isinstance(log_entry, ThrowInDirectionLogEntry):
                 distance_entry = next(log_entries)
-                ball_position = previous_ball_position.throwin(log_entry.direction, distance_entry.distance)
+                ball_position = throwin(previous_ball_position, log_entry.direction, distance_entry.distance)
                 board.set_ball_position(ball_position)
                 yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance,
                               board)

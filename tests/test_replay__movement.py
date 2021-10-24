@@ -588,7 +588,7 @@ def test_going_for_it_fail_with_ball(board):
     event = next(events)
     assert isinstance(event, Bounce)
     assert event.start_space == positions[move]
-    assert event.end_space == positions[move].scatter(ScatterDirection.E)
+    assert event.end_space == positions[move].add(1, 0)
     assert event.scatter_direction == ScatterDirection.E
 
     event = next(events)

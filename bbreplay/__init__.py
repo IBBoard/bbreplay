@@ -212,28 +212,6 @@ class Position:
         self.y = y
         self.__offpitch = x < 0 or x >= PITCH_WIDTH or y < 0 or y >= PITCH_LENGTH
 
-    def scatter(self, direction, distance=1):
-        global _wests, _easts, _norths, _souths
-
-        new_x = self.x
-        if direction in _wests:
-            new_x -= distance
-        elif direction in _easts:
-            new_x += distance
-
-        new_y = self.y
-        if direction in _norths:
-            new_y += distance
-        elif direction in _souths:
-            new_y -= distance
-
-        return Position(new_x, new_y)
-
-    def throwin(self, direction, distance):
-        dx = distance if self.x == 0 else -distance
-        dy = (direction.value - 2) * distance
-        return self.add(dx, dy)
-
     def add(self, dx, dy):
         return Position(self.x + dx, self.y + dy)
 
@@ -256,6 +234,30 @@ class Position:
 
     def __repr__(self):
         return f"Position({self.x}, {self.y})"
+
+
+def scatter(position, direction, distance=1):
+    global _wests, _easts, _norths, _souths
+
+    new_x = position.x
+    if direction in _wests:
+        new_x -= distance
+    elif direction in _easts:
+        new_x += distance
+
+    new_y = position.y
+    if direction in _norths:
+        new_y += distance
+    elif direction in _souths:
+        new_y -= distance
+
+    return Position(new_x, new_y)
+
+
+def throwin(position, direction, distance):
+    dx = distance if position.x == 0 else -distance
+    dy = (direction.value - 2) * distance
+    return position.add(dx, dy)
 
 
 class Peekable:
