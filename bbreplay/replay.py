@@ -1338,8 +1338,14 @@ class Replay:
                     else:
                         raise ValueError(f"Expected CatchEntry or BounceEntry after bounce, got {type(log_entry).name}")
                 else:
-                    yield bounce_event
                     # Bounced to an empty space
+                    # But sometimes it gets a ghost bounce
+                    if isinstance(log_entries.peek(), BounceLogEntry):
+                        log_entry = next(log_entries)
+                        ball_position = scatter(old_ball_position, log_entry.direction)
+                        board.set_ball_position(ball_position)
+                        bounce_event = Bounce(old_ball_position, ball_position, log_entry.direction, board)
+                    yield bounce_event
                     break
             elif isinstance(log_entry, ThrowInDirectionLogEntry):
                 distance_entry = next(log_entries)
