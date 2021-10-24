@@ -1286,15 +1286,11 @@ class Replay:
     def _process_ball_movement(self, log_entries, player, board):
         log_entry = None
         previous_ball_position = board.get_ball_position()
-        turn_over = None
         while True:
             log_entry = next(log_entries, None)
             if not log_entry:
                 # Ball bounces due to spells don't trigger a turn over
                 break
-            elif isinstance(log_entry, TurnOverEntry):
-                validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                turn_over = board.change_turn(log_entry.team, log_entry.reason)
             elif isinstance(log_entry, BounceLogEntry):
                 old_ball_position = board.get_ball_position()
                 ball_position = old_ball_position.scatter(log_entry.direction)
@@ -1350,10 +1346,8 @@ class Replay:
                 yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance,
                               board)
             else:
-                raise ValueError("Expected one of TurnOverEntry, BounceLogEntry, CatchEntry or "
+                raise ValueError("Expected one of BounceLogEntry, CatchEntry or "
                                  f"ThrowInDirectionLogEntry but got {type(log_entry).__name__}")
-        if turn_over:
-            yield from turn_over
 
     def _process_spell(self, cmd, log_entries, board):
         # Fireball and lightning may not be too different, as there's just a different number of targets
