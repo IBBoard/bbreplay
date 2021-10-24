@@ -374,7 +374,7 @@ class Replay:
                 yield from self._process_movement(player, cmd, cmds, None, log_entries, board)
             elif isinstance(cmd, SpellCommand):
                 spell_log_entries = self.__next_generator(log_entries)
-                yield from self._process_spell(cmd, spell_log_entries, board)
+                yield from self._process_spell(cmd, cmds, spell_log_entries, board)
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
                 continue
             elif cmd_type is DeclineRerollCommand or (cmd_type is DiceChoiceCommand
@@ -1352,7 +1352,7 @@ class Replay:
                 raise ValueError("Expected one of BounceLogEntry, CatchEntry or "
                                  f"ThrowInDirectionLogEntry but got {type(log_entry).__name__}")
 
-    def _process_spell(self, cmd, log_entries, board):
+    def _process_spell(self, cmd, cmds, log_entries, board):
         # Fireball and lightning may not be too different, as there's just a different number of targets
         # with a different roll, and we don't care about the roll value
         log_entry = next(log_entries)
@@ -1372,7 +1372,7 @@ class Replay:
                 yield Action(player, ActionType.SPELL_HIT, log_entry.result, board)
                 if log_entry.result == ActionResult.SUCCESS:
                     log_entry = next(log_entries)
-                    yield from self._process_armour_roll(player, None, log_entry, log_entries, board)
+                    yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
 
             log_entry = next(log_entries, None)
 

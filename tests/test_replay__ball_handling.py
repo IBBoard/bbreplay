@@ -210,7 +210,7 @@ def test_bounce_from_spell(board):
         BounceLogEntry(ScatterDirection.NW.value)
     ]
     log_entries_iter = iter_(log_entries)
-    events = replay._process_spell(cmd, log_entries_iter, board)
+    events = replay._process_spell(cmd, [], log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Spell)
@@ -268,7 +268,7 @@ def test_bounce_from_spell_with_multiple_hits(board):
         BounceLogEntry(ScatterDirection.NW.value)
     ]
     log_entries_iter = iter_(log_entries)
-    events = replay._process_spell(cmd, log_entries_iter, board)
+    events = replay._process_spell(cmd, [], log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Spell)
@@ -334,7 +334,7 @@ def test_bounce_from_spell_with_bounce_off_prone(board):
         BounceLogEntry(ScatterDirection.E.value)
     ]
     log_entries_iter = iter_(log_entries)
-    events = replay._process_spell(cmd, log_entries_iter, board)
+    events = replay._process_spell(cmd, [], log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Spell)
