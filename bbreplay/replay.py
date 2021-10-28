@@ -644,7 +644,6 @@ class Replay:
 
     def __process_block_rolls(self, targeting_player, target_by_idx, block, cmds, moved,
                               target_log_entries, log_entries, board, frenzied_block=False):
-        cmd = None
         if Skills.FOUL_APPEARANCE in target_by_idx.skills:
             log_entry = next(target_log_entries)
             yield from self._process_action_result(log_entry, FoulAppearanceEntry, target_log_entries, cmds,
@@ -730,54 +729,55 @@ class Replay:
             origin_coords = blocking_player.position
             old_coords = target_by_idx.position
             pushbacks = calculate_pushbacks(origin_coords, old_coords, board)
-            if len(pushbacks) != 1 or Skills.FRENZY not in blocking_player.skills:
-                cmd = next(cmds)
-                board.reset_position(old_coords)
+            board.reset_position(old_coords)
+
+            if len(pushbacks) != 1:
                 pushing_player = blocking_player
                 pushed_player = target_by_idx
-                can_fend = Skills.FEND in target_by_idx.skills \
-                    and (not moved or Skills.JUGGERNAUT not in blocking_player.skills)
-                while True:
-                    if isinstance(cmd, PushbackCommand):
-                        new_coords = cmd.position
-                        dest_content = board.get_position(new_coords)
-                        origin_coords = pushed_player.position
-                        board.set_position(new_coords, pushed_player)
-                        yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
-                        if not dest_content:
-                            if can_fend:
-                                skill_entry = next(target_log_entries)
-                                validate_skill_log_entry(skill_entry, target_by_idx, Skills.FEND)
-                                yield Skill(target_by_idx, Skills.FEND)
-                            elif Skills.FRENZY not in blocking_player.skills:
-                                cmd = next(cmds)
-                            break
-                        cmd = next(cmds)
+                pushed_back = False
+                cmd = None
+
+                while isinstance(cmds.peek(), PushbackCommand):
+                    pushed_back = True
+                    cmd = next(cmds)
+                    new_coords = cmd.position
+                    dest_content = board.get_position(new_coords)
+                    origin_coords = pushed_player.position
+                    board.set_position(new_coords, pushed_player)
+                    yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
+                    if dest_content:
                         pushing_player = pushed_player
                         pushed_player = dest_content
                         old_coords = new_coords
-                    elif isinstance(cmd, FollowUpChoiceCommand):
-                        # FollowUp without Pushback means they only had one space to go to
-                        new_coords = calculate_pushback(origin_coords, old_coords, board)
-                        board.set_position(new_coords, pushed_player)
-                        yield Pushback(pushing_player, pushed_player, old_coords, new_coords, board)
-                        break
-                    elif isinstance(cmd, MovementCommand):
-                        yield from self._process_movement(pushing_player, cmd, cmds,
-                                                          target_log_entries, log_entries, board)
-                        break
-                    else:
-                        raise ValueError("Expected PushbackCommand after "
-                                         f"{chosen_block_dice} but got {type(cmd).__name__}")
-            else:
-                # Frenzy with one destination won't have a Pushback (one dest) or a
-                # FollowUp (because Frenzy always does) so it needs special handling
-                board.set_position(pushbacks[0], target_by_idx)
-                board.reset_position(old_coords)
 
-            # Follow-up
-            if (Skills.FRENZY in blocking_player.skills and Skills.FEND not in target_by_idx.skills) or \
-               (isinstance(cmd, FollowUpChoiceCommand) and cmd.choice):
+                if not pushed_back:
+                    raise ValueError("Expected PushbackCommand after "
+                                     f"{chosen_block_dice} but got {type(cmds.peek()).__name__}")
+            else:
+                new_coords = pushbacks[0]
+                board.set_position(new_coords, target_by_idx)
+                yield Pushback(blocking_player, target_by_idx, old_coords, new_coords, board)
+
+            can_fend = Skills.FEND in target_by_idx.skills \
+                and (not moved or Skills.JUGGERNAUT not in blocking_player.skills)
+            if can_fend:
+                skill_entry = next(target_log_entries)
+                validate_skill_log_entry(skill_entry, target_by_idx, Skills.FEND)
+                yield Skill(target_by_idx, Skills.FEND)
+
+            follow_up = False
+
+            if Skills.FRENZY in blocking_player.skills and Skills.FEND not in target_by_idx.skills:
+                follow_up = True
+            elif isinstance(cmds.peek(), FollowUpChoiceCommand):
+                cmd = next(cmds)
+                follow_up = cmd.choice
+            elif can_fend:
+                follow_up = False
+            else:
+                raise ValueError("Unexpected follow-up situation")
+
+            if follow_up:
                 old_coords = blocking_player.position
                 board.reset_position(old_coords)
                 board.set_position(block_position, blocking_player)
@@ -827,7 +827,8 @@ class Replay:
                 board.set_ball_position(block_position)  # Drop the ball so the throw-in works
                 ball_bounces = True
 
-        if isinstance(cmd, MovementCommand):
+        if isinstance(cmds.peek(), MovementCommand) and cmds.peek().player_idx == block.player_idx:
+            cmd = next(cmds)
             yield from self._process_movement(blocking_player, cmd, cmds,
                                               target_log_entries, log_entries, board)
 
