@@ -1,7 +1,7 @@
 from . import *
 from bbreplay import TeamType, Position
 from bbreplay.command import *
-from bbreplay.log import BlockLogEntry
+from bbreplay.log import BlockLogEntry, InjuryRollEntry
 from bbreplay.replay import *
 
 
@@ -447,6 +447,61 @@ def test_leader_reroll_on_block_dice(board):
 
     assert not board.is_prone(player)
     assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_pushback_off_field(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(1, 0), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(0, 0), opponent)
+    cmds = iter_([
+        # The TargetPlayerCommand is what triggers the call to _process_block
+        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
+        InjuryRollEntry(opponent.team.team_type, opponent.number, "4", InjuryRollResult.STUNNED.name)
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.PUSHED]
+    assert event.result == BlockResult.PUSHED
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(0, 0)
+    assert event.taget_space == Position(-1, -1)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(1, 0)
+    assert event.target_space == Position(0, 0)
+
+    event = next(events)
+    assert isinstance(event, InjuryRoll)
+    assert event.player == opponent
+    assert event.result == InjuryRollResult.STUNNED
+
+    assert not board.is_prone(player)
+    # They were stunned, not injured
+    assert not board.is_injured(opponent)
 
     assert not next(events, None)
     assert not next(cmds, None)

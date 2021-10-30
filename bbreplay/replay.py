@@ -812,19 +812,19 @@ class Replay:
             yield from self._process_armour_roll(blocking_player, cmds, armour_entry, target_log_entries, board)
 
         ball_bounces = False
-        if (chosen_block_dice == BlockResult.DEFENDER_DOWN or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
-           or chosen_block_dice == BlockResult.BOTH_DOWN) \
-           and not defender_avoided:
+        if target_by_idx.position.is_offpitch():
+            yield from self._process_injury_roll(target_by_idx, cmds, target_log_entries, board)
+            if board.get_ball_carrier() == target_by_idx:
+                board.set_ball_position(block_position)  # Drop the ball so the throw-in works
+                ball_bounces = True
+        elif (chosen_block_dice == BlockResult.DEFENDER_DOWN or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
+              or chosen_block_dice == BlockResult.BOTH_DOWN) \
+                and not defender_avoided:
             armour_entry = next(target_log_entries)
             pushed_into_ball = target_by_idx.position == board.get_ball_position()
             yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, target_log_entries, board)
 
             if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
-                ball_bounces = True
-        elif target_by_idx.position.is_offpitch():
-            yield from self._process_injury_roll(target_by_idx, cmds, target_log_entries, board)
-            if board.get_ball_carrier() == target_by_idx:
-                board.set_ball_position(block_position)  # Drop the ball so the throw-in works
                 ball_bounces = True
 
         if isinstance(cmds.peek(), MovementCommand) and cmds.peek().player_idx == block.player_idx:
