@@ -1,2 +1,4 @@
 ['remote "ibboard"']
     url = https://dev.ibboard.co.uk/data/bbreplay
+[core]
+remote = ibboard
