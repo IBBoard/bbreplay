@@ -3,7 +3,7 @@
 # Temporarily ignore "child process done" monitoring
 set +m
 pids=()
-for replay in temp/*.db
+for replay in data/*.db
 do
     # Background each task and track the PID so that we can wait for it to end
     (python3 dump-data.py --debug $replay ${replay/.db}.log >${replay/.db}.txt 2>&1 && echo "$replay completed successfully") &

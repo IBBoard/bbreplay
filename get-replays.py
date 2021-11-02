@@ -47,7 +47,7 @@ if __name__ == '__main__':
     prev_line = None
     new_log_file = None
     replay_path = None
-    target_dir = Path('temp/')
+    target_dir = Path('data/')
     target_dir.mkdir(exist_ok=True)
     line_ending = '\r\n' if IS_WINDOWS else '\n'
 
