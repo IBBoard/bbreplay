@@ -24,6 +24,7 @@ if __name__ == '__main__':
 
     total_commands = 0
     total_processed = 0
+    total_unprocessed = 0
     results = {}
 
     for db_path in glob.glob(os.path.join(args.replays_dir, '*.db')):
@@ -57,17 +58,23 @@ if __name__ == '__main__':
         except:  # noqa: E722 - we explicitly don't want to stop on anything
             pass
         finally:
-            num_commands_processed = num_commands - len(list(commands))
+            num_commands_unprocessed = len(list(commands))
+            num_commands_processed = num_commands - num_commands_unprocessed
+
             total_processed += num_commands_processed
+            total_unprocessed += num_commands_unprocessed
+
             results[db_path] = {
                 "commands": num_commands,
                 "events": i,
-                "processed": num_commands_processed
+                "processed": num_commands_processed,
+                "unprocessed": num_commands_unprocessed
             }
 
     metrics = {
         'total_commands': total_commands,
         'total_processed': total_processed,
+        'total_unprocessed': total_unprocessed,
         'results': results
     }
 
