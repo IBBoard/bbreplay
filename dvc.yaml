@@ -1,0 +1,9 @@
+stages:
+  metrics:
+    cmd: python3 metrics.py -o metrics/metrics.json data/
+    deps:
+    - bbreplay/
+    - data/
+    - metrics.py
+    metrics:
+    - metrics/metrics.json

@@ -1,0 +1,20 @@
+schema: '2.0'
+stages:
+  metrics:
+    cmd: python3 metrics.py -o metrics/metrics.json data/
+    deps:
+    - path: bbreplay/
+      md5: cdabed1aa6f6442bfa86755b878ae60e.dir
+      size: 243939
+      nfiles: 14
+    - path: data/
+      md5: 8f4f4d470b87ccc84345c3d35a283af3.dir
+      size: 12440103
+      nfiles: 58
+    - path: metrics.py
+      md5: d50a946a3e757cea39fd8ea981c8970b
+      size: 2962
+    outs:
+    - path: metrics/metrics.json
+      md5: 43c0c207a521173879b14d91aa571172
+      size: 3280
