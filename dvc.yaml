@@ -11,3 +11,6 @@ stages:
     plots:
     - metrics/plots.json:
         cache: false
+        title: File parsing success rate
+        x_label: File
+        y_label: Proportion parsed
