@@ -1,9 +1,13 @@
 stages:
   metrics:
-    cmd: python3 metrics.py -o metrics/metrics.json data/
+    cmd: python3 metrics.py -o metrics/metrics.json -p metrics/plots.json data/
     deps:
     - bbreplay/
     - data/
     - metrics.py
     metrics:
-    - metrics/metrics.json
+    - metrics/metrics.json:
+        cache: false
+    plots:
+    - metrics/plots.json:
+        cache: false

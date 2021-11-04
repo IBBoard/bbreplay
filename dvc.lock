@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   metrics:
-    cmd: python3 metrics.py -o metrics/metrics.json data/
+    cmd: python3 metrics.py -o metrics/metrics.json -p metrics/plots.json data/
     deps:
     - path: bbreplay/
       md5: cdabed1aa6f6442bfa86755b878ae60e.dir
@@ -12,9 +12,12 @@ stages:
       size: 12440103
       nfiles: 58
     - path: metrics.py
-      md5: d50a946a3e757cea39fd8ea981c8970b
-      size: 2962
+      md5: 0162c9623340acaed4b50843bb8280a6
+      size: 3310
     outs:
     - path: metrics/metrics.json
-      md5: 43c0c207a521173879b14d91aa571172
-      size: 3280
+      md5: d006f632cdbed4e61072cb56fae49bb8
+      size: 5218
+    - path: metrics/plots.json
+      md5: a0da8725f1a9e20ad96f1d639d08b9e2
+      size: 1788

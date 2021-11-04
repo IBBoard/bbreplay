@@ -20,6 +20,7 @@ if __name__ == '__main__':
                                                  ' coverage/completeness metrics')
     parser.add_argument('replays_dir', metavar='replays-dir', help='input directory of replays and logs')
     parser.add_argument('--output', '-o', help='output file for metrics (otherwise prints to stdout)')
+    parser.add_argument('--plot', '-p', help='output file for plot values (otherwise included in output)')
     args = parser.parse_args()
 
     total_commands = 0
@@ -80,6 +81,11 @@ if __name__ == '__main__':
 
     if args.output:
         with open(args.output, 'w') as f:
-            json.dump(metrics, f)
+            json.dump(metrics, f, indent=4)
     else:
-        print(json.dumps(metrics, indent=4, sort_keys=True))
+        print(json.dumps(metrics, indent=4))
+
+    if args.plot:
+        with open(args.plot, 'w') as f:
+            scores = sorted(result['processed'] / result['commands'] for result in results.values())
+            json.dump({'scores': [{'score': score} for score in scores]}, f, indent=4)

@@ -33,7 +33,26 @@ The `--from` switch lets you start the replay from a specific turn, which can be
 
 This is intended as a developer tool to help people see the events that they will receive when they use the library.
 
-## Dependencies
+## Developing BBReplay
+
+This project uses [DVC](https://dvc.org) for data version control and for tracking metrics.
+DVC is a "a data and ML experiment management tool" that works like Git and integrates with it.
+All source code is tracked in Git and all data files are tracked in DVC.
+
+To retrieve the data files, [install DVC](https://dvc.org/doc/install) and run `dvc pull` within the repo. This will download all of the data files from a (read-only) repository on dev.ibboard.co.uk.
+
+To regenerate the metrics, run `dvc repro`. If the data and source code haven't changed then
+DVC will use the cached metrics file.
+
+To view changes in the metrics use `dvc metrics diff`. By default this diffs `HEAD` and the current workspace but can be passed version hashes to diff metrics at specific versions.
+
+To view plots of the metrics, run `dvc plots show` and then open [dvc_plots/index.html](./dvc_plots/index.html) in your browser.
+The further the curve pushes to the top-left, the better we are doing at processing files.
+
+To view changes in the plots across commits, run `dvc plots diff` or `dvc plots diff [revisions [revisions ...]]`
+and then open [dvc_plots/index.html](./dvc_plots/index.html) in your browser.
+
+### Dependencies
 
 BBReplay uses only core Python 3 packages.
 
@@ -41,7 +60,7 @@ Linux users will already have Python available.
 
 Windows users will need to install [Python 3 for Windows](https://www.python.org/downloads/windows/) or [Anaconda Individual Edition](https://www.anaconda.com/products/individual).
 
-## Developer Documentation
+### Developer Documentation
 
 The game replay files are SQLite database files, and the commands are included in the `Replay_NetCommands` table.
 
