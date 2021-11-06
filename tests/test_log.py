@@ -1,5 +1,6 @@
 from bbreplay import ScatterDirection
-from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, BounceLogEntry, FireballEntry, InjuryRollEntry, \
+from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, BlockLogEntry, BounceLogEntry, FireballEntry, FoulAppearanceEntry, \
+    GoingForItEntry, InjuryRollEntry, RerollEntry, SkillEntry, \
     TurnOverEntry, WildAnimalEntry, parse_log_entry_lines, CasualtyRollEntry
 
 
@@ -131,3 +132,177 @@ def test_spell_ball_bounce_gets_rearranged():
     assert log_entries[6].direction == ScatterDirection(7)
 
     assert not next(all_log_entries, None)
+
+
+def test_bug16_log_entry_merging_around_cinematics():
+    log_lines = [
+        STARTING_LINE,
+        "|  +- Enter CStateMatchActionTT",
+        "|  |",
+        "|  | Release CStateMatchSelectTT",
+        "|  | GameLog(02): ORK #10 Granik Going for it  (2+) : 4 -> Success",
+        "|  | GameLog(02): ORK (10) Granik Block  Result:",
+        "[Defender Down] - [Pushed]",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Warpstone Heat is WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Orkington Red Skullz is WAITING FOR player decision",
+        "|  | GameLog(02): ORK #10 Granik chooses : Defender Down",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Orkington Red Skullz is NOT WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Warpstone Heat is NOT WAITING FOR player decision",
+        "|  | GameLog(11): WAR #01 Thekit uses Fend.",
+        "|  | GameLog(02): WAR #01 Thekit Injury  : 3 + 1 = 4 -> Stunned",
+        "|  | Init CStateMatchSelectTT",
+        "|  |",
+        "|  +- Exit CStateMatchActionTT",
+        "|",
+        "|",
+        "|  +- Enter CStateMatchSelectTT",
+        "|  |",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(2)",
+        "|  | Contexts : GLOBAL(1)GUI(1)MATCH(1)PLAYERTEAMHUMAN(2)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(2)",
+        "|  | Contexts : GLOBAL(1)GUI(1)MATCH(1)PLAYERTEAMHUMAN(2)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(2)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHTV(1)MATCH(1)PLAYERTEAMHUMAN(2)",
+        "|  |",
+        "|  +- Exit CStateMatchSelectTT",
+        "|",
+        "|",
+        "|  +- Enter CStateMatchActionTT",
+        "|  |",
+        "|  | Release CStateMatchSelectTT",
+        "|  | GameLog(02): ORK #10 Granik Going for it  (2+) : 2 -> Success",
+        "|  | Init CStateMatchSelectTT",
+        "|  |",
+        "|  +- Exit CStateMatchActionTT"
+    ]
+    all_log_entries = parse_log_entry_lines(log_lines)
+    assert len(all_log_entries) == 1
+    log_entries = all_log_entries[0]
+    assert len(log_entries) == 5
+    assert isinstance(log_entries[0], GoingForItEntry)
+    assert isinstance(log_entries[1], BlockLogEntry)
+    assert isinstance(log_entries[2], SkillEntry)
+    assert isinstance(log_entries[3], InjuryRollEntry)
+    assert isinstance(log_entries[4], GoingForItEntry)
+
+
+def test_bug16_turnover_does_not_get_merged_or_lost():
+    log_lines = [
+        STARTING_LINE,
+        "|  +- Enter CStateMatchActionTT",
+        "|  |",
+        "|  | Release CStateMatchSelectTT",
+        "|  | GameLog(02): ORK (10) Granik Block  Result:",
+        "[Defender Down] - [Pushed]",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Warpstone Heat is WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Orkington Red Skullz is WAITING FOR player decision",
+        "|  | GameLog(02): ORK #10 Granik chooses : Defender Down",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Orkington Red Skullz is NOT WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Warpstone Heat is NOT WAITING FOR player decision",
+        "|  | GameLog(02): WAR #08 Slukch Armour Value  (9+) : 2 + 2 = 4 -> Failure",
+        "|  | Init CStateMatchSelectTT",
+        "|  |",
+        "|  +- Exit CStateMatchActionTT",
+        "|",
+        "|",
+        "|  +- Enter CStateMatchSelectTT",
+        "|  |",
+        "|  | GameLog(-1): ORK suffer a TURNOVER! : Time limit exceeded!",
+        "|  | Init CStateMatchTurnoverTT",
+        "|  |",
+        "|  +- Exit CStateMatchSelectTT",
+        "|",
+        "|",
+        "|  +- Enter CStateMatchTurnoverTT",
+        "|  |",
+        "|  |",
+        "|  +- Exit CStateMatchTurnoverTT"
+    ]
+    all_log_entries = parse_log_entry_lines(log_lines)
+    assert len(all_log_entries) == 2
+
+    log_entries = all_log_entries[0]
+    assert len(log_entries) == 2
+    assert isinstance(log_entries[0], BlockLogEntry)
+    assert isinstance(log_entries[1], ArmourValueRollEntry)
+
+    log_entries = all_log_entries[1]
+    assert len(log_entries) == 1
+    assert isinstance(log_entries[0], TurnOverEntry)
+
+
+def test_bug16_do_not_merge_consecutive_blocks():
+    log_lines = [
+        STARTING_LINE,
+        "|  +- Enter CStateMatchActionTT",
+        "|  |",
+        "|  | Release CStateMatchSelectTT",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)",
+        "|  | GameLog(02): NAG #03 Gesmal Foul Appearance  (2+) : 3 -> Success",
+        "|  | GameLog(02): NAG (03) Gesmal Block  Result:",
+        "[Pushed] - [Pushed]",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Boil-ton Wanderers is WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is WAITING FOR player decision",
+        "|  | GameLog(02): NAG #03 Gesmal chooses : Pushed",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Boil-ton Wanderers is NOT WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is NOT WAITING FOR player decision",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMSINGLEACTION(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)",
+        "|  | GameLog(02): WAN #13 Athamme Tubercu Injury  : 2 + 4 = 6 -> Stunned",
+        "|  | Init CStateMatchSelectTT",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  |",
+        "|  +- Exit CStateMatchActionTT",
+        "|",
+        "|",
+        "|  +- Enter CStateMatchSelectTT",
+        "|  |",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  |",
+        "|  +- Exit CStateMatchSelectTT",
+        "|",
+        "|",
+        "|  +- Enter CStateMatchActionTT",
+        "|  |",
+        "|  | Release CStateMatchSelectTT",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)",
+        "|  | GameLog(02): NAG #02 Elthlaen Foul Appearance  (2+) : 3 -> Success",
+        "|  | GameLog(02): NAG (02) Elthlaen Block  Result:",
+        "[Attacker Down]",
+        "|  | GameLog(08): NAG use a re-roll for #02 Elthlaen  (Left : 1/2)",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Boil-ton Wanderers is WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is WAITING FOR player decision",
+        "|  | GameLog(02): NAG (02) Elthlaen Block  Result:",
+        "[Attacker Down]",
+        "|  | GameLog(02): NAG #02 Elthlaen chooses : Attacker Down",
+        "|  | GameLog(02): NAG #02 Elthlaen Armour Value  (9+) : 3 + 4 = 7 -> Failure",
+        "|  | GameLog(-1): NAG suffer a TURNOVER! : Knocked Down!",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Boil-ton Wanderers is NOT WAITING FOR player decision",
+        "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is NOT WAITING FOR player decision",
+        "|  | Init CStateMatchSelectTT",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  |",
+        "|  +- Exit CStateMatchActionTT"
+    ]
+    all_log_entries = parse_log_entry_lines(log_lines)
+    assert len(all_log_entries) == 2
+
+    log_entries = all_log_entries[0]
+    assert len(log_entries) == 3
+    assert isinstance(log_entries[0], FoulAppearanceEntry)
+    assert isinstance(log_entries[1], BlockLogEntry)
+    assert isinstance(log_entries[2], InjuryRollEntry)
+
+    log_entries = all_log_entries[1]
+    assert len(log_entries) == 6
+    assert isinstance(log_entries[0], FoulAppearanceEntry)
+    assert isinstance(log_entries[1], BlockLogEntry)
+    assert isinstance(log_entries[2], RerollEntry)
+    assert isinstance(log_entries[3], BlockLogEntry)
+    assert isinstance(log_entries[4], ArmourValueRollEntry)
+    assert isinstance(log_entries[5], TurnOverEntry)

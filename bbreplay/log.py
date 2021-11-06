@@ -499,6 +499,11 @@ def parse_log_entry_lines(lines):
     event_entries = []
     match_started = False
     in_block = False
+    in_select_block = False
+    block_has_lines = False
+    all_contexts = False
+    empty_prev_action = False
+    may_merge = False
     toss_randomisation = TossRandomisationEntry()
     turnover_log_entry = None
     is_spell = False
@@ -511,11 +516,20 @@ def parse_log_entry_lines(lines):
                 match_started = True
             else:
                 continue
+        if line == "|  |":
+            continue
         if line.startswith("|  +- Enter CStateMatch"):
             in_block = True
+            block_has_lines = False
+            in_select_block = line == "|  +- Enter CStateMatchSelectTT"
+            may_merge = all_contexts
+            all_contexts = in_select_block
             was_spell = is_spell
             is_spell = line.endswith("CStateMatchWizardUseSpellTT")
+            continue
         elif line.startswith("|  +- Exit CStateMatch"):
+            in_block = False
+            all_contexts = all_contexts and block_has_lines
             if is_spell:
                 i = 0
                 max_i = len(event_entries)
@@ -532,13 +546,24 @@ def parse_log_entry_lines(lines):
             if turnover_log_entry:
                 event_entries.append(turnover_log_entry)
                 turnover_log_entry = None
-            if event_entries:
+            if may_merge and not empty_prev_action:
+                # Bug 16 - merge log entries for a player when they're split by cinematics
+                # But don't merge with kickoff bounces
+                log_entries[-1].extend(event_entries)
+            elif event_entries:
+                empty_prev_action = False
                 log_entries.append(event_entries)
+            elif line == "|  +- Exit CStateMatchActionTT":
+                empty_prev_action = True
             event_entries = []
-            in_block = False
             continue
         elif not in_block:
             continue
+
+        block_has_lines = True
+
+        if in_select_block and all_contexts and not line.startswith("|  | Contexts : "):
+            all_contexts = False
 
         result = gamelog_re.search(line)
         if result:
@@ -566,6 +591,14 @@ def parse_log_entry_lines(lines):
                         and event_entries and isinstance(event_entries[-1], BounceLogEntry):
                     event_entries.insert(-1, log_entry)
                 else:
+                    # XXX This is ugly and we need a better way to handle "sometimes we merge, sometimes we don't"
+                    if may_merge and not event_entries and isinstance(log_entry, TeamPlayerEntry):
+                        # Take the first of the last batch because it's more likely to be a player event
+                        # whereas the last one might be a team event
+                        prev_log_entry = log_entries[-1][0]
+                        if isinstance(prev_log_entry, TeamPlayerEntry) and \
+                                (log_entry.team != prev_log_entry.team or log_entry.player != prev_log_entry.player):
+                            may_merge = False
                     event_entries.append(log_entry)
         else:
             result = block_dice_re.search(line)
