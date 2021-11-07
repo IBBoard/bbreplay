@@ -592,8 +592,9 @@ class Replay:
         if isinstance(cmd, MovementCommand):
             moved = True
             yield Blitz(targeting_player, target_by_idx)
-            yield from self._process_movement(targeting_player, cmds, log_entries, board)
+            moves = self.__get_moves(targeting_player, cmds)
             cmd = next(cmds)
+            yield from self.__process_movement_list(targeting_player, moves, cmds, log_entries, board)
         else:
             cmd = next(cmds)
             yield from self._process_uncontrollable_skills(targeting_player, cmds, log_entries, board)
@@ -932,15 +933,10 @@ class Replay:
             yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, log_entries, board)
 
     def _process_movement(self, player, cmds, log_entries, board):
-        failed_movement = False
-        pickup_entry = None
-        diving_tackle_entry = None
-        start_space = player.position
-        turnover = False
-        moves = []
-        is_prone = board.is_prone(player)
-        is_ball_carrier = board.get_ball_carrier() == player
+        yield from self.__process_movement_list(player, self.__get_moves(player, cmds), cmds, log_entries, board)
 
+    def __get_moves(self, player, cmds):
+        moves = []
         # We can't just use "while true" and check for EndMovementCommand because a blitz is
         # movement followed by a Block without an EndMovementCommand
         while isinstance(cmds.peek(), MovementCommand):
@@ -953,6 +949,16 @@ class Replay:
             moves.append(cmd)
             if isinstance(cmd, EndMovementCommand):
                 break
+        return moves
+
+    def __process_movement_list(self, player, moves, cmds, log_entries, board):
+        failed_movement = False
+        pickup_entry = None
+        diving_tackle_entry = None
+        start_space = player.position
+        turnover = False
+        is_prone = board.is_prone(player)
+        is_ball_carrier = board.get_ball_carrier() == player
 
         for event in self._process_uncontrollable_skills(player, cmds, log_entries, board):
             if isinstance(event, Action):
