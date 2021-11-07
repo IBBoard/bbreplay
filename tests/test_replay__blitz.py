@@ -49,8 +49,7 @@ def test_blitz_pushback_followup(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -60,7 +59,7 @@ def test_blitz_pushback_followup(board):
     log_entries = iter_([
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -108,8 +107,7 @@ def test_blitz_pushback_no_followup(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -119,7 +117,7 @@ def test_blitz_pushback_no_followup(board):
     log_entries = iter_([
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -160,8 +158,7 @@ def test_blitz_pushback_no_followup_and_continue_move(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -173,7 +170,7 @@ def test_blitz_pushback_no_followup_and_continue_move(board):
     log_entries = iter_([
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -221,8 +218,7 @@ def test_blitz_pushback_fend_prevents_followup(board):
     opponent.skills.append(Skills.FEND)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -232,7 +228,7 @@ def test_blitz_pushback_fend_prevents_followup(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
         SkillEntry(opponent.team.team_type, opponent.number, Skills.FEND.name)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -286,8 +282,7 @@ def test_blitz_single_destination_pushback_fend_prevents_followup(board):
     opponent_3 = Player(3, "Player3A", 4, 4, 4, 4, 1, 0, 40000, [])
     board.set_position(Position(9, 7), opponent_3)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0])
@@ -296,7 +291,7 @@ def test_blitz_single_destination_pushback_fend_prevents_followup(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
         SkillEntry(opponent.team.team_type, opponent.number, Skills.FEND.name)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -346,8 +341,7 @@ def test_blitz_pushback_fend_prevents_followup_then_continue_move(board):
     opponent.skills.append(Skills.FEND)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -359,7 +353,7 @@ def test_blitz_pushback_fend_prevents_followup_then_continue_move(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
         SkillEntry(opponent.team.team_type, opponent.number, Skills.FEND.name)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -413,8 +407,7 @@ def test_blitz_pushback_juggernaut_cancels_fend(board):
     opponent.skills.append(Skills.FEND)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -424,7 +417,7 @@ def test_blitz_pushback_juggernaut_cancels_fend(board):
     log_entries = iter_([
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -475,8 +468,7 @@ def test_gfi_blitz_pushback_followup(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
@@ -490,7 +482,7 @@ def test_gfi_blitz_pushback_followup(board):
         GoingForItEntry(player.team.team_type, player.number, "2+", "2", ActionResult.SUCCESS),
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -545,8 +537,7 @@ def test_blitz_ball_carrier_downed(board):
     board.set_position(Position(8, 7), opponent)
     board.set_ball_carrier(opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -558,7 +549,7 @@ def test_blitz_ball_carrier_downed(board):
         ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE),
         BounceLogEntry(ScatterDirection.N.value)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -622,8 +613,7 @@ def test_blitz_ball_carrier_downed_double_log(board):
     board.set_position(Position(8, 7), opponent)
     board.set_ball_carrier(opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -637,7 +627,7 @@ def test_blitz_ball_carrier_downed_double_log(board):
         BounceLogEntry(ScatterDirection.N.value),
         BounceLogEntry(ScatterDirection.SE.value)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -701,8 +691,7 @@ def test_gfi_blitz_ball_carrier_downed(board):
     board.set_position(Position(8, 7), opponent)
     board.set_ball_carrier(opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
@@ -718,7 +707,7 @@ def test_gfi_blitz_ball_carrier_downed(board):
         ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE),
         BounceLogEntry(ScatterDirection.N.value)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -792,8 +781,7 @@ def test_bug8_blitz_into_ball_with_false_double_bounce(board):
     board.set_position(Position(8, 7), opponent)
     board.set_ball_position(Position(9, 8))
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -806,7 +794,7 @@ def test_bug8_blitz_into_ball_with_false_double_bounce(board):
         BounceLogEntry(ScatterDirection.NE.value),
         BounceLogEntry(ScatterDirection.N.value)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -872,8 +860,7 @@ def test_gfi_blitz_ball_carrier_with_dumpoff_to_noone_downed(board):
     board.set_position(Position(8, 7), opponent)
     board.set_ball_carrier(opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
@@ -893,7 +880,7 @@ def test_gfi_blitz_ball_carrier_with_dumpoff_to_noone_downed(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.DEFENDER_DOWN]),
         ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -969,8 +956,7 @@ def test_gfi_blitz_ball_carrier_with_dumpoff_to_noone_fails_gfi_bug(board):
     board.set_position(Position(8, 7), opponent)
     board.set_ball_carrier(opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
@@ -992,7 +978,7 @@ def test_gfi_blitz_ball_carrier_with_dumpoff_to_noone_fails_gfi_bug(board):
         ArmourValueRollEntry(player.team.team_type, player.number, "9+", "8", ActionResult.FAILURE),
         TurnOverEntry(player.team.team_type, "Knocked Down!")
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -1064,8 +1050,7 @@ def test_gfi_blitz_failure_with_casualty(board):
     board.set_position(Position(8, 7), opponent)
     board.set_ball_carrier(opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
@@ -1083,7 +1068,7 @@ def test_gfi_blitz_failure_with_casualty(board):
         CasualtyRollEntry(player.team.team_type, player.number, CasualtyResult.BADLY_HURT.name),
         TurnOverEntry(player.team.team_type, "Knocked Down!")
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -1149,8 +1134,7 @@ def test_frenzy_blitz_beyond_gfi_limit(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
@@ -1168,7 +1152,7 @@ def test_frenzy_blitz_beyond_gfi_limit(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
         # We can't Frenzy and follow-up because we ran out of GFI
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -1228,8 +1212,7 @@ def test_blitz_with_juggernaut_stopping_both_down(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -1241,7 +1224,7 @@ def test_blitz_with_juggernaut_stopping_both_down(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.BOTH_DOWN]),
         SkillEntry(player.team.team_type, player.number, Skills.JUGGERNAUT.name)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -1296,8 +1279,7 @@ def test_blitz_with_declined_juggernaut_not_stopping_both_down(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -1309,7 +1291,7 @@ def test_blitz_with_declined_juggernaut_not_stopping_both_down(board):
         ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE),
         TurnOverEntry(player.team.team_type, "Knocked Down!")
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -1366,8 +1348,7 @@ def test_blitz_with_frenzied_gfi(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
@@ -1384,7 +1365,7 @@ def test_blitz_with_frenzied_gfi(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.DEFENDER_STUMBLES]),
         ArmourValueRollEntry(opponent.team.team_type, opponent.number, "10+", 8, ActionResult.FAILURE)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)
@@ -1475,8 +1456,7 @@ def test_blitz_with_double_frenzied_gfi(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 7]),
         MovementCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
@@ -1495,7 +1475,7 @@ def test_blitz_with_double_frenzied_gfi(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.DEFENDER_STUMBLES]),
         ArmourValueRollEntry(opponent.team.team_type, opponent.number, "10+", 8, ActionResult.FAILURE)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Blitz)

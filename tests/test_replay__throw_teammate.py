@@ -73,9 +73,8 @@ def test_throwing_teammate_successful_landing(board):
         LandingEntry(TeamType.HOME, 2, "4+", 4, ActionResult.SUCCESS.name)
     ]
     cmds_iter = iter_(cmds)
-    cmd = next(cmds_iter)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw_teammate(player_1, player_2, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw_teammate(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, ThrowTeammate)
@@ -125,9 +124,8 @@ def test_throwing_teammate_failed_landing(board):
         ArmourValueRollEntry(player_2.team.team_type, player_2.number, "9+", "8", ActionResult.FAILURE)
     ]
     cmds_iter = iter_(cmds)
-    cmd = next(cmds_iter)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw_teammate(player_1, player_2, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw_teammate(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, ThrowTeammate)
@@ -184,9 +182,8 @@ def test_throwing_teammate_fumble_pickup_failed_landing(board):
         ArmourValueRollEntry(player_2.team.team_type, player_2.number, "9+", "8", ActionResult.FAILURE)
     ]
     cmds_iter = iter_(cmds)
-    cmd = next(cmds_iter)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw_teammate(player_1, player_2, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw_teammate(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, ThrowTeammate)
@@ -241,9 +238,8 @@ def test_throwing_teammate_successful_always_hungry(board):
         LandingEntry(TeamType.HOME, 2, "4+", 4, ActionResult.SUCCESS.name)
     ]
     cmds_iter = iter_(cmds)
-    cmd = next(cmds_iter)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw_teammate(player_1, player_2, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw_teammate(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Action)

@@ -17,14 +17,14 @@ ENDING_LINES = [
 def test_parse_ignores_non_gamelog_lines():
     log_lines = STARTING_LINES + \
         [
+            "|  | GameLog(02): WAR #05 Pinky Injury  : 6 + 3 = 9 -> KO'd",
             "|  | GameLog(-1): WAR suffer a TURNOVER! : Knocked Down!",
             "|  | Entering CStatePlayerTeamChooseOptionalSkills, Warpstone Heat is NOT WAITING FOR player decision",
             "|  | GameLog(13): WAR call on their Apothecary to attempt to heal #05 Pinky.",
         ] \
         + ENDING_LINES
     match_log_entries = parse_log_entry_lines(log_lines)
-    assert len(match_log_entries) == 1
-    assert len(match_log_entries[0]) == 2
+    assert len(match_log_entries) == 3
 
 
 def test_parse_apothecary_puts_turnover_at_end():
@@ -36,7 +36,7 @@ def test_parse_apothecary_puts_turnover_at_end():
             "|  | GameLog(13): WAR call on their Apothecary to attempt to heal #05 Pinky.",
         ] \
         + ENDING_LINES
-    log_entries = iter(parse_log_entry_lines(log_lines)[0])
+    log_entries = iter(parse_log_entry_lines(log_lines))
     assert isinstance(next(log_entries), ArmourValueRollEntry)
     assert isinstance(next(log_entries), InjuryRollEntry)
     assert isinstance(next(log_entries), ApothecaryLogEntry)
@@ -57,13 +57,14 @@ def test_bounce_does_not_happen_mid_injury():
             "|  | GameLog(12): WAN #07 Ebola-Gorz earns 2 SPP (Casualty)",
         ] \
         + ENDING_LINES
-    log_entries = iter(parse_log_entry_lines(log_lines)[0])
+    log_entries = iter(parse_log_entry_lines(log_lines))
     assert isinstance(next(log_entries), ArmourValueRollEntry)
     assert isinstance(next(log_entries), InjuryRollEntry)
     assert isinstance(next(log_entries), CasualtyRollEntry)
     assert isinstance(next(log_entries), ApothecaryLogEntry)
     assert isinstance(next(log_entries), CasualtyRollEntry)
     assert isinstance(next(log_entries), BounceLogEntry)
+    assert not next(log_entries, None)
 
 
 def test_turnover_gets_cleared():
@@ -86,17 +87,10 @@ def test_turnover_gets_cleared():
         "|  |",
         "|  +- Exit CStateMatchActionTT"
     ]
-    all_log_entries = iter(parse_log_entry_lines(log_lines))
-    log_entries = next(all_log_entries)
-    print(log_entries)
-    assert len(log_entries) == 1
-    assert isinstance(log_entries[0], TurnOverEntry)
-
-    log_entries = next(all_log_entries)
-    assert len(log_entries) == 1
-    assert isinstance(log_entries[0], WildAnimalEntry)
-
-    assert not next(all_log_entries, None)
+    log_entries = iter(parse_log_entry_lines(log_lines))
+    assert isinstance(next(log_entries), TurnOverEntry)
+    assert isinstance(next(log_entries), WildAnimalEntry)
+    assert not next(log_entries, None)
 
 
 def test_spell_ball_bounce_gets_rearranged():
@@ -117,10 +111,8 @@ def test_spell_ball_bounce_gets_rearranged():
         "|  |",
         "|  +- Exit CStateMatchSelectTT",
     ]
-    all_log_entries = iter(parse_log_entry_lines(log_lines))
-    log_entries = next(all_log_entries)
+    log_entries = parse_log_entry_lines(log_lines)
     print(log_entries)
-    assert len(log_entries) == 7
     assert isinstance(log_entries[0], FireballEntry)
     assert isinstance(log_entries[1], ArmourValueRollEntry)
     assert isinstance(log_entries[2], InjuryRollEntry)
@@ -130,8 +122,6 @@ def test_spell_ball_bounce_gets_rearranged():
     assert log_entries[5].direction == ScatterDirection(3)
     assert isinstance(log_entries[6], BounceLogEntry)
     assert log_entries[6].direction == ScatterDirection(7)
-
-    assert not next(all_log_entries, None)
 
 
 def test_bug16_log_entry_merging_around_cinematics():
@@ -175,15 +165,13 @@ def test_bug16_log_entry_merging_around_cinematics():
         "|  |",
         "|  +- Exit CStateMatchActionTT"
     ]
-    all_log_entries = parse_log_entry_lines(log_lines)
-    assert len(all_log_entries) == 1
-    log_entries = all_log_entries[0]
-    assert len(log_entries) == 5
-    assert isinstance(log_entries[0], GoingForItEntry)
-    assert isinstance(log_entries[1], BlockLogEntry)
-    assert isinstance(log_entries[2], SkillEntry)
-    assert isinstance(log_entries[3], InjuryRollEntry)
-    assert isinstance(log_entries[4], GoingForItEntry)
+    log_entries = iter(parse_log_entry_lines(log_lines))
+    assert isinstance(next(log_entries), GoingForItEntry)
+    assert isinstance(next(log_entries), BlockLogEntry)
+    assert isinstance(next(log_entries), SkillEntry)
+    assert isinstance(next(log_entries), InjuryRollEntry)
+    assert isinstance(next(log_entries), GoingForItEntry)
+    assert not next(log_entries, None)
 
 
 def test_bug16_turnover_does_not_get_merged_or_lost():
@@ -218,17 +206,11 @@ def test_bug16_turnover_does_not_get_merged_or_lost():
         "|  |",
         "|  +- Exit CStateMatchTurnoverTT"
     ]
-    all_log_entries = parse_log_entry_lines(log_lines)
-    assert len(all_log_entries) == 2
-
-    log_entries = all_log_entries[0]
-    assert len(log_entries) == 2
-    assert isinstance(log_entries[0], BlockLogEntry)
-    assert isinstance(log_entries[1], ArmourValueRollEntry)
-
-    log_entries = all_log_entries[1]
-    assert len(log_entries) == 1
-    assert isinstance(log_entries[0], TurnOverEntry)
+    log_entries = iter(parse_log_entry_lines(log_lines))
+    assert isinstance(next(log_entries), BlockLogEntry)
+    assert isinstance(next(log_entries), ArmourValueRollEntry)
+    assert isinstance(next(log_entries), TurnOverEntry)
+    assert not next(log_entries, None)
 
 
 def test_bug16_do_not_merge_consecutive_blocks():
@@ -289,20 +271,14 @@ def test_bug16_do_not_merge_consecutive_blocks():
         "|  |",
         "|  +- Exit CStateMatchActionTT"
     ]
-    all_log_entries = parse_log_entry_lines(log_lines)
-    assert len(all_log_entries) == 2
-
-    log_entries = all_log_entries[0]
-    assert len(log_entries) == 3
-    assert isinstance(log_entries[0], FoulAppearanceEntry)
-    assert isinstance(log_entries[1], BlockLogEntry)
-    assert isinstance(log_entries[2], InjuryRollEntry)
-
-    log_entries = all_log_entries[1]
-    assert len(log_entries) == 6
-    assert isinstance(log_entries[0], FoulAppearanceEntry)
-    assert isinstance(log_entries[1], BlockLogEntry)
-    assert isinstance(log_entries[2], RerollEntry)
-    assert isinstance(log_entries[3], BlockLogEntry)
-    assert isinstance(log_entries[4], ArmourValueRollEntry)
-    assert isinstance(log_entries[5], TurnOverEntry)
+    log_entries = iter(parse_log_entry_lines(log_lines))
+    assert isinstance(next(log_entries), FoulAppearanceEntry)
+    assert isinstance(next(log_entries), BlockLogEntry)
+    assert isinstance(next(log_entries), InjuryRollEntry)
+    assert isinstance(next(log_entries), FoulAppearanceEntry)
+    assert isinstance(next(log_entries), BlockLogEntry)
+    assert isinstance(next(log_entries), RerollEntry)
+    assert isinstance(next(log_entries), BlockLogEntry)
+    assert isinstance(next(log_entries), ArmourValueRollEntry)
+    assert isinstance(next(log_entries), TurnOverEntry)
+    assert not next(log_entries, None)

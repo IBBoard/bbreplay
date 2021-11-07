@@ -14,8 +14,7 @@ def test_pushback_against_fend(board):
     opponent.skills.append(Skills.FEND)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8])
@@ -24,7 +23,7 @@ def test_pushback_against_fend(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
         SkillEntry(opponent.team.team_type, opponent.number, "Fend")
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Block)
@@ -59,8 +58,7 @@ def test_frenzy_with_double_pushback(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
@@ -72,7 +70,7 @@ def test_frenzy_with_double_pushback(board):
         SkillEntry(player.team.team_type, player.number, "Frenzy"),
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Block)
@@ -135,8 +133,7 @@ def test_frenzy_with_first_block_down(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8])
@@ -145,7 +142,7 @@ def test_frenzy_with_first_block_down(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.DEFENDER_DOWN]),
         ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Block)
@@ -192,8 +189,7 @@ def test_frenzy_against_dodge(board):
     opponent.skills.append(Skills.DODGE)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
@@ -206,7 +202,7 @@ def test_frenzy_against_dodge(board):
         SkillEntry(player.team.team_type, player.number, "Frenzy"),
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Block)
@@ -276,8 +272,7 @@ def test_frenzy_against_block(board):
     opponent.skills.append(Skills.BLOCK)
     board.set_position(Position(8, 7), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -290,7 +285,7 @@ def test_frenzy_against_block(board):
         SkillEntry(player.team.team_type, player.number, "Frenzy"),
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED])
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Block)
@@ -347,8 +342,7 @@ def test_team_reroll_on_block_dice(board):
     board.set_position(Position(8, 7), opponent)
     board.setup_complete()
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         RerollCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -360,7 +354,7 @@ def test_team_reroll_on_block_dice(board):
         RerollEntry(TeamType.HOME),
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Reroll)
@@ -405,8 +399,7 @@ def test_leader_reroll_on_block_dice(board):
     board.set_position(Position(8, 7), opponent)
     board.setup_complete()
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
         RerollCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
@@ -418,7 +411,7 @@ def test_leader_reroll_on_block_dice(board):
         LeaderRerollEntry(TeamType.HOME, 1),
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Reroll)
@@ -461,8 +454,7 @@ def test_pushback_off_field(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(0, 0), opponent)
     cmds = iter_([
-        # The TargetPlayerCommand is what triggers the call to _process_block
-        # TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, …, TeamType.AWAY.value, 0]),
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
         FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
@@ -471,7 +463,7 @@ def test_pushback_off_field(board):
         BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.PUSHED]),
         InjuryRollEntry(opponent.team.team_type, opponent.number, "4", InjuryRollResult.STUNNED.name)
     ])
-    events = replay._process_block(player, opponent, cmds, log_entries, None, board)
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Block)

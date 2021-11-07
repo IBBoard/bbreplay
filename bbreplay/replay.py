@@ -8,11 +8,11 @@ from . import Peekable, other_team, CoinToss, TeamType, ActionResult, BlockResul
     scatter, throwin, KickoffEvent, Role, ThrowResult, _norths, _souths, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, ArmourValueRollEntry, \
+from .log import WeatherLogEntry, parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, \
     SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry, SpellEntry, ThrowTeammateEntry, LandingEntry, \
-    AlwaysHungryEntry
+    ArmourValueRollEntry, AlwaysHungryEntry
 from .state import GameState
 from .state import StartTurn, EndTurn, WeatherTuple, AbandonMatch, EndMatch  # noqa: F401 - these are for export
 from .teams import create_team
@@ -73,13 +73,6 @@ END_REASON_TOUCHDOWN = 'Touchdown!'
 END_REASON_ABANDON = 'Abandon Match'
 
 
-class ReturnWrapper:
-    # Ugly work-around class to let us pass back unused objects and still "yield from"
-    def __init__(self):
-        self.command = None
-        self.log_entries = None
-
-
 def create_replay(db_path, log_path):
     db = sqlite3.connect(db_path)
     home_team = create_team(db, TeamType.HOME)
@@ -100,7 +93,7 @@ class Replay:
         self.__generator = self.__default_generator
 
     def validate(self):
-        log_entry = self.__log_entries[1][0]
+        log_entry = self.__log_entries[1]
 
         if type(log_entry) is not MatchLogEntry:
             raise ValueError("Log did not start with MatchLog entry")
@@ -132,21 +125,18 @@ class Replay:
         else:
             self.__generator = self.__default_generator
 
-    def __next_generator(self, log_entries):
-        return self.__generator(next(log_entries))
-
     def events(self):
         log_entries = self.__generator(log_entry for log_entry in self.__log_entries)
         cmds = self.__generator(cmd for cmd in self.__commands if not cmd.is_verbose)
 
-        randomisation = next(log_entries)[0]
-        match_log_entries = next(log_entries)
+        randomisation = next(log_entries)
         yield MatchEvent()
 
+        _ = next(log_entries)  # Dispose of match entry
         toss_cmd = find_next_known_command(cmds)
-        toss_log = match_log_entries[1]
+        toss_log = next(log_entries)
         role_cmd = find_next_known_command(cmds)
-        role_log = next(log_entries)[0]
+        role_log = next(log_entries)
         toss_team = toss_cmd.team if toss_cmd.team != TeamType.HOTSEAT else randomisation.team
         if toss_team != toss_log.team or toss_cmd.choice != toss_log.choice:
             raise ValueError(f"Mismatch in toss details - {toss_team} {toss_cmd.choice} "
@@ -169,7 +159,7 @@ class Replay:
         yield CoinTossEvent(toss_team, toss_choice, toss_result, role_team, role_cmd.choice)
         receiver = role_team if role_cmd.choice == Role.RECEIVE else other_team(role_team)
         board = GameState(self.home_team, self.away_team, receiver)
-        weather = next(log_entries)[0]
+        weather = next(log_entries)
         yield board.set_weather(weather.result)
 
         yield from self._process_kickoff(cmds, log_entries, board)
@@ -197,15 +187,12 @@ class Replay:
     def _process_kickoff(self, cmds, log_entries, board):
         board.prepare_setup()
 
-        kickoff_log_events = next(log_entries)
-
-        if type(kickoff_log_events[0]) is KORecoveryEntry:
-            for event in kickoff_log_events:
-                if event.result == ActionResult.SUCCESS:
-                    player = self.get_team(event.team).get_player_by_number(event.player)
-                    board.unset_injured(player)
-            kickoff_log_events = next(log_entries)
-        # Else leave it for the kickoff event
+        event = next(log_entries)
+        while isinstance(event, KORecoveryEntry):
+            if event.result == ActionResult.SUCCESS:
+                player = self.get_team(event.team).get_player_by_number(event.player)
+                board.unset_injured(player)
+            event = next(log_entries)
 
         yield from self._process_team_setup(board.kicking_team, cmds, board)
         yield from self._process_team_setup(board.receiving_team, cmds, board)
@@ -214,7 +201,8 @@ class Replay:
 
         kickoff_cmd = find_next_known_command(cmds)
         if isinstance(kickoff_cmd, KickoffCommand):
-            kickoff_direction, kickoff_scatter = kickoff_log_events
+            kickoff_direction = event
+            kickoff_scatter = next(log_entries)
             ball_dest = scatter(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance)
             board.set_ball_position(ball_dest)
             yield Kickoff(kickoff_cmd.position, kickoff_direction.direction, kickoff_scatter.distance, board)
@@ -223,7 +211,7 @@ class Replay:
         else:
             raise ValueError(f"Unexpected command type at kickoff: {type(kickoff_cmd).__name__}")
 
-        kickoff_event = next(log_entries)[0]
+        kickoff_event = next(log_entries)
         kickoff_result = kickoff_event.result
         yield KickoffEventTuple(kickoff_result)
         ball_bounces = True
@@ -232,8 +220,7 @@ class Replay:
             board.setup_complete()
             yield SetupComplete(board)
         elif kickoff_result == KickoffEvent.HIGH_KICK:
-            high_kick_log = next(log_entries)
-            high_kick_catch = high_kick_log[0]
+            high_kick_catch = next(log_entries)
             catcher = self.get_team(high_kick_catch.team).get_player_by_number(high_kick_catch.player)
             old_position = catcher.position
             new_position = board.get_ball_position()
@@ -248,7 +235,8 @@ class Replay:
             # XXX: We need to check reroll log events to identify who got the free reroll
             pass
         elif kickoff_result == KickoffEvent.CHANGING_WEATHER:
-            weather = next(log_entries)[0]  # Sometimes this duplicates, but we don't care
+            while isinstance(log_entries.peek(), WeatherLogEntry):
+                weather = next(log_entries)  # Sometimes this duplicates, but we don't care
             yield board.set_weather(weather.result)
         elif kickoff_result == KickoffEvent.QUICK_SNAP:
             board.quick_snap()
@@ -275,9 +263,8 @@ class Replay:
             if touchback:
                 _ = next(log_entries)
             else:
-                for log_entry in next(log_entries):
-                    if not isinstance(log_entry, BounceLogEntry):
-                        raise ValueError(f"Expected Bounce log entries but got {type(log_entry).__name__}")
+                while isinstance(log_entries.peek(), BounceLogEntry):
+                    log_entry = next(log_entries)
                     old_position = ball_dest
                     ball_dest = scatter(ball_dest, log_entry.direction)
                     board.set_ball_position(ball_dest)
@@ -341,7 +328,7 @@ class Replay:
 
         while not end_reason:
             prev_cmd_type = cmd_type
-            cmd = next(cmds, None)
+            cmd = cmds.peek()
             if cmd is None:
                 break
             cmd_type = type(cmd)
@@ -350,20 +337,17 @@ class Replay:
                 target_by_idx = self.get_team(cmd.target_team).get_player(cmd.target_player)
                 is_block = targeting_player.team != target_by_idx.team
                 if is_block:
-                    yield from self._process_block(targeting_player, target_by_idx, cmds,
-                                                   self.__next_generator(log_entries), log_entries, board)
+                    yield from self._process_block(targeting_player, target_by_idx, cmds, log_entries, board)
                 elif not cmd.position.is_offpitch():
                     # Regular throws use 255,255 but throw teammate uses the target coords
-                    for event in self._process_throw_teammate(targeting_player, target_by_idx, cmd, cmds,
-                                                              self.__next_generator(log_entries),
-                                                              log_entries, board):
+                    for event in self._process_throw_teammate(targeting_player, target_by_idx,
+                                                              cmds, log_entries, board):
                         if isinstance(event, EndTurn):
                             end_reason = event.reason
                         else:
                             yield event
                 else:
-                    for event in self._process_throw(targeting_player, target_by_idx, cmds,
-                                                     self.__next_generator(log_entries), log_entries, board):
+                    for event in self._process_throw(targeting_player, target_by_idx, cmds, log_entries, board):
                         if isinstance(event, EndTurn):
                             end_reason = event.reason
                         else:
@@ -371,19 +355,22 @@ class Replay:
             elif isinstance(cmd, MovementCommand):
                 player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 # We stop when the movement stops, so the returned command is the EndMovementCommand
-                yield from self._process_movement(player, cmd, cmds, None, log_entries, board)
+                yield from self._process_movement(player, cmds, log_entries, board)
             elif isinstance(cmd, SpellCommand):
-                spell_log_entries = self.__next_generator(log_entries)
-                yield from self._process_spell(cmd, cmds, spell_log_entries, board)
+                yield from self._process_spell(cmds, log_entries, board)
             elif cmd_type is Command or cmd_type is PreKickoffCompleteCommand:
+                next(cmds)
                 continue
             elif cmd_type is DeclineRerollCommand or (cmd_type is DiceChoiceCommand
                                                       and prev_cmd_type is DeclineRerollCommand):
                 # FIXME: We should be handling these, but it's not always clear how they associate with events
+                next(cmds)
                 continue
             elif cmd_type is EndTurnCommand:
+                next(cmds)
                 end_reason = 'End Turn'
             elif cmd_type is AbandonMatchCommand:
+                next(cmds)
                 end_reason = END_REASON_ABANDON
             else:
                 raise NotImplementedError(f"No handling for {cmd}")
@@ -562,66 +549,54 @@ class Replay:
             board.unset_injured(player)
         yield Casualty(player, cmd.result)
 
-    def _process_uncontrollable_skills(self, player, cmds, cur_log_entries, log_entries, board, unused=None):
+    def _process_uncontrollable_skills(self, player, cmds, log_entries, board):
         if board.quick_snap_turn:
             return
-        yield from self._process_stupidity(player, cmds, cur_log_entries, log_entries, board, unused)
-        if unused:
-            cur_log_entries = unused.log_entries
-        yield from self._process_wild_animal(player, cmds, cur_log_entries, log_entries, board, unused)
+        yield from self._process_stupidity(player, cmds, log_entries, board)
+        yield from self._process_wild_animal(player, cmds, log_entries, board)
 
-    def _process_stupidity(self, player, cmds, cur_log_entries, log_entries, board, unused=None):
+    def _process_stupidity(self, player, cmds, log_entries, board):
         if Skills.REALLY_STUPID in player.skills and not board.tested_stupid(player):
-            if not cur_log_entries:
-                cur_log_entries = self.__next_generator(log_entries)
-            log_entry = next(cur_log_entries)
+            log_entry = next(log_entries)
             validate_log_entry(log_entry, StupidEntry, player.team.team_type, player.number)
             board.stupidity_test(player, log_entry.result)
             yield Action(player, ActionType.REALLY_STUPID, log_entry.result, board)
             if log_entry.result != ActionResult.SUCCESS:
-                actions, new_result = self._process_action_reroll(cmds, cur_log_entries, player, board)
+                actions, new_result = self._process_action_reroll(cmds, log_entries, player, board)
                 yield from actions
                 if new_result:
                     board.stupidity_test(player, new_result)
                     yield Action(player, ActionType.REALLY_STUPID, new_result, board)
 
-        if unused:
-            unused.log_entries = cur_log_entries
-
-    def _process_wild_animal(self, player, cmds, cur_log_entries, log_entries, board, unused=None):
+    def _process_wild_animal(self, player, cmds, log_entries, board):
         if Skills.WILD_ANIMAL in player.skills and not board.tested_wild_animal(player):
-            if not cur_log_entries:
-                cur_log_entries = self.__next_generator(log_entries)
-            log_entry = next(cur_log_entries)
+            log_entry = next(log_entries)
             validate_log_entry(log_entry, WildAnimalEntry, player.team.team_type, player.number)
             board.wild_animal_test(player, log_entry.result)
             yield Action(player, ActionType.WILD_ANIMAL, log_entry.result, board)
             if log_entry.result != ActionResult.SUCCESS:
-                actions, new_result = self._process_action_reroll(cmds, cur_log_entries, player, board)
+                actions, new_result = self._process_action_reroll(cmds, log_entries, player, board)
                 yield from actions
                 if new_result:
                     board.wild_animal_test(player, new_result)
                     yield Action(player, ActionType.WILD_ANIMAL, new_result, board)
 
-        if unused:
-            unused.log_entries = cur_log_entries
-
-    def _process_block(self, targeting_player, target_by_idx, cmds, target_log_entries, log_entries, board):
+    def _process_block(self, targeting_player, target_by_idx, cmds, log_entries, board):
         cmd = next(cmds)
+
+        if not isinstance(cmd, TargetPlayerCommand):
+            raise ValueError(f"Expected TargetPlayerCommand but got {type(cmd).__name__}")
+
+        cmd = cmds.peek()
         moved = False
         if isinstance(cmd, MovementCommand):
             moved = True
             yield Blitz(targeting_player, target_by_idx)
-            unused = ReturnWrapper()
-            yield from self._process_movement(targeting_player, cmd, cmds,
-                                              target_log_entries, log_entries, board, unused)
-            cmd = unused.command
-            target_log_entries = unused.log_entries
+            yield from self._process_movement(targeting_player, cmds, log_entries, board)
+            cmd = next(cmds)
         else:
-            unused = ReturnWrapper()
-            yield from self._process_uncontrollable_skills(targeting_player, cmds,
-                                                           target_log_entries, log_entries, board, unused)
-            target_log_entries = unused.log_entries
+            cmd = next(cmds)
+            yield from self._process_uncontrollable_skills(targeting_player, cmds, log_entries, board)
             if board.is_prone(targeting_player):
                 board.unset_prone(targeting_player)
                 yield Blitz(targeting_player, target_by_idx)
@@ -637,16 +612,13 @@ class Replay:
         if target_by_coords != target_by_idx:
             raise ValueError(f"Target command targetted {target_by_idx} but {cmd} targetted {target_by_coords}")
 
-        if not target_log_entries:
-            target_log_entries = self.__next_generator(log_entries)
-        yield from self.__process_block_rolls(targeting_player, target_by_idx, cmd, cmds, moved,
-                                              target_log_entries, log_entries, board)
+        yield from self.__process_block_rolls(targeting_player, target_by_idx, cmds, moved, log_entries, board)
 
-    def __process_block_rolls(self, targeting_player, target_by_idx, block, cmds, moved,
-                              target_log_entries, log_entries, board, frenzied_block=False):
+    def __process_block_rolls(self, targeting_player, target_by_idx, cmds, moved,
+                              log_entries, board, frenzied_block=False):
         if Skills.FOUL_APPEARANCE in target_by_idx.skills:
-            log_entry = next(target_log_entries)
-            yield from self._process_action_result(log_entry, FoulAppearanceEntry, target_log_entries, cmds,
+            log_entry = next(log_entries)
+            yield from self._process_action_result(log_entry, FoulAppearanceEntry, log_entries, cmds,
                                                    targeting_player, ActionType.FOUL_APPEARANCE, board)
 
         dumped_off = False
@@ -655,13 +627,12 @@ class Replay:
             dumpoff_cmd = next(cmds)
             if dumpoff_cmd.team != target_by_idx.team.team_type:
                 raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
-            throw_cmd = next(cmds)
-            yield from self._process_pass(target_by_idx, throw_cmd, cmds, target_log_entries, board, False)
+            yield from self._process_pass(target_by_idx, cmds, log_entries, board, False)
         if moved and board.get_distance_moved(targeting_player) >= targeting_player.MA:
-            log_entry = next(target_log_entries)
+            log_entry = next(log_entries)
             success = True
             rerolled = False
-            for event in self._process_action_result(log_entry, GoingForItEntry, target_log_entries, cmds,
+            for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
                                                      targeting_player, ActionType.GOING_FOR_IT, board):
                 yield event
                 if isinstance(event, Action):
@@ -669,39 +640,39 @@ class Replay:
                 elif isinstance(event, Reroll):
                     rerolled = True
             if dumped_off and rerolled:
-                log_entry = next(target_log_entries)
-                for event in self._process_action_result(log_entry, GoingForItEntry, target_log_entries, cmds,
+                log_entry = next(log_entries)
+                for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
                                                          targeting_player, ActionType.GOING_FOR_IT, board):
                     yield event
                     if isinstance(event, Action):
                         success = event.result == ActionResult.SUCCESS
 
             if not success:
-                log_entry = next(target_log_entries)
-                yield from self._process_armour_roll(targeting_player, cmds, log_entry, target_log_entries, board)
-                log_entry = next(target_log_entries)
+                log_entry = next(log_entries)
+                yield from self._process_armour_roll(targeting_player, cmds, log_entry, log_entries, board)
+                log_entry = next(log_entries)
                 validate_log_entry(log_entry, TurnOverEntry, targeting_player.team.team_type)
                 yield from board.change_turn(targeting_player.team.team_type, log_entry.reason)
                 return
 
         blocking_player = targeting_player
         board.throw_block(blocking_player)
-        block_dice = next(target_log_entries)
+        block_dice = next(log_entries)
         block_choice = next(cmds)
         if isinstance(block_choice, ProRerollCommand):
-            reroll = next(target_log_entries)
+            reroll = next(log_entries)
             yield Action(blocking_player, ActionType.PRO, reroll.result, board)
             if reroll.result == ActionResult.SUCCESS:
                 yield Reroll(reroll.team, 'Pro')
-                _ = next(target_log_entries)  # Burn the random duplication
+                _ = next(log_entries)  # Burn the random duplication
             elif len(block_dice.results) == 2 and block_dice.results[0] == block_dice.results[1]:
                 _ = next(cmds)  # Burn the reroll prompt that shows as a block dice choice
-            block_dice = next(target_log_entries)
+            block_dice = next(log_entries)
             block_choice = next(cmds)
         elif isinstance(block_choice, RerollCommand):
-            _, actions = self.__process_reroll_command(target_log_entries, blocking_player, board)
+            _, actions = self.__process_reroll_command(log_entries, blocking_player, board)
             yield from actions
-            block_dice = next(target_log_entries)
+            block_dice = next(log_entries)
             block_choice = next(cmds)
         chosen_block_dice = block_dice.results[block_choice.dice_idx]
         yield Block(blocking_player, target_by_idx,
@@ -716,7 +687,7 @@ class Replay:
                                  f"{jugg_cmd.team} #{blocking_player.team.get_player_number(jugg_cmd.player_idx)}")
             if jugg_cmd.choice:
                 chosen_block_dice = BlockResult.PUSHED
-                skill_entry = next(target_log_entries)
+                skill_entry = next(log_entries)
                 validate_skill_log_entry(skill_entry, blocking_player, Skills.JUGGERNAUT)
                 yield Skill(blocking_player, Skills.JUGGERNAUT)
                 attacker_avoided = True
@@ -761,7 +732,7 @@ class Replay:
             can_fend = Skills.FEND in target_by_idx.skills \
                 and (not moved or Skills.JUGGERNAUT not in blocking_player.skills)
             if can_fend:
-                skill_entry = next(target_log_entries)
+                skill_entry = next(log_entries)
                 validate_skill_log_entry(skill_entry, target_by_idx, Skills.FEND)
                 yield Skill(target_by_idx, Skills.FEND)
 
@@ -787,18 +758,18 @@ class Replay:
         defender_avoided = False
 
         if chosen_block_dice == BlockResult.DEFENDER_STUMBLES and Skills.DODGE in target_by_idx.skills:
-            skill_entry = next(target_log_entries)
+            skill_entry = next(log_entries)
             validate_skill_log_entry(skill_entry, target_by_idx, Skills.DODGE)
             yield DodgeBlock(blocking_player, target_by_idx)
             defender_avoided = True
         elif chosen_block_dice == BlockResult.BOTH_DOWN:
             if Skills.BLOCK in blocking_player.skills:
-                skill_entry = next(target_log_entries)
+                skill_entry = next(log_entries)
                 validate_skill_log_entry(skill_entry, blocking_player, Skills.BLOCK)
                 yield BlockBothDown(blocking_player)
                 attacker_avoided = True
             if Skills.BLOCK in target_by_idx.skills:
-                skill_entry = next(target_log_entries)
+                skill_entry = next(log_entries)
                 validate_skill_log_entry(skill_entry, target_by_idx, Skills.BLOCK)
                 yield BlockBothDown(target_by_idx)
                 defender_avoided = True
@@ -808,35 +779,35 @@ class Replay:
             or chosen_block_dice == BlockResult.BOTH_DOWN) \
                 and not attacker_avoided:
             attacker_down = True
-            armour_entry = next(target_log_entries)
-            yield from self._process_armour_roll(blocking_player, cmds, armour_entry, target_log_entries, board)
+            armour_entry = next(log_entries)
+            yield from self._process_armour_roll(blocking_player, cmds, armour_entry, log_entries, board)
 
         ball_bounces = False
         if target_by_idx.position.is_offpitch():
-            yield from self._process_injury_roll(target_by_idx, cmds, target_log_entries, board)
+            yield from self._process_injury_roll(target_by_idx, cmds, log_entries, board)
             if board.get_ball_carrier() == target_by_idx:
                 board.set_ball_position(block_position)  # Drop the ball so the throw-in works
                 ball_bounces = True
         elif (chosen_block_dice == BlockResult.DEFENDER_DOWN or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
               or chosen_block_dice == BlockResult.BOTH_DOWN) \
                 and not defender_avoided:
-            armour_entry = next(target_log_entries)
+            armour_entry = next(log_entries)
             pushed_into_ball = target_by_idx.position == board.get_ball_position()
-            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, target_log_entries, board)
+            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, log_entries, board)
 
             if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
                 ball_bounces = True
 
-        if isinstance(cmds.peek(), MovementCommand) and cmds.peek().player_idx == block.player_idx:
-            cmd = next(cmds)
-            yield from self._process_movement(blocking_player, cmd, cmds,
-                                              target_log_entries, log_entries, board)
+        next_cmd = cmds.peek()
+        if isinstance(next_cmd, MovementCommand) \
+                and board.teams[next_cmd.team.value].get_player(next_cmd.player_idx) == targeting_player:
+            yield from self._process_movement(blocking_player, cmds, log_entries, board)
 
         if ball_bounces:
-            yield from self._process_ball_movement(target_log_entries, blocking_player, board)
+            yield from self._process_ball_movement(log_entries, board)
 
         if attacker_down:
-            log_entry = next(target_log_entries)
+            log_entry = next(log_entries)
             validate_log_entry(log_entry, TurnOverEntry, blocking_player.team.team_type)
             yield from board.change_turn(blocking_player.team.team_type, log_entry.reason)
         elif not frenzied_block and Skills.FRENZY in blocking_player.skills and \
@@ -844,17 +815,18 @@ class Replay:
             if board.get_distance_moved(targeting_player) >= targeting_player.MA + 2:
                 # Can't Frenzy when we hit our GFI limit
                 return
-            log_entry = next(target_log_entries)
+            log_entry = next(log_entries)
             validate_skill_log_entry(log_entry, targeting_player, Skills.FRENZY)
             yield Skill(targeting_player, Skills.FRENZY)
-            yield from self.__process_block_rolls(targeting_player, target_by_idx, block, cmds, moved,
-                                                  target_log_entries, log_entries, board, True)
+            yield from self.__process_block_rolls(targeting_player, target_by_idx, cmds, moved,
+                                                  log_entries, board, True)
 
-    def _process_throw(self, player, target_by_idx, cmds, target_log_entries, log_entries, board):
-        stupid_unused = ReturnWrapper()
+    def _process_throw(self, player, target_by_idx, cmds, log_entries, board):
+        cmd = next(cmds)
+        if not isinstance(cmd, TargetPlayerCommand):
+            raise ValueError(f"Expected TargetPlayerCommand but got {type(cmd).__name__}")
         failed_throw = False
-        for event in self._process_uncontrollable_skills(player, cmds, target_log_entries, log_entries, board,
-                                                         stupid_unused):
+        for event in self._process_uncontrollable_skills(player, cmds, log_entries, board):
             if isinstance(event, Action):
                 failed_throw = event.result != ActionResult.SUCCESS
             yield event
@@ -862,26 +834,21 @@ class Replay:
         if failed_throw:
             return
 
-        log_entries = stupid_unused.log_entries
-        cmd = next(cmds)
-
-        if isinstance(cmd, MovementCommand):
-            unused = ReturnWrapper()
-            yield from self._process_movement(player, cmd, cmds, target_log_entries, log_entries, board, unused)
-            cmd = unused.command
-            target_log_entries = unused.log_entries
-        pass_cmd = cmd
+        if isinstance(cmds.peek(), MovementCommand):
+            yield from self._process_movement(player, cmds, log_entries, board)
+        pass_cmd = cmds.peek()
         player_pos = player.position
         if abs(pass_cmd.x - player_pos.x) > 1 or abs(pass_cmd.y - player_pos.y) > 1:
-            yield from self._process_pass(player, pass_cmd, cmds, target_log_entries, board)
+            yield from self._process_pass(player, cmds, log_entries, board)
             if not board.get_ball_carrier():
-                log_entry = next(target_log_entries)
+                log_entry = next(log_entries)
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                 yield EndTurn(player.team, board.turn, log_entry.reason, board)
         else:
             # Else hand-off - doesn't have the pass part, just the catch
+            pass_cmd = next(cmds)
             yield Handoff(player, target_by_idx, board)
-            catch_entry = next(target_log_entries)
+            catch_entry = next(log_entries)
             target_by_coords = board.get_position(pass_cmd.position)
             if target_by_coords != target_by_idx:
                 raise ValueError(f"Expected catch for {target_by_coords.team_type} #{target_by_coords.number} "
@@ -896,18 +863,16 @@ class Replay:
                 yield Action(target_by_idx, ActionType.CATCH, catch_entry.result, board)
                 yield EndTurn(player.team, board.turn, log_entry.reason, board)
 
-    def _process_throw_teammate(self, player, target_by_idx, cmd, cmds, target_log_entries, log_entries, board):
+    def _process_throw_teammate(self, player, target_by_idx, cmds, log_entries, board):
         if Skills.THROW_TEAMMATE not in player.skills:
             raise ValueError(f"Throw teammate attempted by {player.name} without Throw Teammate skill")
         if Skills.RIGHT_STUFF not in target_by_idx.skills:
             raise ValueError(f"Throw teammate attempted on {target_by_idx.name} without Right Stuff skill")
 
-        throw_command = cmd
+        throw_command = next(cmds)
 
-        stupid_unused = ReturnWrapper()
         failed_throw = False
-        for event in self._process_uncontrollable_skills(player, cmds, target_log_entries, log_entries, board,
-                                                         stupid_unused):
+        for event in self._process_uncontrollable_skills(player, cmds, log_entries, board):
             if isinstance(event, Action):
                 failed_throw = event.result != ActionResult.SUCCESS
             yield event
@@ -915,15 +880,10 @@ class Replay:
         if failed_throw:
             return
 
-        log_entries = stupid_unused.log_entries
-
-        if not log_entries:
-            target_log_entries = self.__next_generator(log_entries)
-
         if Skills.ALWAYS_HUNGRY in player.skills:
-            log_entry = next(target_log_entries)
+            log_entry = next(log_entries)
             success = True
-            for event in self._process_action_result(log_entry, AlwaysHungryEntry, target_log_entries, cmds,
+            for event in self._process_action_result(log_entry, AlwaysHungryEntry, log_entries, cmds,
                                                      player, ActionType.ALWAYS_HUNGRY, board):
                 yield event
                 if isinstance(event, Action):
@@ -940,7 +900,7 @@ class Replay:
             raise ValueError(f"Target command targetted {target_by_idx} but {pickup_command} targetted "
                              f"{target_by_coords}")
 
-        throw_log_entry = next(target_log_entries)
+        throw_log_entry = next(log_entries)
         validate_log_entry(throw_log_entry, ThrowTeammateEntry, player.team.team_type, player.number)
         result = throw_log_entry.result
         yield ThrowTeammate(player, target_by_idx, throw_command.position, result, board)
@@ -963,29 +923,28 @@ class Replay:
             yield Scatter(throw_command.position, landing_position, board)
         # else it was a fumble and players lands where they started
 
-        landing_entry = next(target_log_entries)
+        landing_entry = next(log_entries)
         validate_log_entry(landing_entry, LandingEntry, target_by_idx.team.team_type, target_by_idx.number)
         yield Action(target_by_idx, ActionType.LANDING, landing_entry.result, board)
 
         if not landing_entry.result == ActionResult.SUCCESS:
-            armour_entry = next(target_log_entries)
-            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, target_log_entries, board)
+            armour_entry = next(log_entries)
+            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, log_entries, board)
 
-    def _process_movement(self, player, cmd, cmds, cur_log_entries, log_entries, board, unused=None):
+    def _process_movement(self, player, cmds, log_entries, board):
         failed_movement = False
         pickup_entry = None
         diving_tackle_entry = None
         start_space = player.position
-        move_log_entries = None
         turnover = False
-        move_log_entries = cur_log_entries
         moves = []
         is_prone = board.is_prone(player)
         is_ball_carrier = board.get_ball_carrier() == player
 
         # We can't just use "while true" and check for EndMovementCommand because a blitz is
         # movement followed by a Block without an EndMovementCommand
-        while isinstance(cmd, MovementCommand):
+        while isinstance(cmds.peek(), MovementCommand):
+            cmd = next(cmds)
             team = self.get_team(cmd.team)
             idx_player = team.get_player(cmd.player_idx)
             if self.get_team(cmd.team).get_player(cmd.player_idx) != player:
@@ -994,18 +953,11 @@ class Replay:
             moves.append(cmd)
             if isinstance(cmd, EndMovementCommand):
                 break
-            cmd = next(cmds)
 
-        if not isinstance(cmd, MovementCommand) and unused:
-            unused.command = cmd
-
-        stupid_unused = ReturnWrapper()
-        for event in self._process_uncontrollable_skills(player, cmds, move_log_entries, log_entries,
-                                                         board, stupid_unused):
+        for event in self._process_uncontrollable_skills(player, cmds, log_entries, board):
             if isinstance(event, Action):
                 failed_movement = event.result != ActionResult.SUCCESS
             yield event
-        move_log_entries = stupid_unused.log_entries
         leap = False
 
         for movement in moves:
@@ -1023,24 +975,20 @@ class Replay:
             leap = False
 
             if board.get_distance_moved(player) >= player.MA:
-                if not move_log_entries:
-                    move_log_entries = self.__next_generator(log_entries)
-                log_entry = next(move_log_entries)
+                log_entry = next(log_entries)
                 result = log_entry.result
-                for event in self._process_action_result(log_entry, GoingForItEntry, move_log_entries, cmds,
+                for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
                                                          player, ActionType.GOING_FOR_IT, board):
                     yield event
                     if isinstance(event, Action):
                         result = event.result
                 if result == ActionResult.FAILURE:
                     failed_movement = True
-                    yield from self._process_armour_roll(player, cmds, next(move_log_entries), move_log_entries, board)
+                    yield from self._process_armour_roll(player, cmds, next(log_entries), log_entries, board)
                     turnover = True
             if not failed_movement and is_dodge(board, player, target_space):
-                if not move_log_entries:
-                    move_log_entries = self.__next_generator(log_entries)
                 while True:
-                    log_entry = next(move_log_entries, None)
+                    log_entry = next(log_entries, None)
                     if not log_entry:
                         break
                     elif isinstance(log_entry, PickupEntry):
@@ -1055,7 +1003,7 @@ class Replay:
                             break
                         failed_movement = True
                         modifying_skill = Skills.DIVING_TACKLE if diving_tackle_entry else None
-                        actions, new_result = self._process_action_reroll(cmds, move_log_entries, player, board,
+                        actions, new_result = self._process_action_reroll(cmds, log_entries, player, board,
                                                                           Skills.DODGE, modifying_skill=modifying_skill,
                                                                           cancelling_skill=Skills.TACKLE)
                         yield from actions
@@ -1063,8 +1011,8 @@ class Replay:
                             yield Action(player, ActionType.DODGE, new_result, board)
                             failed_movement = new_result != ActionResult.SUCCESS
                         if failed_movement:
-                            log_entry = next(move_log_entries)
-                            yield from self._process_armour_roll(player, cmds, log_entry, move_log_entries, board)
+                            log_entry = next(log_entries)
+                            yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
                             turnover = True
                             break
                         break
@@ -1078,7 +1026,7 @@ class Replay:
                         yield Tentacle(player, attacker, log_entry.result)
                         failed_movement = log_entry.result == ActionResult.FAILURE
                         if log_entry.result == ActionResult.FAILURE:
-                            actions, new_result = self._process_action_reroll(cmds, move_log_entries, player, board)
+                            actions, new_result = self._process_action_reroll(cmds, log_entries, player, board)
                             yield from actions
                             if new_result:
                                 yield Tentacle(player, attacker, new_result)
@@ -1087,7 +1035,6 @@ class Replay:
                         if log_entry.team != player.team.team_type:
                             # We have a timeout and play changed - which we have no other way of finding!
                             yield from board.change_turn(log_entry.team, log_entry.reason)
-                            move_log_entries = self.__next_generator(log_entries)
                             continue
                         else:
                             raise ValueError("Unexpected in-line TurnOver entry during movement")
@@ -1102,15 +1049,15 @@ class Replay:
                             failed_movement = False
                             break
                         failed_movement = True
-                        actions, new_result = self._process_action_reroll(cmds, move_log_entries, player, board,
+                        actions, new_result = self._process_action_reroll(cmds, log_entries, player, board,
                                                                           Skills.DODGE)
                         yield from actions
                         if new_result:
                             yield Action(player, ActionType.DODGE, new_result, board)
                             failed_movement = new_result != ActionResult.SUCCESS
                         if failed_movement:
-                            log_entry = next(move_log_entries)
-                            yield from self._process_armour_roll(player, cmds, log_entry, move_log_entries, board)
+                            log_entry = next(log_entries)
+                            yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
                             turnover = True
                             break
                     else:
@@ -1121,14 +1068,12 @@ class Replay:
                 continue
             elif target_space == board.get_ball_position() and not pickup_entry:
                 if not failed_movement:
-                    if not move_log_entries:
-                        move_log_entries = self.__next_generator(log_entries)
-                    log_entry = next(move_log_entries)
+                    log_entry = next(log_entries)
                     validate_log_entry(log_entry, PickupEntry, player.team.team_type, player.number)
                     pickup_entry = log_entry
                 elif turnover:
                     # They went splat on the ball
-                    yield from self._process_ball_movement(move_log_entries, player, board)
+                    yield from self._process_ball_movement(log_entries, board)
             else:
                 target_contents = board.get_position(target_space)
                 if target_contents and target_contents != player:
@@ -1144,7 +1089,7 @@ class Replay:
                 board.move(player, start_space, target_space)
                 yield FailedMovement(player, start_space, target_space)
                 if is_ball_carrier:
-                    yield from self._process_ball_movement(move_log_entries, player, board)
+                    yield from self._process_ball_movement(log_entries, board)
                     board.set_ball_carrier(None)
             else:
                 # Failure due to Tentacles etc
@@ -1168,7 +1113,7 @@ class Replay:
                     board.set_ball_carrier(player)
                 yield Pickup(player, movement.position, result)
                 if result != ActionResult.SUCCESS:
-                    actions, new_result = self._process_action_reroll(cmds, move_log_entries, player, board,
+                    actions, new_result = self._process_action_reroll(cmds, log_entries, player, board,
                                                                       reroll_skill=Skills.SURE_HANDS)
                     yield from actions
                     if new_result:
@@ -1179,12 +1124,12 @@ class Replay:
                 if result != ActionResult.SUCCESS:
                     failed_movement = True
                     find_turnover = True
-                    for event in self._process_ball_movement(move_log_entries, player, board):
+                    for event in self._process_ball_movement(log_entries, board):
                         yield event
                         if isinstance(event, EndTurn):
                             find_turnover = False
                     if find_turnover:
-                        log_entry = next(move_log_entries)
+                        log_entry = next(log_entries)
                         validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                         yield from board.change_turn(player.team.team_type, log_entry.reason)
                     # Else we already found the turnover during the pickup
@@ -1193,14 +1138,12 @@ class Replay:
             start_space = target_space
 
         if turnover:
-            log_entry = next(move_log_entries)
+            log_entry = next(log_entries)
             validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
             yield from board.change_turn(player.team.team_type, log_entry.reason)
 
-        if unused:
-            unused.log_entries = move_log_entries
-
-    def _process_pass(self, player, cmd, cmds, log_entries, board, can_reroll=True):
+    def _process_pass(self, player, cmds, log_entries, board, can_reroll=True):
+        throw_command = next(cmds)
         if board.get_ball_carrier() != player:
             raise ValueError(f"Got Pass command for {player} but ball carrier is {board.get_ball_carrier()}")
 
@@ -1223,7 +1166,6 @@ class Replay:
             throw_log_entry = log_entry
 
         validate_log_entry(throw_log_entry, ThrowEntry, player.team.team_type, player.number)
-        throw_command = cmd
         result = throw_log_entry.result
         yield Pass(player, throw_command.position, result, board)
         _ = next(cmds)  # Throw away the interception command, which we seem to get even if it's not possible
@@ -1286,7 +1228,7 @@ class Replay:
             board.set_ball_position(ball_position)
             yield Bounce(start_position, ball_position, scatter_entry.direction, board)
 
-    def _process_ball_movement(self, log_entries, player, board):
+    def _process_ball_movement(self, log_entries, board):
         log_entry = None
         previous_ball_position = board.get_ball_position()
         while True:
@@ -1359,15 +1301,17 @@ class Replay:
                 raise ValueError("Expected one of BounceLogEntry, CatchEntry or "
                                  f"ThrowInDirectionLogEntry but got {type(log_entry).__name__}")
 
-    def _process_spell(self, cmd, cmds, log_entries, board):
+    def _process_spell(self, cmds, log_entries, board):
         # Fireball and lightning may not be too different, as there's just a different number of targets
         # with a different roll, and we don't care about the roll value
+        cmd = next(cmds)
+        if not isinstance(cmd, SpellCommand):
+            raise ValueError(f"Expected SpellCommand for spell but got {type(cmd).__name__}")
         log_entry = next(log_entries)
         if not isinstance(log_entry, SpellEntry):
             raise ValueError(f"Expected SpellEntry but got {type(log_entry).__name__}")
         target = cmd.position
         yield Spell(target, log_entry.spell_type, board)
-        ball_carrier = board.get_ball_carrier()
         bounces = []
         while log_entry:
             if isinstance(log_entry, BounceLogEntry):
@@ -1384,7 +1328,7 @@ class Replay:
             log_entry = next(log_entries, None)
 
         if bounces:
-            yield from self._process_ball_movement(self.__generator(bounces), ball_carrier, board)
+            yield from self._process_ball_movement(self.__generator(bounces), board)
 
 
 def find_next_known_command(generator):

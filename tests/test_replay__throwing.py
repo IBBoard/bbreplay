@@ -1,54 +1,7 @@
-import pytest
+from . import *
 from bbreplay import TeamType, Position
 from bbreplay.command import *
-from bbreplay.player import Player
 from bbreplay.replay import *
-from bbreplay.state import GameState
-from bbreplay.teams import Team
-
-
-def iter_(iterable):
-    for item in iterable:
-        print(f"Consuming {type(item).__module__}.{item}")
-        yield item
-
-
-@pytest.fixture
-def home_player_1():
-    return Player(1, "Player1H", 4, 4, 4, 4, 1, 0, 40000, [])
-
-
-@pytest.fixture
-def home_player_2():
-    return Player(2, "Player2H", 4, 4, 4, 4, 1, 0, 40000, [])
-
-
-@pytest.fixture
-def home_team(home_player_1, home_player_2):
-    home_team = Team("Home Halflings", "Halfling", 40000, 3, 3, 0, TeamType.HOME)
-    home_team.add_player(0, home_player_1)
-    home_team.add_player(1, home_player_2)
-    return home_team
-
-
-@pytest.fixture
-def away_player_1():
-    return Player(1, "Player1A", 4, 4, 4, 4, 1, 0, 40000, [])
-
-
-@pytest.fixture
-def away_team(away_player_1):
-    away_team = Team("Away Amazons", "Amazons", 40000, 3, 3, 0, TeamType.AWAY)
-    away_team.add_player(0, away_player_1)
-    return away_team
-
-
-@pytest.fixture
-def board(home_team, away_team):
-    gamestate = GameState(home_team, away_team, TeamType.HOME)
-    for _ in gamestate.kickoff():
-        pass
-    return gamestate
 
 
 def test_handoff_forward_success(board):
@@ -60,7 +13,7 @@ def test_handoff_forward_success(board):
     board.set_position(Position(7, 7), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7])
     ]
     log_entries = [
@@ -68,7 +21,7 @@ def test_handoff_forward_success(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Handoff)
@@ -98,7 +51,7 @@ def test_handoff_sideways_success(board):
     board.set_position(Position(6, 6), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 6, 6]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 6])
     ]
     log_entries = [
@@ -106,7 +59,7 @@ def test_handoff_sideways_success(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Handoff)
@@ -136,7 +89,7 @@ def test_handoff_diagonal_success(board):
     board.set_position(Position(7, 7), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7])
     ]
     log_entries = [
@@ -144,7 +97,7 @@ def test_handoff_diagonal_success(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Handoff)
@@ -174,7 +127,7 @@ def test_pass_forward_success(board):
     board.set_position(Position(7, 7), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         Command(1, 1, TeamType.AWAY.value, 13, [])
     ]
@@ -184,7 +137,7 @@ def test_pass_forward_success(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Pass)
@@ -215,7 +168,7 @@ def test_pass_sideways_success(board):
     board.set_position(Position(5, 5), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 5, 5]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 5]),
         Command(1, 1, TeamType.AWAY.value, 13, [])
     ]
@@ -225,7 +178,7 @@ def test_pass_sideways_success(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Pass)
@@ -256,7 +209,7 @@ def test_pass_diagonal_success(board):
     board.set_position(Position(3, 3), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 3, 3]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 3]),
         Command(1, 1, TeamType.AWAY.value, 13, [])
     ]
@@ -266,7 +219,7 @@ def test_pass_diagonal_success(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Pass)
@@ -299,7 +252,7 @@ def test_pass_diagonal_failed_intercept(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(4, 4), opponent)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 3, 3]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 3]),
         InterceptCommand(1, 1, TeamType.AWAY.value, 13, [1])
     ]
@@ -310,7 +263,7 @@ def test_pass_diagonal_failed_intercept(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Interception)
@@ -348,7 +301,7 @@ def test_pass_diagonal_successful_intercept(board):
     opponent = away_team.get_player(0)
     board.set_position(Position(4, 4), opponent)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 3, 3]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 3]),
         InterceptCommand(1, 1, TeamType.AWAY.value, 13, [1])
     ]
@@ -358,7 +311,7 @@ def test_pass_diagonal_successful_intercept(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Interception)
@@ -387,7 +340,7 @@ def test_stupid_player_pass_with_success(board):
     board.set_position(Position(7, 7), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
         Command(1, 1, TeamType.AWAY.value, 13, [])
     ]
@@ -398,7 +351,7 @@ def test_stupid_player_pass_with_success(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Action)
@@ -436,7 +389,7 @@ def test_stupid_player_pass_with_failure(board):
     board.set_position(Position(7, 7), player_2)
     board.set_ball_carrier(player_1)
     cmds = [
-        # TargetPlayerCommand was already consumed in the main turn processing loop
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 3, 3]),
         DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0])
     ]
     log_entries = [
@@ -444,7 +397,7 @@ def test_stupid_player_pass_with_failure(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Action)

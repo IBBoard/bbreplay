@@ -18,10 +18,9 @@ def test_pickup_success(board):
     log_entries = [
         PickupEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
     ]
-    cmd = cmds[0]
-    cmds_iter = iter_(cmds[1:])
+    cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_movement(player, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Movement)
@@ -57,10 +56,9 @@ def test_pickup_failure(board):
         BounceLogEntry(ScatterDirection.NW.value),
         TurnOverEntry(TeamType.HOME, "Pick-up failed!")
     ]
-    cmd = cmds[0]
-    cmds_iter = iter_(cmds[1:])
+    cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_movement(player, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Movement)
@@ -110,10 +108,9 @@ def test_bounce_on_gfi(board):
         BounceLogEntry(ScatterDirection.NW.value),
         TurnOverEntry(TeamType.HOME, "Knocked Down!")
     ]
-    cmd = cmds[0]
-    cmds_iter = iter_(cmds[1:])
+    cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_movement(player, cmds_iter, log_entries_iter, board)
 
     for i in range(4):
         event = next(events)
@@ -162,15 +159,16 @@ def test_bounce_from_spell(board):
     player = home_team.get_player(0)
     board.set_position(Position(7, 7), player)
     board.set_ball_carrier(player)
-    cmd = SpellCommand(1, 1, TeamType.AWAY.value, 0, [TeamType.AWAY.value, 0, 255, 7, 7])
+    cmds = [SpellCommand(1, 1, TeamType.AWAY.value, 0, [TeamType.AWAY.value, 0, 255, 7, 7])]
     log_entries = [
         FireballEntry(TeamType.HOME, 1, "4+", "4", ActionResult.SUCCESS.name),
         ArmourValueRollEntry(TeamType.HOME, 1, "8+", "9", ActionResult.SUCCESS.name),
         InjuryRollEntry(TeamType.HOME, 1, "6", InjuryRollResult.STUNNED.name),
         BounceLogEntry(ScatterDirection.NW.value)
     ]
+    cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_spell(cmd, [], log_entries_iter, board)
+    events = replay._process_spell(cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Spell)
@@ -219,7 +217,7 @@ def test_bounce_from_spell_with_multiple_hits(board):
     player_2 = Player(2, "Player2H", 4, 4, 4, 4, 1, 0, 40000, [])
     home_team.add_player(1, player_2)
     board.set_position(Position(6, 6), player_2)
-    cmd = SpellCommand(1, 1, TeamType.AWAY.value, 0, [TeamType.AWAY.value, 0, 255, 7, 7])
+    cmds = [SpellCommand(1, 1, TeamType.AWAY.value, 0, [TeamType.AWAY.value, 0, 255, 7, 7])]
     log_entries = [
         FireballEntry(TeamType.HOME, 1, "4+", "4", ActionResult.SUCCESS.name),
         ArmourValueRollEntry(TeamType.HOME, 1, "8+", "9", ActionResult.SUCCESS.name),
@@ -227,8 +225,9 @@ def test_bounce_from_spell_with_multiple_hits(board):
         FireballEntry(TeamType.HOME, 2, "4+", "4", ActionResult.FAILURE.name),
         BounceLogEntry(ScatterDirection.NW.value)
     ]
+    cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_spell(cmd, [], log_entries_iter, board)
+    events = replay._process_spell(cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Spell)
@@ -283,7 +282,7 @@ def test_bounce_from_spell_with_bounce_off_prone(board):
     player_2 = Player(2, "Player2H", 4, 4, 4, 4, 1, 0, 40000, [])
     home_team.add_player(1, player_2)
     board.set_position(Position(6, 6), player_2)
-    cmd = SpellCommand(1, 1, TeamType.AWAY.value, 0, [TeamType.AWAY.value, 0, 255, 7, 7])
+    cmds = [SpellCommand(1, 1, TeamType.AWAY.value, 0, [TeamType.AWAY.value, 0, 255, 7, 7])]
     log_entries = [
         FireballEntry(TeamType.HOME, 1, "4+", "4", ActionResult.SUCCESS.name),
         ArmourValueRollEntry(TeamType.HOME, 1, "8+", "9", ActionResult.SUCCESS.name),
@@ -293,8 +292,9 @@ def test_bounce_from_spell_with_bounce_off_prone(board):
         BounceLogEntry(ScatterDirection.SW.value),
         BounceLogEntry(ScatterDirection.E.value)
     ]
+    cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_spell(cmd, [], log_entries_iter, board)
+    events = replay._process_spell(cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Spell)
@@ -370,10 +370,9 @@ def test_pickup_success_with_sure_hands(board):
         SkillEntry(TeamType.HOME, player.number, Skills.SURE_HANDS.name),
         PickupEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
     ]
-    cmd = cmds[0]
-    cmds_iter = iter_(cmds[1:])
+    cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_movement(player, cmd, cmds_iter, log_entries_iter, None, board)
+    events = replay._process_movement(player, cmds_iter, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Movement)
