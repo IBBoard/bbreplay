@@ -1316,25 +1316,27 @@ class Replay:
         cmd = next(cmds)
         if not isinstance(cmd, SpellCommand):
             raise ValueError(f"Expected SpellCommand for spell but got {type(cmd).__name__}")
-        log_entry = next(log_entries)
+        # Don't take the log entry so that the loop is consistent
+        log_entry = log_entries.peek()
         if not isinstance(log_entry, SpellEntry):
             raise ValueError(f"Expected SpellEntry but got {type(log_entry).__name__}")
         target = cmd.position
         yield Spell(target, log_entry.spell_type, board)
         bounces = []
-        while log_entry:
+        while True:
+            log_entry = log_entries.peek()
             if isinstance(log_entry, BounceLogEntry):
+                log_entry = next(log_entries)
                 bounces.append(log_entry)
-            elif not isinstance(log_entry, SpellEntry):
-                raise ValueError(f"Expected SpellEntry but got {type(log_entry).__name__}")
-            else:
+            elif isinstance(log_entry, SpellEntry):
+                log_entry = next(log_entries)
                 player = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
                 yield Action(player, ActionType.SPELL_HIT, log_entry.result, board)
                 if log_entry.result == ActionResult.SUCCESS:
                     log_entry = next(log_entries)
                     yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
-
-            log_entry = next(log_entries, None)
+            else:
+                break
 
         if bounces:
             yield from self._process_ball_movement(self.__generator(bounces), board)
