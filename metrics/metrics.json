@@ -1,7 +1,7 @@
 {
     "total_commands": 140177,
-    "total_processed": 14623,
-    "total_unprocessed": 125554,
+    "total_processed": 22543,
+    "total_unprocessed": 117634,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,
@@ -95,9 +95,9 @@
         },
         "data/Replay_2021-04-04_09-49-09.db": {
             "commands": 5160,
-            "events": 107,
-            "processed": 733,
-            "unprocessed": 4427
+            "events": 995,
+            "processed": 5160,
+            "unprocessed": 0
         },
         "data/Replay_2021-05-23_13-22-20.db": {
             "commands": 7026,
@@ -107,9 +107,9 @@
         },
         "data/Replay_2021-06-20_09-51-55.db": {
             "commands": 6988,
-            "events": 82,
-            "processed": 531,
-            "unprocessed": 6457
+            "events": 100,
+            "processed": 655,
+            "unprocessed": 6333
         },
         "data/Replay_2021-05-16_09-36-48.db": {
             "commands": 5183,
@@ -125,9 +125,9 @@
         },
         "data/Replay_2021-06-27_09-49-54.db": {
             "commands": 6526,
-            "events": 52,
-            "processed": 388,
-            "unprocessed": 6138
+            "events": 134,
+            "processed": 939,
+            "unprocessed": 5587
         },
         "data/Replay_2021-04-04_20-26-22.db": {
             "commands": 75,
@@ -137,9 +137,9 @@
         },
         "data/Replay_2021-05-09_09-44-12.db": {
             "commands": 6528,
-            "events": 26,
-            "processed": 316,
-            "unprocessed": 6212
+            "events": 342,
+            "processed": 2109,
+            "unprocessed": 4419
         },
         "data/Replay_2020-09-12_14-03-21.db": {
             "commands": 3524,
@@ -167,9 +167,9 @@
         },
         "data/Replay_2021-06-13_09-38-36.db": {
             "commands": 5839,
-            "events": 42,
-            "processed": 342,
-            "unprocessed": 5497
+            "events": 217,
+            "processed": 1367,
+            "unprocessed": 4472
         },
         "data/Replay_2021-04-11_10-04-51.db": {
             "commands": 4517,

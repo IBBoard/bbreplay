@@ -1037,6 +1037,8 @@ class Replay:
                             if new_result:
                                 yield Tentacle(player, attacker, new_result)
                                 failed_movement = new_result == ActionResult.FAILURE
+                        if failed_movement:
+                            break
                     elif isinstance(log_entry, TurnOverEntry):
                         if log_entry.team != player.team.team_type:
                             # We have a timeout and play changed - which we have no other way of finding!
@@ -1268,24 +1270,25 @@ class Replay:
                     if board.is_prone(player_in_space):
                         yield bounce_event
                         continue
-                    log_entry = next(log_entries)
-                    if isinstance(log_entry, CatchEntry):
-                        yield bounce_event
-                        catcher = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
-                        yield Action(catcher, ActionType.CATCH, log_entry.result, board)
-                        if log_entry.result == ActionResult.SUCCESS:
-                            board.set_ball_carrier(catcher)
-                            break
-                        # Else it bounces again
-                    elif isinstance(log_entry, BounceLogEntry):
-                        # The first bounce was a ghost bounce that never happened, so ignore it and
-                        # generate the correct bounce
-                        ball_position = scatter(old_ball_position, log_entry.direction)
-                        board.set_ball_position(ball_position)
-                        yield Bounce(old_ball_position, ball_position, log_entry.direction, board)
-                        # XXX: This doesn't take account of off-pitch etc
                     else:
-                        raise ValueError(f"Expected CatchEntry or BounceEntry after bounce, got {type(log_entry).name}")
+                        log_entry = log_entries.peek()
+                        if isinstance(log_entry, CatchEntry):
+                            log_entry = next(log_entries)
+                            yield bounce_event
+                            catcher = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
+                            yield Action(catcher, ActionType.CATCH, log_entry.result, board)
+                            if log_entry.result == ActionResult.SUCCESS:
+                                board.set_ball_carrier(catcher)
+                                break
+                            # Else it bounces again
+                        elif isinstance(log_entry, BounceLogEntry):
+                            # The first bounce was a ghost bounce that never happened, so ignore it
+                            board.set_ball_position(old_ball_position)
+                            continue
+                            # XXX: This doesn't take account of off-pitch etc
+                        else:
+                            raise ValueError("Expected CatchEntry or BounceEntry after bounce, "
+                                             f"got {type(log_entry).name}")
                 else:
                     # Bounced to an empty space
                     # But sometimes it gets a ghost bounce

@@ -242,3 +242,26 @@ def test_throwin_direction_across_field_with_downfield_play(board):
     assert not next(events, None)
     assert not next(cmds_iter, None)
     assert isinstance(next(log_entries_iter), TurnOverEntry)
+
+
+def test_ghost_bounce_due_to_no_catch(board):
+    # Based on turn 6 of Replay_2021-04-04_09-49-09.db when Kardel the Putrefier is knocked into the ball
+    home_team, away_team = board.teams
+    player = home_team.get_player(0)
+    board.set_position(Position(13, 11), player)
+    replay = Replay(home_team, away_team, [], [])
+    board.set_ball_position(Position(13, 12))
+    board.setup_complete()
+    log_entries = [
+        BounceLogEntry(ScatterDirection.S.value),
+        BounceLogEntry(ScatterDirection.SE.value)
+    ]
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_ball_movement(log_entries_iter, board)
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.start_space == Position(13, 12)
+    assert event.end_space == Position(14, 11)
+
+    assert not next(events, None)
