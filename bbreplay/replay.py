@@ -392,10 +392,11 @@ class Replay:
                 # Touchdowns will be restarted by the setup and kickoff process
                 yield from board.start_turn(other_team(cmd.team))
 
-    def _process_action_result(self, log_entry, log_type, log_entries, cmds, player, action_type, board):
+    def _process_action_result(self, log_entry, log_type, log_entries, cmds, player, action_type, board,
+                               can_reroll=True):
         validate_log_entry(log_entry, log_type, player.team.team_type, player.number)
         yield Action(player, action_type, log_entry.result, board)
-        if log_entry.result != ActionResult.SUCCESS:
+        if log_entry.result != ActionResult.SUCCESS and can_reroll:
             actions, new_result = self._process_action_reroll(cmds, log_entries, player, board)
             yield from actions
             if new_result:
@@ -1204,9 +1205,10 @@ class Replay:
             ball_position = scatter(ball_position, scatter_3.direction)
             board.set_ball_position(ball_position)
             yield Scatter(throw_command.position, ball_position, board)
-        yield from self._process_catch(ball_position, log_entries, board, result != ThrowResult.FUMBLE)
+        yield from self._process_catch(ball_position, log_entries, cmds, board,
+                                       bounce_on_empty=result != ThrowResult.FUMBLE, can_reroll=can_reroll)
 
-    def _process_catch(self, ball_position, log_entries, board, bounce_on_empty=False):
+    def _process_catch(self, ball_position, log_entries, cmds, board, bounce_on_empty=False, can_reroll=True):
         while True:
             catcher = board.get_position(ball_position)
             if not catcher:
@@ -1227,12 +1229,15 @@ class Replay:
                 # Prone players can't catch!
                 continue
             catch_entry = next(log_entries)
-            if catch_entry.result == ActionResult.SUCCESS:
-                board.set_ball_carrier(catcher)
-                yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
+            caught = False
+            for event in self._process_action_result(catch_entry, CatchEntry, log_entries, cmds, catcher,
+                                                     ActionType.CATCH, board, can_reroll=can_reroll):
+                if isinstance(event, Action) and event.result == ActionResult.SUCCESS:
+                    board.set_ball_carrier(catcher)
+                    caught = True
+                yield event
+            if caught:
                 return
-            else:
-                yield Action(catcher, ActionType.CATCH, catch_entry.result, board)
             scatter_entry = next(log_entries)
             start_position = board.get_ball_position()
             ball_position = scatter(start_position, scatter_entry.direction)
