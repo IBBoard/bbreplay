@@ -2,6 +2,7 @@
 # Licensed under GPLv3 or later - see COPYING
 
 import sqlite3
+import os.path
 from collections import namedtuple
 from enum import Enum, auto
 from . import Peekable, other_team, CoinToss, TeamType, ActionResult, BlockResult, Skills, InjuryRollResult, \
@@ -74,6 +75,8 @@ END_REASON_ABANDON = 'Abandon Match'
 
 
 def create_replay(db_path, log_path):
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"No replay database file at {db_path}")
     db = sqlite3.connect(db_path)
     home_team = create_team(db, TeamType.HOME)
     away_team = create_team(db, TeamType.AWAY)
