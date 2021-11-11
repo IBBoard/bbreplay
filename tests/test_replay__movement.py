@@ -416,6 +416,64 @@ def test_going_for_it_success(board):
     assert not next(log_entries_iter, None)
 
 
+def test_going_for_it_success_with_dodge(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(5, 3), opponent)
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 1, 1]),
+        MovementCommand(1, 1, TeamType.HOME.value, 1, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 2]),
+        MovementCommand(1, 1, TeamType.HOME.value, 2, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 3]),
+        MovementCommand(1, 1, TeamType.HOME.value, 3, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 4, 4]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 4, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 5])
+    ]
+    log_entries = [
+        DodgeEntry(TeamType.HOME, player.number, "3+", "3", ActionResult.SUCCESS.name),
+        GoingForItEntry(TeamType.HOME, player.number, "2+", "2", ActionResult.SUCCESS.name)
+    ]
+    positions = [Position(0, 0), Position(1, 1), Position(2, 2), Position(3, 3), Position(4, 4), Position(5, 5)]
+    cmds_iter = iter_(cmds)
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmds_iter, log_entries_iter, board)
+    end_move = Position(5, 5)
+
+    for move in range(4):
+        event = next(events)
+        expected_start = positions[move]
+        expected_end = positions[move + 1]
+        assert isinstance(event, Movement)
+        assert event.source_space == expected_start
+        assert event.target_space == expected_end
+        assert player.position == expected_end
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.DODGE
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    move += 1
+    expected_start = positions[move]
+    expected_end = positions[move + 1]
+    assert isinstance(event, Movement)
+    assert event.source_space == expected_start
+    assert event.target_space == expected_end
+
+    assert player.position == end_move
+    assert not board.is_prone(player)
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
 def test_going_for_it_fail_no_reroll(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])

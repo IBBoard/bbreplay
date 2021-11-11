@@ -984,18 +984,6 @@ class Replay:
 
             leap = False
 
-            if board.get_distance_moved(player) >= player.MA:
-                log_entry = next(log_entries)
-                result = log_entry.result
-                for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
-                                                         player, ActionType.GOING_FOR_IT, board):
-                    yield event
-                    if isinstance(event, Action):
-                        result = event.result
-                if result == ActionResult.FAILURE:
-                    failed_movement = True
-                    yield from self._process_armour_roll(player, cmds, next(log_entries), log_entries, board)
-                    turnover = True
             if not failed_movement and is_dodge(board, player, target_space):
                 while True:
                     log_entry = next(log_entries, None)
@@ -1075,6 +1063,19 @@ class Replay:
                     else:
                         raise ValueError("Looking for dodge-related log entries but got "
                                          f"{type(log_entry).__name__}")
+
+            if board.get_distance_moved(player) >= player.MA:
+                log_entry = next(log_entries)
+                result = log_entry.result
+                for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
+                                                         player, ActionType.GOING_FOR_IT, board):
+                    yield event
+                    if isinstance(event, Action):
+                        result = event.result
+                if result == ActionResult.FAILURE:
+                    failed_movement = True
+                    yield from self._process_armour_roll(player, cmds, next(log_entries), log_entries, board)
+                    turnover = True
 
             if leap:
                 continue
