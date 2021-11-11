@@ -392,7 +392,7 @@ class Replay:
                 # Touchdowns will be restarted by the setup and kickoff process
                 yield from board.start_turn(other_team(cmd.team))
 
-    def _process_action_result(self, log_entry, log_type, log_entries, cmds, player, action_type, board):
+    def _process_action_result(self, log_entry, log_type, cmds, log_entries, player, action_type, board):
         validate_log_entry(log_entry, log_type, player.team.team_type, player.number)
         yield Action(player, action_type, log_entry.result, board)
         if log_entry.result != ActionResult.SUCCESS and player.team == board.turn_team:
@@ -622,7 +622,7 @@ class Replay:
                               log_entries, board, frenzied_block=False):
         if Skills.FOUL_APPEARANCE in target_by_idx.skills:
             log_entry = next(log_entries)
-            yield from self._process_action_result(log_entry, FoulAppearanceEntry, log_entries, cmds,
+            yield from self._process_action_result(log_entry, FoulAppearanceEntry, cmds, log_entries,
                                                    targeting_player, ActionType.FOUL_APPEARANCE, board)
 
         dumped_off = False
@@ -636,7 +636,7 @@ class Replay:
             log_entry = next(log_entries)
             success = True
             rerolled = False
-            for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
+            for event in self._process_action_result(log_entry, GoingForItEntry, cmds, log_entries,
                                                      targeting_player, ActionType.GOING_FOR_IT, board):
                 yield event
                 if isinstance(event, Action):
@@ -645,7 +645,7 @@ class Replay:
                     rerolled = True
             if dumped_off and rerolled:
                 log_entry = next(log_entries)
-                for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
+                for event in self._process_action_result(log_entry, GoingForItEntry, cmds, log_entries,
                                                          targeting_player, ActionType.GOING_FOR_IT, board):
                     yield event
                     if isinstance(event, Action):
@@ -887,7 +887,7 @@ class Replay:
         if Skills.ALWAYS_HUNGRY in player.skills:
             log_entry = next(log_entries)
             success = True
-            for event in self._process_action_result(log_entry, AlwaysHungryEntry, log_entries, cmds,
+            for event in self._process_action_result(log_entry, AlwaysHungryEntry, cmds, log_entries,
                                                      player, ActionType.ALWAYS_HUNGRY, board):
                 yield event
                 if isinstance(event, Action):
@@ -1066,7 +1066,7 @@ class Replay:
             if board.get_distance_moved(player) >= player.MA:
                 log_entry = next(log_entries)
                 result = log_entry.result
-                for event in self._process_action_result(log_entry, GoingForItEntry, log_entries, cmds,
+                for event in self._process_action_result(log_entry, GoingForItEntry, cmds, log_entries,
                                                          player, ActionType.GOING_FOR_IT, board):
                     yield event
                     if isinstance(event, Action):
@@ -1205,10 +1205,10 @@ class Replay:
             ball_position = scatter(ball_position, scatter_3.direction)
             board.set_ball_position(ball_position)
             yield Scatter(throw_command.position, ball_position, board)
-        yield from self._process_catch(ball_position, log_entries, cmds, board,
+        yield from self._process_catch(ball_position, cmds, log_entries, board,
                                        bounce_on_empty=result != ThrowResult.FUMBLE)
 
-    def _process_catch(self, ball_position, log_entries, cmds, board, bounce_on_empty=False):
+    def _process_catch(self, ball_position, cmds, log_entries, board, bounce_on_empty=False):
         while True:
             catcher = board.get_position(ball_position)
             if not catcher:
@@ -1230,7 +1230,7 @@ class Replay:
                 continue
             catch_entry = next(log_entries)
             caught = False
-            for event in self._process_action_result(catch_entry, CatchEntry, log_entries, cmds, catcher,
+            for event in self._process_action_result(catch_entry, CatchEntry, cmds, log_entries, catcher,
                                                      ActionType.CATCH, board):
                 if isinstance(event, Action) and event.result == ActionResult.SUCCESS:
                     board.set_ball_carrier(catcher)
