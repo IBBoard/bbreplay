@@ -22,7 +22,7 @@ def test_throwin_direction_downfield(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_ball_movement(log_entries_iter, board)
+    events = replay._process_ball_movement(cmds, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Bounce)
@@ -62,7 +62,7 @@ def test_throwin_direction_upfield(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_ball_movement(log_entries_iter, board)
+    events = replay._process_ball_movement(cmds, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Bounce)
@@ -102,7 +102,7 @@ def test_throwin_direction_across_field(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_ball_movement(log_entries_iter, board)
+    events = replay._process_ball_movement(cmds, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Bounce)
@@ -142,7 +142,7 @@ def test_throwin_direction_downfield_with_downfield_play(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_ball_movement(log_entries_iter, board)
+    events = replay._process_ball_movement(cmds, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Bounce)
@@ -182,7 +182,7 @@ def test_throwin_direction_upfield_with_downfield_play(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_ball_movement(log_entries_iter, board)
+    events = replay._process_ball_movement(cmds, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Bounce)
@@ -222,7 +222,7 @@ def test_throwin_direction_across_field_with_downfield_play(board):
     ]
     cmds_iter = iter_(cmds)
     log_entries_iter = iter_(log_entries)
-    events = replay._process_ball_movement(log_entries_iter, board)
+    events = replay._process_ball_movement(cmds, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Bounce)
@@ -252,12 +252,13 @@ def test_ghost_bounce_due_to_no_catch(board):
     replay = Replay(home_team, away_team, [], [])
     board.set_ball_position(Position(13, 12))
     board.setup_complete()
+    cmds = iter_([])
     log_entries = [
         BounceLogEntry(ScatterDirection.S.value),
         BounceLogEntry(ScatterDirection.SE.value)
     ]
     log_entries_iter = iter_(log_entries)
-    events = replay._process_ball_movement(log_entries_iter, board)
+    events = replay._process_ball_movement(cmds, log_entries_iter, board)
 
     event = next(events)
     assert isinstance(event, Bounce)

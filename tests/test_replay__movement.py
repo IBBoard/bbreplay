@@ -480,6 +480,7 @@ def test_going_for_it_fail_no_reroll(board):
     player = home_team.get_player(0)
     board.set_position(Position(0, 0), player)
     home_id = TeamType.HOME.value
+    board.turn_team = home_team
     cmds = [
         MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 1, 0, 0, 0, 0, 0, 1, 1]),
         MovementCommand(1, 1, TeamType.HOME, 1, [home_id, 0, 2, 0, 0, 0, 0, 0, 2, 2]),

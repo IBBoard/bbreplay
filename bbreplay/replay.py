@@ -392,11 +392,10 @@ class Replay:
                 # Touchdowns will be restarted by the setup and kickoff process
                 yield from board.start_turn(other_team(cmd.team))
 
-    def _process_action_result(self, log_entry, log_type, log_entries, cmds, player, action_type, board,
-                               can_reroll=True):
+    def _process_action_result(self, log_entry, log_type, log_entries, cmds, player, action_type, board):
         validate_log_entry(log_entry, log_type, player.team.team_type, player.number)
         yield Action(player, action_type, log_entry.result, board)
-        if log_entry.result != ActionResult.SUCCESS and can_reroll:
+        if log_entry.result != ActionResult.SUCCESS and player.team == board.turn_team:
             actions, new_result = self._process_action_reroll(cmds, log_entries, player, board)
             yield from actions
             if new_result:
@@ -632,7 +631,7 @@ class Replay:
             dumpoff_cmd = next(cmds)
             if dumpoff_cmd.team != target_by_idx.team.team_type:
                 raise ValueError(f"{target_by_idx} used dump off but command was for {dumpoff_cmd.team}")
-            yield from self._process_pass(target_by_idx, cmds, log_entries, board, False)
+            yield from self._process_pass(target_by_idx, cmds, log_entries, board)
         if moved and board.get_distance_moved(targeting_player) >= targeting_player.MA:
             log_entry = next(log_entries)
             success = True
@@ -809,7 +808,7 @@ class Replay:
             yield from self._process_movement(blocking_player, cmds, log_entries, board)
 
         if ball_bounces:
-            yield from self._process_ball_movement(log_entries, board)
+            yield from self._process_ball_movement(cmds, log_entries, board)
 
         if attacker_down:
             log_entry = next(log_entries)
@@ -1086,7 +1085,7 @@ class Replay:
                     pickup_entry = log_entry
                 elif turnover:
                     # They went splat on the ball
-                    yield from self._process_ball_movement(log_entries, board)
+                    yield from self._process_ball_movement(cmds, log_entries, board)
             else:
                 target_contents = board.get_position(target_space)
                 if target_contents and target_contents != player:
@@ -1102,7 +1101,7 @@ class Replay:
                 board.move(player, start_space, target_space)
                 yield FailedMovement(player, start_space, target_space)
                 if is_ball_carrier:
-                    yield from self._process_ball_movement(log_entries, board)
+                    yield from self._process_ball_movement(cmds, log_entries, board)
                     board.set_ball_carrier(None)
             else:
                 # Failure due to Tentacles etc
@@ -1137,7 +1136,7 @@ class Replay:
                 if result != ActionResult.SUCCESS:
                     failed_movement = True
                     find_turnover = True
-                    for event in self._process_ball_movement(log_entries, board):
+                    for event in self._process_ball_movement(cmds, log_entries, board):
                         yield event
                         if isinstance(event, EndTurn):
                             find_turnover = False
@@ -1155,7 +1154,7 @@ class Replay:
             validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
             yield from board.change_turn(player.team.team_type, log_entry.reason)
 
-    def _process_pass(self, player, cmds, log_entries, board, can_reroll=True):
+    def _process_pass(self, player, cmds, log_entries, board):
         throw_command = next(cmds)
         if board.get_ball_carrier() != player:
             raise ValueError(f"Got Pass command for {player} but ball carrier is {board.get_ball_carrier()}")
@@ -1183,7 +1182,7 @@ class Replay:
         yield Pass(player, throw_command.position, result, board)
         _ = next(cmds)  # Throw away the interception command, which we seem to get even if it's not possible
 
-        if throw_log_entry.result != ThrowResult.ACCURATE_PASS and can_reroll:
+        if throw_log_entry.result != ThrowResult.ACCURATE_PASS and player.team == board.turn_team:
             actions, result = self._process_action_reroll(cmds, log_entries, player, board, reroll_skill=Skills.PASS)
             yield from actions
             yield Pass(player, throw_command.position, result, board)
@@ -1207,9 +1206,9 @@ class Replay:
             board.set_ball_position(ball_position)
             yield Scatter(throw_command.position, ball_position, board)
         yield from self._process_catch(ball_position, log_entries, cmds, board,
-                                       bounce_on_empty=result != ThrowResult.FUMBLE, can_reroll=can_reroll)
+                                       bounce_on_empty=result != ThrowResult.FUMBLE)
 
-    def _process_catch(self, ball_position, log_entries, cmds, board, bounce_on_empty=False, can_reroll=True):
+    def _process_catch(self, ball_position, log_entries, cmds, board, bounce_on_empty=False):
         while True:
             catcher = board.get_position(ball_position)
             if not catcher:
@@ -1232,7 +1231,7 @@ class Replay:
             catch_entry = next(log_entries)
             caught = False
             for event in self._process_action_result(catch_entry, CatchEntry, log_entries, cmds, catcher,
-                                                     ActionType.CATCH, board, can_reroll=can_reroll):
+                                                     ActionType.CATCH, board):
                 if isinstance(event, Action) and event.result == ActionResult.SUCCESS:
                     board.set_ball_carrier(catcher)
                     caught = True
@@ -1245,7 +1244,7 @@ class Replay:
             board.set_ball_position(ball_position)
             yield Bounce(start_position, ball_position, scatter_entry.direction, board)
 
-    def _process_ball_movement(self, log_entries, board):
+    def _process_ball_movement(self, cmds, log_entries, board):
         log_entry = None
         previous_ball_position = board.get_ball_position()
         while True:
@@ -1348,7 +1347,7 @@ class Replay:
                 break
 
         if bounces:
-            yield from self._process_ball_movement(self.__generator(bounces), board)
+            yield from self._process_ball_movement(cmds, self.__generator(bounces), board)
 
 
 def find_next_known_command(generator):

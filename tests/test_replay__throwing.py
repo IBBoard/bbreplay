@@ -531,6 +531,8 @@ def test_dumpoff_does_not_allow_reroll(board):
     board.set_ball_carrier(player)
     player_2 = home_team.get_player(1)
     board.set_position(Position(7, 7), player_2)
+    # Dump-offs are out of sequence
+    board.turn_team = away_team
     cmds = iter_([
         # Dumpoff is consumed in the block rolling function
         # DumpOffCommand(1, 1, TeamType.AWAY, 0, []),
@@ -542,7 +544,7 @@ def test_dumpoff_does_not_allow_reroll(board):
         CatchEntry(player_2.team.team_type, player_2.number, "4+", "3", ActionResult.FAILURE.name),
         BounceLogEntry(ScatterDirection.N.value)
     ])
-    events = replay._process_pass(player, cmds, log_entries, board, False)
+    events = replay._process_pass(player, cmds, log_entries, board)
 
     event = next(events)
     assert isinstance(event, Pass)
