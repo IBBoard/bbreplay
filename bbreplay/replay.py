@@ -1183,7 +1183,7 @@ class Replay:
         _ = next(cmds)  # Throw away the interception command, which we seem to get even if it's not possible
 
         if throw_log_entry.result != ThrowResult.ACCURATE_PASS and can_reroll:
-            actions, result = self._process_action_reroll(cmds, log_entries, player, board)
+            actions, result = self._process_action_reroll(cmds, log_entries, player, board, reroll_skill=Skills.PASS)
             yield from actions
             yield Pass(player, throw_command.position, result, board)
 

@@ -214,6 +214,61 @@ def test_pass_forward_success_after_reroll(board):
     assert not next(log_entries_iter, None)
 
 
+def test_pass_forward_success_after_pass_skill_reroll(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player_1 = home_team.get_player(0)
+    player_1.skills.append(Skills.PASS)
+    board.set_position(Position(5, 7), player_1)
+    player_2 = home_team.get_player(1)
+    board.set_position(Position(7, 7), player_2)
+    board.set_ball_carrier(player_1)
+    cmds = [
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        Command(1, 1, TeamType.AWAY.value, 13, [])
+    ]
+    log_entries = [
+        ThrowEntry(TeamType.HOME, 1, "3+", "1", ThrowResult.FUMBLE.name),
+        SkillEntry(TeamType.HOME, 1, Skills.PASS.name),
+        ThrowEntry(TeamType.HOME, 1, "3+", "6", ThrowResult.ACCURATE_PASS.name),
+        CatchEntry(TeamType.HOME, 2, "3+", "3", ActionResult.SUCCESS.name)
+    ]
+    cmds_iter = iter_(cmds)
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
+
+    event = next(events)
+    assert isinstance(event, Pass)
+    assert event.player == player_1
+    assert event.target == Position(7, 7)
+    assert event.result == ThrowResult.FUMBLE
+
+    event = next(events)
+    assert isinstance(event, Reroll)
+    assert event.team == TeamType.HOME
+    assert event.type == "Pass"
+
+    event = next(events)
+    assert isinstance(event, Pass)
+    assert event.player == player_1
+    assert event.target == Position(7, 7)
+    assert event.result == ThrowResult.ACCURATE_PASS
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.player == player_2
+    assert event.action == ActionType.CATCH
+    assert event.result == ActionResult.SUCCESS
+
+    assert board.get_ball_carrier() == player_2
+    assert board.get_ball_position() == Position(7, 7)
+
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
 def test_pass_sideways_success(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
