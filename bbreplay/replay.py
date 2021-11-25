@@ -392,11 +392,12 @@ class Replay:
                 # Touchdowns will be restarted by the setup and kickoff process
                 yield from board.start_turn(other_team(cmd.team))
 
-    def _process_action_result(self, log_entry, log_type, cmds, log_entries, player, action_type, board):
+    def _process_action_result(self, log_entry, log_type, cmds, log_entries, player, action_type, board,
+                               is_active=True):
         validate_log_entry(log_entry, log_type, player.team.team_type, player.number)
         yield Action(player, action_type, log_entry.result, board)
         if log_entry.result != ActionResult.SUCCESS and player.team == board.turn_team:
-            actions, new_result = self._process_action_reroll(cmds, log_entries, player, board)
+            actions, new_result = self._process_action_reroll(cmds, log_entries, player, board, is_active=is_active)
             yield from actions
             if new_result:
                 yield Action(player, action_type, new_result, board)
@@ -436,7 +437,7 @@ class Replay:
         return reroll_success, actions
 
     def _process_action_reroll(self, cmds, log_entries, player, board, reroll_skill=None,
-                               cancelling_skill=None, modifying_skill=None):
+                               cancelling_skill=None, modifying_skill=None, is_active=True):
         actions = []
         new_result = None
         reroll_success = False
@@ -456,7 +457,7 @@ class Replay:
                 if log_entry.result == ActionResult.SUCCESS:
                     actions.append(Reroll(log_entry.team, 'Pro'))
                     reroll_success = True
-                else:
+                elif is_active:
                     cmd = next(cmds)
                     if not isinstance(cmd, DiceChoiceCommand):
                         raise ValueError("Expected DiceChoiceCommand after ProRerollCommand "
@@ -464,11 +465,11 @@ class Replay:
         elif board.can_reroll(player.team.team_type):
             cmd = next(cmds)
             if isinstance(cmd, DeclineRerollCommand):
-                cmd = next(cmds)
-                if not isinstance(cmd, DiceChoiceCommand):
-                    raise ValueError("Expected DiceChoiceCommand after DeclineRerollCommand "
-                                     f"but got {type(cmd).__name__}")
-                pass
+                if is_active:
+                    cmd = next(cmds)
+                    if not isinstance(cmd, DiceChoiceCommand):
+                        raise ValueError("Expected DiceChoiceCommand after DeclineRerollCommand "
+                                         f"but got {type(cmd).__name__}")
             elif isinstance(cmd, RerollCommand):
                 reroll_success, actions = self.__process_reroll_command(log_entries, player, board)
             elif isinstance(cmd, DiceChoiceCommand):
@@ -1209,114 +1210,85 @@ class Replay:
                                        bounce_on_empty=result != ThrowResult.FUMBLE)
 
     def _process_catch(self, ball_position, cmds, log_entries, board, bounce_on_empty=False):
-        while True:
-            catcher = board.get_position(ball_position)
-            if not catcher:
-                if bounce_on_empty:
-                    # We've attempted a dump-off to a blank space or it scattered to a blank space
-                    bounce_entry = next(log_entries)
-                    start_position = board.get_ball_position()
-                    ball_position = scatter(start_position, bounce_entry.direction)
-                    board.set_ball_position(ball_position)
-                    yield Bounce(start_position, ball_position, bounce_entry.direction, board)
-                    bounce_on_empty = False
-                    continue
-                else:
-                    # It comes to rest
-                    break
-            bounce_on_empty = False
-            if board.is_prone(catcher):
-                # Prone players can't catch!
-                continue
+        catcher = board.get_position(ball_position)
+        caught = False
+        if catcher and not board.is_prone(catcher):
             catch_entry = next(log_entries)
-            caught = False
             for event in self._process_action_result(catch_entry, CatchEntry, cmds, log_entries, catcher,
-                                                     ActionType.CATCH, board):
-                if isinstance(event, Action) and event.result == ActionResult.SUCCESS:
+                                                     ActionType.CATCH, board, is_active=False):
+                if isinstance(event, Action) and event.action == ActionType.CATCH \
+                        and event.result == ActionResult.SUCCESS:
                     board.set_ball_carrier(catcher)
                     caught = True
                 yield event
-            if caught:
-                return
-            scatter_entry = next(log_entries)
-            start_position = board.get_ball_position()
-            ball_position = scatter(start_position, scatter_entry.direction)
-            board.set_ball_position(ball_position)
-            yield Bounce(start_position, ball_position, scatter_entry.direction, board)
+        if not caught or (not catcher and bounce_on_empty):
+            yield from self._process_ball_movement(cmds, log_entries, board)
 
     def _process_ball_movement(self, cmds, log_entries, board):
-        log_entry = None
-        previous_ball_position = board.get_ball_position()
-        while True:
-            log_entry = next(log_entries, None)
-            if not log_entry:
-                # Ball bounces due to spells don't trigger a turn over
-                break
-            elif isinstance(log_entry, BounceLogEntry):
-                old_ball_position = board.get_ball_position()
+        if isinstance(log_entries.peek(), ThrowInDirectionLogEntry):
+            yield from self._process_throwin(cmds, log_entries, board)
+            return
+
+        log_entry = next(log_entries)
+        if not isinstance(log_entry, BounceLogEntry):
+            raise ValueError(f"Expected BounceLogEntry but got {type(log_entry).__name__}")
+        old_ball_position = board.get_ball_position()
+        ball_position = scatter(old_ball_position, log_entry.direction)
+        board.set_ball_position(ball_position)
+        bounce_event = Bounce(old_ball_position, ball_position, log_entry.direction, board)
+        if ball_position.is_offpitch():
+            yield bounce_event
+            if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH:
+                offset = 0
+                # Throw-ins from fumbled pickups seem to come from the space where the ball
+                # would have landed if there was an off-board space rather than the one adjacent
+                # to where the pickup was attempted
+                if log_entry.direction in _norths:
+                    offset = 1
+                elif log_entry.direction in _souths:
+                    offset = -1
+                board.set_ball_position(old_ball_position.add(0, offset))
+            yield from self._process_throwin(cmds, log_entries, board)
+        elif board.get_position(ball_position):
+            # Bounced to an occupied space, so we need to continue for a catch or a bounce off a prone body
+            player_in_space = board.get_position(ball_position)
+            if board.is_prone(player_in_space):
+                yield bounce_event
+                yield from self._process_ball_movement(cmds, log_entries, board)
+            else:
+                log_entry = log_entries.peek()
+                if isinstance(log_entry, CatchEntry):
+                    yield bounce_event
+                    yield from self._process_catch(ball_position, cmds, log_entries, board)
+                elif isinstance(log_entry, BounceLogEntry):
+                    # The first bounce was a ghost bounce that never happened, so ignore it
+                    board.set_ball_position(old_ball_position)
+                    yield from self._process_ball_movement(cmds, log_entries, board)
+                else:
+                    raise ValueError("Expected CatchEntry or BounceEntry after bounce, "
+                                     f"got {type(log_entry).__name__}")
+        else:
+            # Bounced to an empty space
+            # But sometimes it gets a ghost bounce
+            if isinstance(log_entries.peek(), BounceLogEntry):
+                log_entry = next(log_entries)
                 ball_position = scatter(old_ball_position, log_entry.direction)
                 board.set_ball_position(ball_position)
                 bounce_event = Bounce(old_ball_position, ball_position, log_entry.direction, board)
-                if ball_position.is_offpitch():
-                    yield bounce_event
-                    if ball_position.x < 0 or ball_position.x >= PITCH_WIDTH:
-                        offset = 0
-                        # Throw-ins from fumbled pickups seem to come from the space where the ball
-                        # would have landed if there was an off-board space rather than the one adjacent
-                        # to where the pickup was attempted
-                        if log_entry.direction in _norths:
-                            offset = 1
-                        elif log_entry.direction in _souths:
-                            offset = -1
-                        previous_ball_position = previous_ball_position.add(0, offset)
-                    # Continue to find the throw-in
-                    continue
-                elif board.get_position(ball_position):
-                    # Bounced to an occupied space, so we need to continue for a catch or a bounce off a prone body
-                    previous_ball_position = old_ball_position
-                    player_in_space = board.get_position(ball_position)
-                    if board.is_prone(player_in_space):
-                        yield bounce_event
-                        continue
-                    else:
-                        log_entry = log_entries.peek()
-                        if isinstance(log_entry, CatchEntry):
-                            log_entry = next(log_entries)
-                            yield bounce_event
-                            catcher = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
-                            yield Action(catcher, ActionType.CATCH, log_entry.result, board)
-                            if log_entry.result == ActionResult.SUCCESS:
-                                board.set_ball_carrier(catcher)
-                                break
-                            # Else it bounces again
-                        elif isinstance(log_entry, BounceLogEntry):
-                            # The first bounce was a ghost bounce that never happened, so ignore it
-                            board.set_ball_position(old_ball_position)
-                            continue
-                            # XXX: This doesn't take account of off-pitch etc
-                        else:
-                            raise ValueError("Expected CatchEntry or BounceEntry after bounce, "
-                                             f"got {type(log_entry).name}")
-                else:
-                    # Bounced to an empty space
-                    # But sometimes it gets a ghost bounce
-                    if isinstance(log_entries.peek(), BounceLogEntry):
-                        log_entry = next(log_entries)
-                        ball_position = scatter(old_ball_position, log_entry.direction)
-                        board.set_ball_position(ball_position)
-                        bounce_event = Bounce(old_ball_position, ball_position, log_entry.direction, board)
-                    yield bounce_event
-                    break
-            elif isinstance(log_entry, ThrowInDirectionLogEntry):
-                distance_entry = next(log_entries)
-                ball_position = throwin(previous_ball_position, board.get_play_direction(),
-                                        log_entry.direction, distance_entry.distance)
-                board.set_ball_position(ball_position)
-                yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance,
-                              board)
-            else:
-                raise ValueError("Expected one of BounceLogEntry, CatchEntry or "
-                                 f"ThrowInDirectionLogEntry but got {type(log_entry).__name__}")
+            yield bounce_event
+
+    def _process_throwin(self, cmds, log_entries, board):
+        log_entry = next(log_entries)
+        if not isinstance(log_entry, ThrowInDirectionLogEntry):
+            raise ValueError(f"Expected ThrowInDirection log entry but got {type(log_entry).__name__}")
+        distance_entry = next(log_entries)
+        previous_ball_position = board.get_ball_position()
+        ball_position = throwin(previous_ball_position, board.get_play_direction(),
+                                log_entry.direction, distance_entry.distance)
+        board.set_ball_position(ball_position)
+        yield ThrowIn(previous_ball_position, ball_position, log_entry.direction, distance_entry.distance,
+                      board)
+        yield from self._process_ball_movement(cmds, log_entries, board)
 
     def _process_spell(self, cmds, log_entries, board):
         # Fireball and lightning may not be too different, as there's just a different number of targets
