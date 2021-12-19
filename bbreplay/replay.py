@@ -599,6 +599,9 @@ class Replay:
             moves = self.__get_moves(targeting_player, cmds)
             cmd = next(cmds)
             yield from self.__process_movement_list(targeting_player, moves, cmds, log_entries, board)
+            if board.is_prone(targeting_player):
+                # Something failed in the block
+                return
         else:
             cmd = next(cmds)
             yield from self._process_uncontrollable_skills(targeting_player, cmds, log_entries, board)
