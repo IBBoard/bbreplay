@@ -339,6 +339,35 @@ class SpellCommand(Command):
         return f'Spell(team={self.team}, position={self.x},{self.y})'
 
 
+class SideStepInterruptCommand(SimpleCommand):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__("SideStepInterruptCommand", id, turn, team, command_type, data, True)
+
+
+class SideStepCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.attacker_team = player_idx_to_type(data[0])
+        self.attacker_idx = data[1]
+        self.defender_team = player_idx_to_type(data[2])
+        self.defender_idx = data[3]
+        self.position = Position(data[4], data[5])
+        self.sidestepped = data[6] == 1
+
+    @property
+    def x(self):
+        return self.position.x
+
+    @property
+    def y(self):
+        return self.position.y
+
+    def __repr__(self):
+        return f'SideStep(team={self.team}, attacker_team={self.attacker_team}, attacker_idx={self.attacker_idx}, ' \
+               f'defender_team={self.defender_team}, defender_idx={self.defender_idx}, position={self.x},{self.y}), ' \
+               f'sidestepped={self.sidestepped})'
+
+
 class NetworkCommand(SimpleCommand):
     # These commands are only seen in online games and never in local exhibitions
     def __init__(self, id, turn, team, command_type, data):
@@ -389,6 +418,8 @@ MOVE_MAP = {
     51: DeclineRerollCommand,
     59: AbandonMatchCommand,
     69: NetworkCommand,
+    85: SideStepInterruptCommand,
+    86: SideStepCommand,
     # Block related? After DiceChoice and before PushbackCommand
     91: UnknownVerboseCommand,
     # Block related? After DiceChoice and before PushbackCommand

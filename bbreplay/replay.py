@@ -715,6 +715,16 @@ class Replay:
                 pushed_back = False
                 cmd = None
 
+                if Skills.SIDE_STEP in pushed_player.skills:
+                    print("Sidestepping")
+                    while isinstance(cmds.peek(), SideStepCommand):
+                        cmd = next(cmds)
+                        if cmd.sidestepped:
+                            log_entry = next(log_entries)
+                            sidestepping_player = self.get_team(cmd.defender_team).get_player(cmd.defender_idx)
+                            validate_skill_log_entry(log_entry, sidestepping_player, Skills.SIDE_STEP)
+                            yield Skill(sidestepping_player, Skills.SIDE_STEP)
+
                 while isinstance(cmds.peek(), PushbackCommand):
                     pushed_back = True
                     cmd = next(cmds)
