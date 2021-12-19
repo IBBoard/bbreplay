@@ -709,21 +709,19 @@ class Replay:
             pushbacks = calculate_pushbacks(origin_coords, old_coords, board)
             board.reset_position(old_coords)
 
-            if len(pushbacks) != 1:
+            if len(pushbacks) != 1 or Skills.SIDE_STEP in target_by_idx.skills:
                 pushing_player = blocking_player
                 pushed_player = target_by_idx
                 pushed_back = False
                 cmd = None
 
-                if Skills.SIDE_STEP in pushed_player.skills:
-                    print("Sidestepping")
-                    while isinstance(cmds.peek(), SideStepCommand):
-                        cmd = next(cmds)
-                        if cmd.sidestepped:
-                            log_entry = next(log_entries)
-                            sidestepping_player = self.get_team(cmd.defender_team).get_player(cmd.defender_idx)
-                            validate_skill_log_entry(log_entry, sidestepping_player, Skills.SIDE_STEP)
-                            yield Skill(sidestepping_player, Skills.SIDE_STEP)
+                while isinstance(cmds.peek(), SideStepCommand):
+                    cmd = next(cmds)
+                    if cmd.sidestepped:
+                        log_entry = next(log_entries)
+                        sidestepping_player = self.get_team(cmd.defender_team).get_player(cmd.defender_idx)
+                        validate_skill_log_entry(log_entry, sidestepping_player, Skills.SIDE_STEP)
+                        yield Skill(sidestepping_player, Skills.SIDE_STEP)
 
                 while isinstance(cmds.peek(), PushbackCommand):
                     pushed_back = True
@@ -763,7 +761,7 @@ class Replay:
             elif can_fend:
                 follow_up = False
             else:
-                raise ValueError("Unexpected follow-up situation")
+                raise ValueError(f"Unexpected follow-up situation - next command is {type(cmds.peek()).__name__}")
 
             if follow_up:
                 old_coords = blocking_player.position
