@@ -936,6 +936,7 @@ class Replay:
             landing_position = scatter(throw_command.position, scatter_1.direction)
             landing_position = scatter(landing_position, scatter_2.direction)
             landing_position = scatter(landing_position, scatter_3.direction)
+            board.reset_position(pickup_command.position)
             board.set_position(landing_position, target_by_idx)
             yield Scatter(throw_command.position, landing_position, board)
         # else it was a fumble and players lands where they started
