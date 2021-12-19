@@ -4,8 +4,8 @@ stages:
     cmd: python3 metrics.py -o metrics/metrics.json -p metrics/plots.json data/
     deps:
     - path: bbreplay/
-      md5: 87afb66e15097fe4897a33d0930b18ba.dir
-      size: 238913
+      md5: 2549861d1fba9f7e2ae9c04aac9b80a0.dir
+      size: 238988
       nfiles: 14
     - path: data/
       md5: 8f4f4d470b87ccc84345c3d35a283af3.dir
@@ -16,8 +16,8 @@ stages:
       size: 3310
     outs:
     - path: metrics/metrics.json
-      md5: 342079c81c634150afff80cb416f0170
-      size: 5224
+      md5: 93a2b452f108efcdc6d64ae248791dfe
+      size: 5223
     - path: metrics/plots.json
-      md5: 71aed121f3fb19528094d531a27d4e5c
-      size: 1786
+      md5: 9f4a7b41a1a647d3f866395aef6c7a64
+      size: 1788

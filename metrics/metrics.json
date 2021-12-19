@@ -1,7 +1,7 @@
 {
     "total_commands": 140177,
-    "total_processed": 25249,
-    "total_unprocessed": 114928,
+    "total_processed": 24988,
+    "total_unprocessed": 115189,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,
@@ -65,9 +65,9 @@
         },
         "data/Norse_Lings_Replay.db": {
             "commands": 3909,
-            "events": 29,
-            "processed": 339,
-            "unprocessed": 3570
+            "events": 8,
+            "processed": 187,
+            "unprocessed": 3722
         },
         "data/Replay_2021-04-05_14-44-03.db": {
             "commands": 58,
@@ -89,9 +89,9 @@
         },
         "data/Replay_2020-09-06_10-13-12.db": {
             "commands": 6480,
-            "events": 622,
-            "processed": 3251,
-            "unprocessed": 3229
+            "events": 602,
+            "processed": 3142,
+            "unprocessed": 3338
         },
         "data/Replay_2021-04-04_09-49-09.db": {
             "commands": 5160,
