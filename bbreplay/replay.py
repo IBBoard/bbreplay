@@ -1162,6 +1162,7 @@ class Replay:
                         validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
                         yield from board.change_turn(player.team.team_type, log_entry.reason)
                     # Else we already found the turnover during the pickup
+                is_ball_carrier = result == ActionResult.SUCCESS
                 pickup_entry = None
 
             start_space = target_space
