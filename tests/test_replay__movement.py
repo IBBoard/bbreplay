@@ -49,6 +49,124 @@ def test_multi_movement(board):
     assert not next(cmds_iter, None)
 
 
+def test_movement_from_prone(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(0, 0), player)
+    board.set_prone(player)
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 1, 1]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 1, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 2])
+    ]
+    log_entries = iter_([
+        GoingForItEntry(player.team.team_type, player.number, "2+", "2", ActionResult.SUCCESS)
+    ])
+    cmds_iter = iter_(cmds)
+    events = replay._process_movement(player, cmds_iter, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(0, 0)
+    assert event.target_space == Position(1, 1)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.GOING_FOR_IT
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(1, 1)
+    assert event.target_space == Position(2, 2)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+
+
+def test_movement_from_prone_with_jump_up(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.JUMP_UP)
+    board.set_position(Position(0, 0), player)
+    board.set_prone(player)
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 1, 1]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 1, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 2])
+    ]
+    log_entries = iter_([
+        SkillEntry(player.team.team_type, player.number, Skills.JUMP_UP.name)
+    ])
+    cmds_iter = iter_(cmds)
+    events = replay._process_movement(player, cmds_iter, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, Skill)
+    assert event.player == player
+    assert event.skill == Skills.JUMP_UP
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(0, 0)
+    assert event.target_space == Position(1, 1)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(1, 1)
+    assert event.target_space == Position(2, 2)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+
+
+def test_dodge_movement_from_prone_with_jump_up(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.JUMP_UP)
+    board.set_position(Position(0, 0), player)
+    board.set_prone(player)
+    defender = away_team.get_player(0)
+    board.set_position(Position(0, 1), defender)
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 1, 1]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 1, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 2, 2])
+    ]
+    log_entries = iter_([
+        SkillEntry(player.team.team_type, player.number, Skills.JUMP_UP.name),
+        DodgeEntry(player.team.team_type, player.number, "2+", "2", ActionResult.SUCCESS)
+    ])
+    cmds_iter = iter_(cmds)
+    events = replay._process_movement(player, cmds_iter, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, Skill)
+    assert event.player == player
+    assert event.skill == Skills.JUMP_UP
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.DODGE
+    assert event.result == ActionResult.SUCCESS
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(0, 0)
+    assert event.target_space == Position(1, 1)
+
+    event = next(events)
+    assert isinstance(event, Movement)
+    assert event.source_space == Position(1, 1)
+    assert event.target_space == Position(2, 2)
+
+    assert not board.is_prone(player)
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+
+
 def test_move_from_prone_defender_is_not_dodge(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])

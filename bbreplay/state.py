@@ -240,9 +240,10 @@ class GameState:
     def set_prone(self, player):
         self.__prone.add(player)
 
-    def unset_prone(self, player):
+    def unset_prone(self, player, penalise_movement=True):
         self.__prone.remove(player)
-        self.__moves[player] += 3
+        if penalise_movement:
+            self.__moves[player] += 3
 
     def is_prone(self, player):
         return player in self.__prone

@@ -430,10 +430,11 @@ skills = [
     "Diving Tackle",
     "Fend",
     "Frenzy",
-    "Sure Hands",
     "Juggernaut",
+    "Jump Up",
     "Pass",
-    "Side Step"
+    "Side Step",
+    "Sure Hands"
 ]
 skill_re = re.compile(f"{TEAM_PLAYER} uses ({'|'.join(skills)})")
 pro_reroll_re = re.compile(f"{TEAM_PLAYER} Pro +\\(([0-9]+\\+)\\) : ([0-9]+) -> (Success|Failure)")

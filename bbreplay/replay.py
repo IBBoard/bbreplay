@@ -605,7 +605,7 @@ class Replay:
             cmd = next(cmds)
             yield from self._process_uncontrollable_skills(targeting_player, cmds, log_entries, board)
             if board.is_prone(targeting_player):
-                board.unset_prone(targeting_player)
+                yield from self.__unset_prone(targeting_player, log_entries, board)
                 yield Blitz(targeting_player, target_by_idx)
 
         if board.is_wild_animal(targeting_player):
@@ -1071,6 +1071,11 @@ class Replay:
                             yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
                             turnover = True
                             break
+                    elif isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.JUMP_UP:
+                        validate_skill_log_entry(log_entry, player, Skills.JUMP_UP)
+                        yield Skill(player, Skills.JUMP_UP)
+                        board.unset_prone(player, penalise_movement=False)
+                        is_prone = False
                     else:
                         raise ValueError("Looking for dodge-related log entries but got "
                                          f"{type(log_entry).__name__}")
@@ -1105,7 +1110,7 @@ class Replay:
 
             if not failed_movement:
                 if is_prone:
-                    board.unset_prone(player)
+                    yield from self.__unset_prone(player, log_entries, board)
                     is_prone = False
                 board.move(player, start_space, target_space)
                 yield Movement(player, start_space, target_space, board)
@@ -1118,7 +1123,7 @@ class Replay:
             else:
                 # Failure due to Tentacles etc
                 if is_prone:
-                    board.unset_prone(player)
+                    yield from self.__unset_prone(player, log_entries, board)
                     is_prone = False
                 yield FailedMovement(player, start_space, target_space)
 
@@ -1165,6 +1170,14 @@ class Replay:
             log_entry = next(log_entries)
             validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
             yield from board.change_turn(player.team.team_type, log_entry.reason)
+
+    def __unset_prone(self, player, log_entries, board):
+        can_jump_up = Skills.JUMP_UP in player.skills
+        if can_jump_up:
+            log_entry = next(log_entries)
+            validate_skill_log_entry(log_entry, player, Skills.JUMP_UP)
+            yield Skill(player, Skills.JUMP_UP)
+        board.unset_prone(player, penalise_movement=not can_jump_up)
 
     def _process_pass(self, player, cmds, log_entries, board):
         throw_command = next(cmds)
