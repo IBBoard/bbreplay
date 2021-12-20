@@ -813,13 +813,13 @@ class Replay:
             if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
                 ball_bounces = True
 
+        if ball_bounces:
+            yield from self._process_ball_movement(cmds, log_entries, board)
+
         next_cmd = cmds.peek()
         if isinstance(next_cmd, MovementCommand) \
                 and board.teams[next_cmd.team.value].get_player(next_cmd.player_idx) == targeting_player:
             yield from self._process_movement(blocking_player, cmds, log_entries, board)
-
-        if ball_bounces:
-            yield from self._process_ball_movement(cmds, log_entries, board)
 
         if attacker_down:
             log_entry = next(log_entries)
