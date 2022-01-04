@@ -184,6 +184,9 @@ class GameState:
         next_team = other_team(team)
         self.turn_team = self.teams[next_team.value]
 
+    def roll_back_turn(self):
+        self.__turn -= 2
+
     def abandon_match(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order match abandonment - expected {self.turn_team.team_type} but got {team}')

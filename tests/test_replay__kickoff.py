@@ -330,3 +330,157 @@ def test_touchback_for_own_half_kick_other_direction(board):
     assert not next(cmds, None)
     assert not next(log_entries, None)
 
+
+def test_riot_at_start_of_first_half_rolls_forwards(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    cmds = iter_([])
+    log_entries = iter_([
+        KickoffEventLogEntry(KickoffEvent.RIOT.value)
+    ])
+    events = replay._process_kickoff_event(cmds, log_entries, board)
+
+    assert board.turn == 1
+
+    event = next(events)
+    assert isinstance(event, KickoffEventTuple)
+    assert event.result == KickoffEvent.RIOT
+
+    event = next(events)
+    assert isinstance(event, StartTurn)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Riot!"
+
+    event = next(events)
+    assert isinstance(event, StartTurn)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Riot!"
+
+    # Check that we're out of events before checking board turn so that we
+    # continue executing the rest of the `end_turn()` function after the `yield`
+    assert not next(events, None)
+    assert board.turn == 2
+
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_riot_at_start_of_second_half_rolls_forwards(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    cmds = iter_([])
+    log_entries = iter_([
+        KickoffEventLogEntry(KickoffEvent.RIOT.value)
+    ])
+    events = replay._process_kickoff_event(cmds, log_entries, board)
+
+    for _ in board.kickoff():
+        pass
+
+    for _ in range(8):
+        for _ in board.change_turn(board.receiving_team, "End turn"):
+            pass
+        for _ in board.change_turn(board.kicking_team, "End turn"):
+            pass
+
+    assert board.turn == 9
+
+    event = next(events)
+    assert isinstance(event, KickoffEventTuple)
+    assert event.result == KickoffEvent.RIOT
+
+    event = next(events)
+    assert isinstance(event, StartTurn)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Riot!"
+
+    event = next(events)
+    assert isinstance(event, StartTurn)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Riot!"
+
+    # Check that we're out of events before checking board turn so that we
+    # continue executing the rest of the `end_turn()` function after the `yield`
+    assert not next(events, None)
+    assert board.turn == 10
+
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_riot_at_end_of_first_half_rolls_backwards(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    cmds = iter_([])
+    log_entries = iter_([
+        KickoffEventLogEntry(KickoffEvent.RIOT.value)
+    ])
+    events = replay._process_kickoff_event(cmds, log_entries, board)
+
+    for _ in board.kickoff():
+        pass
+
+    for _ in range(7):
+        for _ in board.change_turn(board.receiving_team, "End turn"):
+            pass
+        for _ in board.change_turn(board.kicking_team, "End turn"):
+            pass
+
+    # In the board game the tracker moves when the player starts their turn
+    # which is after the kick-off, but we count turns slightly differently
+    # and already consider it to be turn 8
+    assert board.turn == 8
+
+    event = next(events)
+    assert isinstance(event, KickoffEventTuple)
+    assert event.result == KickoffEvent.RIOT
+
+    # Check that we're out of events before checking board turn so that we
+    # continue executing the rest of the `end_turn()` function after the `yield`
+    assert not next(events, None)
+    assert board.turn == 7
+
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_riot_at_end_of_second_half_rolls_backwards(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    cmds = iter_([])
+    log_entries = iter_([
+        KickoffEventLogEntry(KickoffEvent.RIOT.value)
+    ])
+    events = replay._process_kickoff_event(cmds, log_entries, board)
+
+    for _ in board.kickoff():
+        pass
+
+    for _ in range(15):
+        for _ in board.change_turn(board.receiving_team, "End turn"):
+            pass
+        for _ in board.change_turn(board.kicking_team, "End turn"):
+            pass
+
+    assert board.turn == 16
+
+    event = next(events)
+    assert isinstance(event, KickoffEventTuple)
+    assert event.result == KickoffEvent.RIOT
+
+    # Check that we're out of events before checking board turn so that we
+    # continue executing the rest of the `end_turn()` function after the `yield`
+    assert not next(events, None)
+    assert board.turn == 15
+
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+

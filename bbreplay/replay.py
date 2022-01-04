@@ -214,43 +214,11 @@ class Replay:
         else:
             raise ValueError(f"Unexpected command type at kickoff: {type(kickoff_cmd).__name__}")
 
-        kickoff_event = next(log_entries)
-        kickoff_result = kickoff_event.result
-        yield KickoffEventTuple(kickoff_result)
         ball_bounces = True
-        if kickoff_result == KickoffEvent.PERFECT_DEFENCE:
-            yield from self._process_team_setup(board.kicking_team, cmds, board)
-            board.setup_complete()
-            yield SetupComplete(board)
-        elif kickoff_result == KickoffEvent.HIGH_KICK:
-            high_kick_catch = next(log_entries)
-            catcher = self.get_team(high_kick_catch.team).get_player_by_number(high_kick_catch.player)
-            old_position = catcher.position
-            new_position = board.get_ball_position()
-            board.reset_position(old_position)
-            board.set_position(new_position, catcher)
-            if high_kick_catch.result == ActionResult.SUCCESS:
-                board.set_ball_carrier(catcher)
-                ball_bounces = False
-            yield Movement(catcher, old_position, new_position, board)
-            yield Action(catcher, ActionType.CATCH, high_kick_catch.result, board)
-        elif kickoff_result == KickoffEvent.CHEERING_FANS or kickoff_result == KickoffEvent.BRILLIANT_COACHING:
-            # XXX: We need to check reroll log events to identify who got the free reroll
-            pass
-        elif kickoff_result == KickoffEvent.CHANGING_WEATHER:
-            while isinstance(log_entries.peek(), WeatherLogEntry):
-                weather = next(log_entries)  # Sometimes this duplicates, but we don't care
-            yield board.set_weather(weather.result)
-        elif kickoff_result == KickoffEvent.QUICK_SNAP:
-            board.quick_snap()
-            yield from self._process_turn(cmds, log_entries, board, False)
-        elif kickoff_result == KickoffEvent.BLITZ:
-            board.blitz()
-            yield from self._process_turn(cmds, log_entries, board, False)
-        elif kickoff_result == KickoffEvent.PITCH_INVASION:
-            raise NotImplementedError("Cannot process 'Pitch Invasion' event because injured players aren't identified")
-        else:
-            raise NotImplementedError(f"{kickoff_result} not yet implemented")
+        for event in self._process_kickoff_event(cmds, log_entries, board):
+            yield event
+            if isinstance(event, Action) and event.action == ActionType.CATCH:
+                ball_bounces = event.result != ActionResult.SUCCESS
 
         yield from board.kickoff()
 
@@ -285,6 +253,54 @@ class Replay:
             touchback_player = self.get_team(cmd.team).get_player(cmd.player_idx)
             board.set_ball_carrier(touchback_player)
             yield Touchback(touchback_player, board)
+
+    def _process_kickoff_event(self, cmds, log_entries, board):
+        kickoff_event = next(log_entries)
+        kickoff_result = kickoff_event.result
+        yield KickoffEventTuple(kickoff_result)
+        if kickoff_result == KickoffEvent.RIOT:
+            if board.turn == 1 or board.turn == 9:
+                yield from board.start_turn(board.receiving_team)
+                yield from board.end_turn(board.receiving_team, "Riot!")
+                yield from board.start_turn(board.kicking_team)
+                yield from board.end_turn(board.kicking_team, "Riot!")
+            elif board.turn == 8 or board.turn == 16:
+                board.roll_back_turn()
+                pass
+            else:
+                raise NotImplementedError(f"{kickoff_result} not yet implemented in current conditions")
+        elif kickoff_result == KickoffEvent.PERFECT_DEFENCE:
+            yield from self._process_team_setup(board.kicking_team, cmds, board)
+            board.setup_complete()
+            yield SetupComplete(board)
+        elif kickoff_result == KickoffEvent.HIGH_KICK:
+            high_kick_catch = next(log_entries)
+            catcher = self.get_team(high_kick_catch.team).get_player_by_number(high_kick_catch.player)
+            old_position = catcher.position
+            new_position = board.get_ball_position()
+            board.reset_position(old_position)
+            board.set_position(new_position, catcher)
+            if high_kick_catch.result == ActionResult.SUCCESS:
+                board.set_ball_carrier(catcher)
+            yield Movement(catcher, old_position, new_position, board)
+            yield Action(catcher, ActionType.CATCH, high_kick_catch.result, board)
+        elif kickoff_result == KickoffEvent.CHEERING_FANS or kickoff_result == KickoffEvent.BRILLIANT_COACHING:
+            # XXX: We need to check reroll log events to identify who got the free reroll
+            pass
+        elif kickoff_result == KickoffEvent.CHANGING_WEATHER:
+            while isinstance(log_entries.peek(), WeatherLogEntry):
+                weather = next(log_entries)  # Sometimes this duplicates, but we don't care
+            yield board.set_weather(weather.result)
+        elif kickoff_result == KickoffEvent.QUICK_SNAP:
+            board.quick_snap()
+            yield from self._process_turn(cmds, log_entries, board, False)
+        elif kickoff_result == KickoffEvent.BLITZ:
+            board.blitz()
+            yield from self._process_turn(cmds, log_entries, board, False)
+        elif kickoff_result == KickoffEvent.PITCH_INVASION:
+            raise NotImplementedError("Cannot process 'Pitch Invasion' event because injured players aren't identified")
+        else:
+            raise NotImplementedError(f"{kickoff_result} not yet implemented")
 
     def _process_team_setup(self, team_type, cmds, board):
         cmd = next(cmds)

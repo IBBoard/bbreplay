@@ -1,7 +1,7 @@
 {
     "total_commands": 140177,
-    "total_processed": 26479,
-    "total_unprocessed": 113698,
+    "total_processed": 27426,
+    "total_unprocessed": 112751,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,
@@ -11,9 +11,9 @@
         },
         "data/Replay_2021-04-05_13-34-50.db": {
             "commands": 41,
-            "events": 8,
-            "processed": 27,
-            "unprocessed": 14
+            "events": 14,
+            "processed": 33,
+            "unprocessed": 8
         },
         "data/Replay_2021-05-02_09-50-52.db": {
             "commands": 6472,
@@ -77,9 +77,9 @@
         },
         "data/Replay_2021-03-28_10-12-59.db": {
             "commands": 6072,
-            "events": 8,
-            "processed": 202,
-            "unprocessed": 5870
+            "events": 169,
+            "processed": 1038,
+            "unprocessed": 5034
         },
         "data/Replay_2020-07-26_10-08-00.db": {
             "commands": 6308,
@@ -113,9 +113,9 @@
         },
         "data/Replay_2021-05-16_09-36-48.db": {
             "commands": 5183,
-            "events": 8,
-            "processed": 191,
-            "unprocessed": 4992
+            "events": 38,
+            "processed": 296,
+            "unprocessed": 4887
         },
         "data/Replay_2021-04-18_13-44-12.db": {
             "commands": 5242,
