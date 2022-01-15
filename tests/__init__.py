@@ -50,6 +50,5 @@ def away_team(away_player_1):
 @pytest.fixture
 def board(home_team, away_team):
     gamestate = GameState(home_team, away_team, TeamType.HOME)
-    for _ in gamestate.kickoff():
-        pass
+    gamestate.kickoff()
     return gamestate

@@ -11,7 +11,8 @@ def test_normal_kick(board):
     cmds = iter_([
         SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
         SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
-        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 15])
+        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 15]),
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value])
     ])
     log_entries = iter_([
         KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.S.value),
@@ -44,10 +45,6 @@ def test_normal_kick(board):
     assert event.result == KickoffEvent.CHEERING_FANS
 
     event = next(events)
-    assert isinstance(event, StartTurn)
-    assert event.team == TeamType.HOME
-
-    event = next(events)
     assert isinstance(event, Bounce)
     assert event.scatter_direction == ScatterDirection.N
     assert event.start_space == Position(8, 14)
@@ -63,7 +60,8 @@ def test_normal_kick_very_sunny(board):
     cmds = iter_([
         SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
         SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
-        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 15])
+        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 15]),
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value])
     ])
     log_entries = iter_([
         KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.S.value),
@@ -102,10 +100,6 @@ def test_normal_kick_very_sunny(board):
     assert event.result == Weather.VERY_SUNNY
 
     event = next(events)
-    assert isinstance(event, StartTurn)
-    assert event.team == TeamType.HOME
-    print("Started turn")
-    event = next(events)
     assert isinstance(event, Bounce)
     assert event.scatter_direction == ScatterDirection.N
     assert event.start_space == Position(8, 14)
@@ -128,7 +122,8 @@ def test_touchback_for_off_pitch_kick(board):
     cmds = iter_([
         SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
         SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
-        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [0, 0]),  # Kick right into the corner
+        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [0, 0]),  # Kick right into the corner,
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value]),
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
@@ -162,9 +157,6 @@ def test_touchback_for_off_pitch_kick(board):
     assert event.result == KickoffEvent.CHEERING_FANS
 
     event = next(events)
-    assert isinstance(event, StartTurn)
-
-    event = next(events)
     assert isinstance(event, Touchback)
     assert event.player == player
 
@@ -179,7 +171,8 @@ def test_touchback_for_off_pitch_bounce(board):
     cmds = iter_([
         SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
         SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
-        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [1, 1]),  # Kick right into the corner
+        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [1, 1]),  # Kick right into the corner,
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value]),
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
@@ -213,9 +206,6 @@ def test_touchback_for_off_pitch_bounce(board):
     assert event.result == KickoffEvent.CHEERING_FANS
 
     event = next(events)
-    assert isinstance(event, StartTurn)
-
-    event = next(events)
     assert isinstance(event, Bounce)
     assert event.scatter_direction == ScatterDirection.S
     assert event.start_space == Position(0, 0)
@@ -237,6 +227,7 @@ def test_touchback_for_own_half_kick(board):
         SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
         SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
         KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 13]),
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value]),
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
@@ -270,9 +261,6 @@ def test_touchback_for_own_half_kick(board):
     assert event.result == KickoffEvent.CHEERING_FANS
 
     event = next(events)
-    assert isinstance(event, StartTurn)
-
-    event = next(events)
     assert isinstance(event, Touchback)
     assert event.player == player
 
@@ -288,6 +276,7 @@ def test_touchback_for_own_half_kick_other_direction(board):
         SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
         SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
         KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 12]),
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value]),
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
@@ -319,9 +308,6 @@ def test_touchback_for_own_half_kick_other_direction(board):
     event = next(events)
     assert isinstance(event, KickoffEventTuple)
     assert event.result == KickoffEvent.CHEERING_FANS
-
-    event = next(events)
-    assert isinstance(event, StartTurn)
 
     event = next(events)
     assert isinstance(event, Touchback)
@@ -378,14 +364,13 @@ def test_riot_at_start_of_second_half_rolls_forwards(board):
     ])
     events = replay._process_kickoff_event(cmds, log_entries, board)
 
-    for _ in board.kickoff():
-        pass
+    board.kickoff()
 
     for _ in range(8):
-        for _ in board.change_turn(board.receiving_team, "End turn"):
-            pass
-        for _ in board.change_turn(board.kicking_team, "End turn"):
-            pass
+        board.start_turn(board.receiving_team)
+        board.end_turn(board.receiving_team)
+        board.start_turn(board.kicking_team)
+        board.end_turn(board.kicking_team)
 
     assert board.turn == 9
 
@@ -425,14 +410,13 @@ def test_riot_at_end_of_first_half_rolls_backwards(board):
     ])
     events = replay._process_kickoff_event(cmds, log_entries, board)
 
-    for _ in board.kickoff():
-        pass
+    board.kickoff()
 
     for _ in range(7):
-        for _ in board.change_turn(board.receiving_team, "End turn"):
-            pass
-        for _ in board.change_turn(board.kicking_team, "End turn"):
-            pass
+        board.start_turn(board.receiving_team)
+        board.end_turn(board.receiving_team)
+        board.start_turn(board.kicking_team)
+        board.end_turn(board.kicking_team)
 
     # In the board game the tracker moves when the player starts their turn
     # which is after the kick-off, but we count turns slightly differently
@@ -461,14 +445,13 @@ def test_riot_at_end_of_second_half_rolls_backwards(board):
     ])
     events = replay._process_kickoff_event(cmds, log_entries, board)
 
-    for _ in board.kickoff():
-        pass
+    board.kickoff()
 
     for _ in range(15):
-        for _ in board.change_turn(board.receiving_team, "End turn"):
-            pass
-        for _ in board.change_turn(board.kicking_team, "End turn"):
-            pass
+        board.start_turn(board.receiving_team)
+        board.end_turn(board.receiving_team)
+        board.start_turn(board.kicking_team)
+        board.end_turn(board.kicking_team)
 
     assert board.turn == 16
 

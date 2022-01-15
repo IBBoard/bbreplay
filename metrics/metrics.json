@@ -1,11 +1,11 @@
 {
     "total_commands": 140177,
-    "total_processed": 27426,
-    "total_unprocessed": 112751,
+    "total_processed": 27641,
+    "total_unprocessed": 112536,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,
-            "events": 22,
+            "events": 21,
             "processed": 42,
             "unprocessed": 0
         },
@@ -17,21 +17,21 @@
         },
         "data/Replay_2021-05-02_09-50-52.db": {
             "commands": 6472,
-            "events": 75,
+            "events": 76,
             "processed": 517,
             "unprocessed": 5955
         },
         "data/Replay_2021-05-29_10-00-00.db": {
             "commands": 7443,
-            "events": 160,
+            "events": 161,
             "processed": 1186,
             "unprocessed": 6257
         },
         "data/Replay_2020-09-13_10-11-03.db": {
             "commands": 6117,
-            "events": 477,
-            "processed": 2618,
-            "unprocessed": 3499
+            "events": 516,
+            "processed": 2729,
+            "unprocessed": 3388
         },
         "data/Replay_2020-08-30_10-04-37.db": {
             "commands": 6570,
@@ -47,9 +47,9 @@
         },
         "data/Replay_2020-08-16_10-12-51.db": {
             "commands": 6988,
-            "events": 374,
-            "processed": 2075,
-            "unprocessed": 4913
+            "events": 375,
+            "processed": 2092,
+            "unprocessed": 4896
         },
         "data/Replay_2021-04-03_18-17-05.db": {
             "commands": 1793,
@@ -59,21 +59,21 @@
         },
         "data/Replay_2020-08-23_10-04-41.db": {
             "commands": 6580,
-            "events": 40,
+            "events": 41,
             "processed": 344,
             "unprocessed": 6236
         },
         "data/Norse_Lings_Replay.db": {
             "commands": 3909,
             "events": 8,
-            "processed": 187,
-            "unprocessed": 3722
+            "processed": 225,
+            "unprocessed": 3684
         },
         "data/Replay_2021-04-05_14-44-03.db": {
             "commands": 58,
             "events": 8,
-            "processed": 32,
-            "unprocessed": 26
+            "processed": 35,
+            "unprocessed": 23
         },
         "data/Replay_2021-03-28_10-12-59.db": {
             "commands": 6072,
@@ -90,8 +90,8 @@
         "data/Replay_2020-09-06_10-13-12.db": {
             "commands": 6480,
             "events": 603,
-            "processed": 3142,
-            "unprocessed": 3338
+            "processed": 3180,
+            "unprocessed": 3300
         },
         "data/Replay_2021-04-04_09-49-09.db": {
             "commands": 5160,
@@ -107,7 +107,7 @@
         },
         "data/Replay_2021-06-20_09-51-55.db": {
             "commands": 6988,
-            "events": 100,
+            "events": 101,
             "processed": 655,
             "unprocessed": 6333
         },
@@ -119,21 +119,21 @@
         },
         "data/Replay_2021-04-18_13-44-12.db": {
             "commands": 5242,
-            "events": 9,
+            "events": 10,
             "processed": 150,
             "unprocessed": 5092
         },
         "data/Replay_2021-06-27_09-49-54.db": {
             "commands": 6526,
-            "events": 321,
+            "events": 322,
             "processed": 1788,
             "unprocessed": 4738
         },
         "data/Replay_2021-04-04_20-26-22.db": {
             "commands": 75,
             "events": 43,
-            "processed": 67,
-            "unprocessed": 8
+            "processed": 75,
+            "unprocessed": 0
         },
         "data/Replay_2021-05-09_09-44-12.db": {
             "commands": 6528,
@@ -143,7 +143,7 @@
         },
         "data/Replay_2020-09-12_14-03-21.db": {
             "commands": 3524,
-            "events": 40,
+            "events": 41,
             "processed": 311,
             "unprocessed": 3213
         },
@@ -173,7 +173,7 @@
         },
         "data/Replay_2021-04-11_10-04-51.db": {
             "commands": 4517,
-            "events": 195,
+            "events": 196,
             "processed": 1104,
             "unprocessed": 3413
         }

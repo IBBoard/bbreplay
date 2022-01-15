@@ -1,17 +1,10 @@
 # Copyright © 2021, IBBoard
 # Licensed under GPLv3 or later - see COPYING
 
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 from . import BEFORE_HALFWAY_IDX, FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX, PlayDirection, other_team, Skills, TeamType, \
     ActionResult, PITCH_LENGTH, PITCH_WIDTH, OFF_PITCH_POSITION, Weather
 
-
-WeatherTuple = namedtuple('Weather', ['result'])
-EndTurn = namedtuple('EndTurn', ['team', 'number', 'reason', 'board'])
-StartTurn = namedtuple('StartTurn', ['team', 'number', 'board'])
-HalfTime = namedtuple('HalfTime', ['board'])
-AbandonMatch = namedtuple('AbandonMatch', ['team', 'board'])
-EndMatch = namedtuple('EndMatch', ['board'])
 
 HALF_TIME_TURN = 8
 
@@ -42,7 +35,6 @@ class GameState:
         self.__used_reroll = False
         self.__leader_reroll = [False, False]
         self.__used_leaders = set()
-        self.__kicked_off = False
         self.__touchdown_row = [-1, -1]
 
     @property
@@ -51,7 +43,6 @@ class GameState:
 
     def set_weather(self, weather):
         self.weather = weather if not self.weather or weather != Weather.NICE else Weather.NICE_BOUNCY
-        return WeatherTuple(self.weather)
 
     def blitz(self):
         self.__turn -= 1
@@ -63,7 +54,6 @@ class GameState:
 
     def halftime(self):
         self.__receiving_team = other_team(self.__receiving_team)
-        return HalfTime(self)
 
     @property
     def receiving_team(self):
@@ -135,7 +125,6 @@ class GameState:
         else:
             self.__touchdown_row = [FAR_ENDZONE_IDX, NEAR_ENDZONE_IDX]
         self.__last_setup_turn = self.turn
-        self.__kicked_off = False
 
     def get_play_direction(self):
         return PlayDirection.DOWN_PITCH if self.__touchdown_row[self.__receiving_team.value] == FAR_ENDZONE_IDX \
@@ -153,14 +142,6 @@ class GameState:
 
     def kickoff(self):
         self.turn_team = self.teams[self.__receiving_team.value]
-        self.__kicked_off = True
-        yield from self.start_turn(self.__receiving_team)
-
-    def change_turn(self, ending_team, reason):
-        yield from self.end_turn(ending_team, reason)
-        if self.__kicked_off:
-            yield from self.start_turn(other_team(ending_team))
-        # Else we're in a kickoff event and the start turn will be handled separately
 
     def start_turn(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
@@ -170,28 +151,17 @@ class GameState:
         self.__wild_animal.clear()
         self.__moves.clear()
         self.__used_reroll = False
-        yield StartTurn(team, self.turn, self)
 
-    def end_turn(self, team, reason):
+    def end_turn(self, team):
         if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
             raise ValueError(f'Out of order end turn - expected {self.turn_team.team_type} but got {team}')
-        yield EndTurn(self.turn_team.team_type, self.turn, reason, self)
         self.__turn += 1
         self.quick_snap_turn = False
-        if self.__turn == 32:
-            yield EndMatch(self)
-            return
         next_team = other_team(team)
         self.turn_team = self.teams[next_team.value]
 
     def roll_back_turn(self):
         self.__turn -= 2
-
-    def abandon_match(self, team):
-        if team != self.turn_team.team_type and team != TeamType.HOTSEAT:
-            raise ValueError(f'Out of order match abandonment - expected {self.turn_team.team_type} but got {team}')
-        yield EndTurn(team, self.turn, 'Abandon match', self)
-        yield AbandonMatch(team, self)
 
     def move(self, player, from_space, to_space):
         self.__moves[player] += max(abs(from_space.x - to_space.x), abs(from_space.y - to_space.y))

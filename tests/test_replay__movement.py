@@ -2,7 +2,6 @@ from . import *
 from bbreplay import ScatterDirection, TeamType, Position
 from bbreplay.command import *
 from bbreplay.replay import *
-from bbreplay.state import EndTurn
 
 
 def test_single_movement(board):

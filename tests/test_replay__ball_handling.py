@@ -119,9 +119,6 @@ def test_pickup_success_then_trip_on_GFI(board):
     assert event.team == player.team.team_type
     assert event.reason == "Knocked Down!"
 
-    event = next(events)
-    assert isinstance(event, StartTurn)
-
     assert not board.get_ball_carrier()
     assert board.get_ball_position() == Position(10, 8)
 
