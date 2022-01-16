@@ -417,14 +417,26 @@ MOVE_MAP = {
     49: DumpOffCommand,
     51: DeclineRerollCommand,
     59: AbandonMatchCommand,
+    # Seen near coin toss, setup completion and kickoff completion, but occasionally in-game.
+    # Always got team of HOTSET, even in Human vs Human games
+    # Distribution of data is:
+    #   1 data=[1, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    #   6 data=[1, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    #  77 data=[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    # 146 data=[1, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    61: UnknownVerboseCommand,
     69: NetworkCommand,
     85: SideStepInterruptCommand,
     86: SideStepCommand,
+    # Type 88 only ever seen with TeamType home, only once per game after first deployment
+    # and always with data [255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    88: UnknownVerboseCommand,
     # Block related? After DiceChoice and before PushbackCommand
     91: UnknownVerboseCommand,
     # Block related? After DiceChoice and before PushbackCommand
     92: UnknownVerboseCommand,
     94: NetworkCommand,
+    # 103: Skip Wizard? - see data/Replay_2020-08-30_10-04-37.txt, where it appears between each turn
     104: JuggernautChoiceCommand
 }
 

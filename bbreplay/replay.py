@@ -351,12 +351,6 @@ class Replay:
         cmd_type = type(cmd)
         team = self.get_team(team_type)
         while cmd_type is not SetupCompleteCommand:
-            if cmd_type is not SetupCommand:
-                cmd = next(cmds)
-                cmd_type = type(cmd)
-                continue
-            # else…
-
             player = team.get_player(cmd.player_idx)
             old_coords = player.position
             if player.is_on_pitch():
@@ -402,7 +396,8 @@ class Replay:
                 board.end_turn(expected_team)
                 return
             else:
-                raise ValueError(f'Out of order start turn - expected {expected_team} but got {cmd.team}')
+                raise ValueError(f'Out of order start turn - expected {expected_team} but got {type(cmd).__name__}'
+                                 f' for {cmd.team}')
 
         board.start_turn(cmd.team)
         yield StartTurn(cmd.team, board.turn, board)
