@@ -28,10 +28,16 @@ def home_player_2():
 
 
 @pytest.fixture
-def home_team(home_player_1, home_player_2):
+def home_player_3():
+    return Player(3, "Player3H", 4, 4, 4, 4, 1, 0, 40000, [])
+
+
+@pytest.fixture
+def home_team(home_player_1, home_player_2, home_player_3):
     home_team = Team("Home Halflings", "Halfling", 40000, 3, 3, 0, TeamType.HOME)
     home_team.add_player(0, home_player_1)
     home_team.add_player(1, home_player_2)
+    home_team.add_player(2, home_player_3)
     return home_team
 
 

@@ -1300,7 +1300,7 @@ class Replay:
             board.set_ball_position(ball_position)
             yield Scatter(throw_command.position, ball_position, board)
 
-        if result != ThrowResult.FUMBLE:
+        if result != ThrowResult.FUMBLE or board.get_position(board.get_ball_position()):
             yield from self._process_catch(ball_position, cmds, log_entries, board,
                                            bounce_on_empty=result != ThrowResult.FUMBLE)
 

@@ -488,6 +488,57 @@ def test_pass_fumble_bounces_once(board):
     assert not next(log_entries_iter, None)
 
 
+def test_pass_fumble_scatters_to_teammate(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player_1 = home_team.get_player(0)
+    board.set_position(Position(5, 7), player_1)
+    player_2 = home_team.get_player(1)
+    board.set_position(Position(7, 7), player_2)
+    player_3 = home_team.get_player(2)
+    board.set_position(Position(4, 8), player_3)
+    board.set_ball_carrier(player_1)
+    cmds = [
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value]),
+        DeclineRerollCommand(1, 1, TeamType.HOME.value, 0, [])
+    ]
+    log_entries = [
+        ThrowEntry(TeamType.HOME, 1, "3+", "1", ThrowResult.FUMBLE.name),
+        BounceLogEntry(ScatterDirection.NW.value),
+        CatchEntry(TeamType.HOME, 3, "2+", "2", ActionResult.SUCCESS.name)
+    ]
+    cmds_iter = iter_(cmds)
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
+
+    event = next(events)
+    assert isinstance(event, Pass)
+    assert event.player == player_1
+    assert event.target == Position(7, 7)
+    assert event.result == ThrowResult.FUMBLE
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.scatter_direction == ScatterDirection.NW
+    assert event.start_space == Position(5, 7)
+    assert event.end_space == Position(4, 8)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.CATCH
+    assert event.player == player_3
+    assert event.result == ActionResult.SUCCESS
+
+    assert board.get_ball_carrier() == player_3
+    assert board.get_ball_position() == Position(4, 8)
+
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
 def test_stupid_player_pass_with_success(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
