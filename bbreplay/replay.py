@@ -1272,9 +1272,12 @@ class Replay:
         _ = next(cmds)  # Throw away the interception command, which we seem to get even if it's not possible
 
         if throw_log_entry.result != ThrowResult.ACCURATE_PASS and player.team == board.turn_team:
-            actions, result = self._process_action_reroll(cmds, log_entries, player, board, reroll_skill=Skills.PASS)
+            actions, new_result = self._process_action_reroll(cmds, log_entries, player, board,
+                                                              reroll_skill=Skills.PASS, is_active=False)
             yield from actions
-            yield Pass(player, throw_command.position, result, board)
+            if new_result:
+                result = new_result
+                yield Pass(player, throw_command.position, result, board)
 
         if result == ThrowResult.FUMBLE:
             scatter_entry = next(log_entries)
@@ -1294,8 +1297,10 @@ class Replay:
             ball_position = scatter(ball_position, scatter_3.direction)
             board.set_ball_position(ball_position)
             yield Scatter(throw_command.position, ball_position, board)
-        yield from self._process_catch(ball_position, cmds, log_entries, board,
-                                       bounce_on_empty=result != ThrowResult.FUMBLE)
+
+        if result != ThrowResult.FUMBLE:
+            yield from self._process_catch(ball_position, cmds, log_entries, board,
+                                           bounce_on_empty=result != ThrowResult.FUMBLE)
 
     def _process_catch(self, ball_position, cmds, log_entries, board, bounce_on_empty=False):
         catcher = board.get_position(ball_position)

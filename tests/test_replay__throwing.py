@@ -129,7 +129,7 @@ def test_pass_forward_success(board):
     cmds = [
         TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
-        Command(1, 1, TeamType.AWAY.value, 13, [])
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value])
     ]
     log_entries = [
         ThrowEntry(TeamType.HOME, 1, "3+", "6", ThrowResult.ACCURATE_PASS.name),
@@ -170,7 +170,7 @@ def test_pass_forward_success_after_reroll(board):
     cmds = [
         TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
-        Command(1, 1, TeamType.AWAY.value, 13, []),
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value]),
         RerollCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0])
     ]
     log_entries = [
@@ -226,7 +226,7 @@ def test_pass_forward_success_after_pass_skill_reroll(board):
     cmds = [
         TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
-        Command(1, 1, TeamType.AWAY.value, 13, [])
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value])
     ]
     log_entries = [
         ThrowEntry(TeamType.HOME, 1, "3+", "1", ThrowResult.FUMBLE.name),
@@ -280,7 +280,7 @@ def test_pass_sideways_success(board):
     cmds = [
         TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 5, 5]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 5, 5]),
-        Command(1, 1, TeamType.AWAY.value, 13, [])
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value])
     ]
     log_entries = [
         ThrowEntry(TeamType.HOME, 1, "3+", "6", ThrowResult.ACCURATE_PASS.name),
@@ -321,7 +321,7 @@ def test_pass_diagonal_success(board):
     cmds = [
         TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 3, 3]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 3, 3]),
-        Command(1, 1, TeamType.AWAY.value, 13, [])
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value])
     ]
     log_entries = [
         ThrowEntry(TeamType.HOME, 1, "3+", "6", ThrowResult.ACCURATE_PASS.name),
@@ -440,6 +440,54 @@ def test_pass_diagonal_successful_intercept(board):
     assert not next(log_entries_iter, None)
 
 
+def test_pass_fumble_bounces_once(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player_1 = home_team.get_player(0)
+    board.set_position(Position(5, 7), player_1)
+    player_2 = home_team.get_player(1)
+    board.set_position(Position(7, 7), player_2)
+    board.set_ball_carrier(player_1)
+    cmds = [
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value]),
+        DeclineRerollCommand(1, 1, TeamType.HOME.value, 0, [])
+    ]
+    log_entries = [
+        ThrowEntry(TeamType.HOME, 1, "3+", "1", ThrowResult.FUMBLE.name),
+        BounceLogEntry(ScatterDirection.NW.value),
+        TurnOverEntry(TeamType.HOME, "Fumble!")
+    ]
+    cmds_iter = iter_(cmds)
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_throw(player_1, player_2, cmds_iter, log_entries_iter, board)
+
+    event = next(events)
+    assert isinstance(event, Pass)
+    assert event.player == player_1
+    assert event.target == Position(7, 7)
+    assert event.result == ThrowResult.FUMBLE
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.scatter_direction == ScatterDirection.NW
+    assert event.start_space == Position(5, 7)
+    assert event.end_space == Position(4, 8)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.team == home_team
+    assert event.reason == "Fumble!"
+
+    assert not board.get_ball_carrier()
+    assert board.get_ball_position() == Position(4, 8)
+
+    assert not next(events, None)
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
 def test_stupid_player_pass_with_success(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
@@ -452,7 +500,7 @@ def test_stupid_player_pass_with_success(board):
     cmds = [
         TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.HOME.value, 1, 7, 7]),
         TargetSpaceCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
-        Command(1, 1, TeamType.AWAY.value, 13, [])
+        InterceptCommand(1, 1, TeamType.AWAY.value, 13, [TeamType.AWAY.value])
     ]
     log_entries = [
         StupidEntry(TeamType.HOME, 1, "4+", "4", ActionResult.SUCCESS.name),
