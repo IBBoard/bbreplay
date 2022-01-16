@@ -350,7 +350,9 @@ class Replay:
         cmd = next(cmds, None)
         cmd_type = type(cmd)
         team = self.get_team(team_type)
-        while cmd_type is not SetupCompleteCommand:
+        while cmd_type is SetupCommand:
+            if cmd.team != team_type:
+                raise ValueError(f"Expecting SetupCommand for {team_type} but got {cmd.team}")
             player = team.get_player(cmd.player_idx)
             old_coords = player.position
             if player.is_on_pitch():
