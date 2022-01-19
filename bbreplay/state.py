@@ -12,6 +12,7 @@ HALF_TIME_TURN = 8
 class GameState:
     def __init__(self, home_team, away_team, receiving_team):
         self.teams = [home_team, away_team]
+        self.__first_receiving_team = receiving_team
         self.__receiving_team = receiving_team
         self.score = [0, 0]
         self.turn_team = None
@@ -53,7 +54,7 @@ class GameState:
         self.quick_snap_turn = True
 
     def halftime(self):
-        self.__receiving_team = other_team(self.__receiving_team)
+        self.__receiving_team = other_team(self.__first_receiving_team)
 
     @property
     def receiving_team(self):
