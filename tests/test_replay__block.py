@@ -672,3 +672,60 @@ def test_pushback_off_field(board):
     assert not next(events, None)
     assert not next(cmds, None)
     assert not next(log_entries, None)
+
+
+def test_blitz_with_juggernaut_does_not_trigger_on_block(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.JUGGERNAUT)
+    board.set_position(Position(7, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.BOTH_DOWN]),
+        ArmourValueRollEntry(player.team.team_type, player.number, "9+", "8", ActionResult.FAILURE),
+        ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE),
+        TurnOverEntry(player.team.team_type, "Knocked Down!")
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.BOTH_DOWN]
+    assert event.result == BlockResult.BOTH_DOWN
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == opponent
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == opponent
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
+
+    assert board.is_prone(player)
+    assert board.is_prone(opponent)
+
+    assert not next(cmds, None)
+    assert not next(log_entries, None)

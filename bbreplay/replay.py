@@ -752,11 +752,14 @@ class Replay:
         yield Block(blocking_player, target_by_idx,
                     block_dice.results, chosen_block_dice)
 
-        if chosen_block_dice == BlockResult.BOTH_DOWN and Skills.JUGGERNAUT in blocking_player.skills:
+        if moved and chosen_block_dice == BlockResult.BOTH_DOWN and Skills.JUGGERNAUT in blocking_player.skills:
             jugg_cmd = next(cmds)
-            if jugg_cmd.team != blocking_player.team.team_type \
-               or blocking_player.team.get_player_number(jugg_cmd.player_idx) != blocking_player.number:
-                raise ValueError("Expected ApothecaryCommand for "
+            if not isinstance(jugg_cmd, JuggernautChoiceCommand):
+                raise ValueError(f"Expected JuggernautChoiceCommand but got {type(jugg_cmd).__name__}")
+            elif jugg_cmd.team != blocking_player.team.team_type \
+                    or blocking_player.team.get_player_number(jugg_cmd.player_idx) != blocking_player.number:
+                print("Hi")
+                raise ValueError("Expected JuggernautChoiceCommand for "
                                  f"{blocking_player.team.team_type} #{blocking_player.number} but got "
                                  f"{jugg_cmd.team} #{blocking_player.team.get_player_number(jugg_cmd.player_idx)}")
             if jugg_cmd.choice:

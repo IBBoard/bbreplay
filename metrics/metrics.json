@@ -1,7 +1,7 @@
 {
     "total_commands": 140177,
-    "total_processed": 29625,
-    "total_unprocessed": 110552,
+    "total_processed": 29811,
+    "total_unprocessed": 110366,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,
@@ -29,9 +29,9 @@
         },
         "data/Replay_2020-09-13_10-11-03.db": {
             "commands": 6117,
-            "events": 715,
-            "processed": 3753,
-            "unprocessed": 2364
+            "events": 773,
+            "processed": 3939,
+            "unprocessed": 2178
         },
         "data/Replay_2020-08-30_10-04-37.db": {
             "commands": 6570,
