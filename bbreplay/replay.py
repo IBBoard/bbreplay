@@ -934,6 +934,9 @@ class Replay:
             pass_cmd = next(cmds)
             yield Handoff(player, target_by_idx, board)
             catch_entry = next(log_entries)
+            board.set_ball_position(pass_cmd.position)
+            # We don't use `_process_catch` here because we can't reroll handoffs but the process
+            # method uses helpers that assume a failed action rerolls or declines a reroll
             target_by_coords = board.get_position(pass_cmd.position)
             if target_by_coords != target_by_idx:
                 raise ValueError(f"Expected catch for {target_by_coords.team_type} #{target_by_coords.number} "
@@ -943,9 +946,10 @@ class Replay:
                 board.set_ball_carrier(target_by_idx)
                 yield Action(target_by_idx, ActionType.CATCH, catch_entry.result, board)
             else:
+                yield Action(target_by_idx, ActionType.CATCH, catch_entry.result, board)
+                yield from self._process_ball_movement(cmds, log_entries, board)
                 log_entry = next(log_entries)
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                yield Action(target_by_idx, ActionType.CATCH, catch_entry.result, board)
                 yield EndTurn(player.team, board.turn, log_entry.reason, board)
 
     def _process_throw_teammate(self, player, target_by_idx, cmds, log_entries, board):
