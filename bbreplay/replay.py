@@ -63,6 +63,7 @@ ArmourRoll = namedtuple('ArmourRoll', ['player', 'result'])
 InjuryRoll = namedtuple('InjuryRoll', ['player', 'result'])
 Casualty = namedtuple('Casualty', ['player', 'result'])
 Apothecary = namedtuple('Apothecary', ['player', 'new_injury', 'casualty'])
+KORecovery = namedtuple('KORecovery', ['player', 'roll', 'result'])
 DivingTackle = namedtuple('DivingTackle', ['player', 'target_space'])
 Pickup = namedtuple('Pickup', ['player', 'position', 'result'])
 Pass = namedtuple('Pass', ['player', 'target', 'result', 'board'])
@@ -221,9 +222,10 @@ class Replay:
 
         event = next(log_entries, None)
         while isinstance(event, KORecoveryEntry):
+            player = self.get_team(event.team).get_player_by_number(event.player)
             if event.result == ActionResult.SUCCESS:
-                player = self.get_team(event.team).get_player_by_number(event.player)
                 board.unset_injured(player)
+            yield KORecovery(player, event.roll, event.result)
             event = next(log_entries)
 
         yield from self._process_team_setup(board.kicking_team, cmds, board)
