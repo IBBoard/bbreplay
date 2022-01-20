@@ -1135,8 +1135,7 @@ class Replay:
                             failed_movement = False
                             break
                         failed_movement = True
-                        actions, new_result = self._process_action_reroll(cmds, log_entries, player, board,
-                                                                          Skills.DODGE)
+                        actions, new_result = self._process_action_reroll(cmds, log_entries, player, board)
                         yield from actions
                         if new_result:
                             yield Action(player, ActionType.DODGE, new_result, board)
