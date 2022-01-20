@@ -758,7 +758,6 @@ class Replay:
                 raise ValueError(f"Expected JuggernautChoiceCommand but got {type(jugg_cmd).__name__}")
             elif jugg_cmd.team != blocking_player.team.team_type \
                     or blocking_player.team.get_player_number(jugg_cmd.player_idx) != blocking_player.number:
-                print("Hi")
                 raise ValueError("Expected JuggernautChoiceCommand for "
                                  f"{blocking_player.team.team_type} #{blocking_player.number} but got "
                                  f"{jugg_cmd.team} #{blocking_player.team.get_player_number(jugg_cmd.player_idx)}")
@@ -1054,15 +1053,16 @@ class Replay:
             if isinstance(event, Action):
                 failed_movement = event.result != ActionResult.SUCCESS
             yield event
-        leap = False
+        in_leap = False
+        was_leap = False
 
         for movement in moves:
             target_space = movement.position
-            if (abs(target_space.x - start_space.x) > 1 or abs(target_space.y - start_space.y) > 1) and not leap:
+            if (abs(target_space.x - start_space.x) > 1 or abs(target_space.y - start_space.y) > 1) and not in_leap:
                 raise ValueError(f"Unexpected large move for {player.name} from {start_space} to {target_space}")
             if failed_movement:
-                if leap:
-                    leap = False
+                if in_leap:
+                    in_leap = False
                     board.set_position(target_space, player)
                     if target_space == board.get_ball_position():
                         yield from self._process_ball_movement(cmds, log_entries, board)
@@ -1070,9 +1070,10 @@ class Replay:
                 start_space = target_space
                 continue
 
-            leap = False
+            was_leap = in_leap
+            in_leap = False
 
-            if not failed_movement and is_dodge(board, player, target_space):
+            if not failed_movement and not was_leap and is_dodge(board, player, target_space):
                 while True:
                     log_entry = next(log_entries, None)
                     if not log_entry:
@@ -1130,7 +1131,7 @@ class Replay:
                         diving_tackle_entry = log_entry
                         continue
                     elif isinstance(log_entry, LeapEntry):
-                        leap = True
+                        in_leap = True
                         validate_log_entry(log_entry, LeapEntry, player.team.team_type, player.number)
                         yield Action(player, ActionType.LEAP, log_entry.result, board)
                         if log_entry.result == ActionResult.SUCCESS:
@@ -1169,7 +1170,7 @@ class Replay:
                     yield from self._process_armour_roll(player, cmds, next(log_entries), log_entries, board)
                     turnover = True
 
-            if leap:
+            if in_leap:
                 continue
             elif target_space == board.get_ball_position() and not pickup_entry:
                 if not failed_movement:
