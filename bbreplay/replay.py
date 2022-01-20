@@ -1064,6 +1064,8 @@ class Replay:
                 if leap:
                     leap = False
                     board.set_position(target_space, player)
+                    if target_space == board.get_ball_position():
+                        yield from self._process_ball_movement(cmds, log_entries, board)
                 yield FailedMovement(player, start_space, target_space)
                 start_space = target_space
                 continue

@@ -458,6 +458,65 @@ def test_single_failed_dodge_with_more_moves(board):
     assert not next(log_entries_iter, None)
 
 
+def test_failed_leap_onto_ball(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.LEAP)
+    board.set_position(Position(8, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(7, 7), opponent)
+    board.set_ball_position(Position(6, 7))
+    cmds = [
+        MovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 7, 7]),
+        EndMovementCommand(1, 1, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 6, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ]
+    log_entries = [
+        LeapEntry(TeamType.HOME, player.number, "2+", "1", ActionResult.FAILURE.name),
+        ArmourValueRollEntry(TeamType.HOME, player.number, "9+", "2", ActionResult.FAILURE.name),
+        BounceLogEntry(ScatterDirection.S.value),
+        TurnOverEntry(TeamType.HOME, "Knocked Down!")
+    ]
+    cmds_iter = iter_(cmds)
+    log_entries_iter = iter_(log_entries)
+    events = replay._process_movement(player, cmds_iter, log_entries_iter, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.LEAP
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == player
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == player
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.scatter_direction == ScatterDirection.S
+    assert event.start_space == Position(6, 7)
+    assert event.end_space == Position(6, 6)
+
+    event = next(events)
+    assert isinstance(event, FailedMovement)
+    assert event.source_space == Position(8, 7)
+    assert event.target_space == Position(6, 7)
+    assert player.position == Position(6, 7)
+    assert board.is_prone(player)
+
+    event = next(events)
+    assert isinstance(event, EndTurn)
+    assert event.reason == "Knocked Down!"
+    assert not next(cmds_iter, None)
+    assert not next(log_entries_iter, None)
+
+
 def test_standup_is_not_dodge(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
