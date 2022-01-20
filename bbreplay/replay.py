@@ -842,7 +842,8 @@ class Replay:
         attacker_avoided = False
         defender_avoided = False
 
-        if chosen_block_dice == BlockResult.DEFENDER_STUMBLES and Skills.DODGE in target_by_idx.skills:
+        if chosen_block_dice == BlockResult.DEFENDER_STUMBLES and Skills.DODGE in target_by_idx.skills \
+                and Skills.TACKLE not in blocking_player.skills:
             skill_entry = next(log_entries)
             validate_skill_log_entry(skill_entry, target_by_idx, Skills.DODGE)
             yield DodgeBlock(blocking_player, target_by_idx)

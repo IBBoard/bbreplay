@@ -1,7 +1,7 @@
 {
     "total_commands": 140177,
-    "total_processed": 29909,
-    "total_unprocessed": 110268,
+    "total_processed": 30845,
+    "total_unprocessed": 109332,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,
@@ -29,9 +29,9 @@
         },
         "data/Replay_2020-09-13_10-11-03.db": {
             "commands": 6117,
-            "events": 781,
-            "processed": 4037,
-            "unprocessed": 2080
+            "events": 895,
+            "processed": 4649,
+            "unprocessed": 1468
         },
         "data/Replay_2020-08-30_10-04-37.db": {
             "commands": 6570,
@@ -107,9 +107,9 @@
         },
         "data/Replay_2021-06-20_09-51-55.db": {
             "commands": 6988,
-            "events": 101,
-            "processed": 655,
-            "unprocessed": 6333
+            "events": 163,
+            "processed": 979,
+            "unprocessed": 6009
         },
         "data/Replay_2021-05-16_09-36-48.db": {
             "commands": 5183,

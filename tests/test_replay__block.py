@@ -5,6 +5,115 @@ from bbreplay.log import BlockLogEntry, InjuryRollEntry
 from bbreplay.replay import *
 
 
+def test_dodge_on_defender_stumbles(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    board.set_position(Position(7, 7), player)
+    opponent = away_team.get_player(0)
+    opponent.skills.append(Skills.DODGE)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.DEFENDER_STUMBLES]),
+        SkillEntry(opponent.team.team_type, opponent.number, "Dodge")
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.DEFENDER_STUMBLES]
+    assert event.result == BlockResult.DEFENDER_STUMBLES
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    event = next(events)
+    assert isinstance(event, DodgeBlock)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_no_dodge_on_defender_stumbles_against_tackle(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.TACKLE)
+    board.set_position(Position(7, 7), player)
+    opponent = away_team.get_player(0)
+    opponent.skills.append(Skills.DODGE)
+    board.set_position(Position(8, 7), opponent)
+    cmds = iter_([
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DiceChoiceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0]),
+        PushbackCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 9, 8]),
+        FollowUpChoiceCommand(1, 1, TeamType.HOME, 0, [1])
+    ])
+    log_entries = iter_([
+        BlockLogEntry(player.team.team_type, player.number).complete([BlockResult.DEFENDER_STUMBLES]),
+        ArmourValueRollEntry(opponent.team.team_type, opponent.number, "9+", "8", ActionResult.FAILURE)
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, Block)
+    assert event.blocking_player == player
+    assert event.blocked_player == opponent
+    assert event.dice == [BlockResult.DEFENDER_STUMBLES]
+    assert event.result == BlockResult.DEFENDER_STUMBLES
+
+    event = next(events)
+    assert isinstance(event, Pushback)
+    assert event.pushing_player == player
+    assert event.pushed_player == opponent
+    assert event.source_space == Position(8, 7)
+    assert event.taget_space == Position(9, 8)
+
+    event = next(events)
+    assert isinstance(event, FollowUp)
+    assert event.following_player == player
+    assert event.followed_player == opponent
+    assert event.source_space == Position(7, 7)
+    assert event.target_space == Position(8, 7)
+
+    event = next(events)
+    assert isinstance(event, PlayerDown)
+    assert event.player == opponent
+
+    event = next(events)
+    assert isinstance(event, ArmourRoll)
+    assert event.player == opponent
+    assert event.result == ActionResult.FAILURE
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
 def test_pushback_against_fend(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
