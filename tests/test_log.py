@@ -280,11 +280,11 @@ def test_bug16_do_not_merge_consecutive_blocks():
         "|  | GameLog(02): NAG #03 Gesmal chooses : Pushed",
         "|  | Entering CStatePlayerTeamChooseOptionalSkills, Boil-ton Wanderers is NOT WAITING FOR player decision",
         "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is NOT WAITING FOR player decision",
-        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMSINGLEACTION(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMSINGLEACTION",
         "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)",
         "|  | GameLog(02): WAN #13 Athamme Tubercu Injury  : 2 + 4 = 6 -> Stunned",
         "|  | Init CStateMatchSelectTT",
-        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT",
         "|  |",
         "|  +- Exit CStateMatchActionTT",
         "|",
@@ -296,7 +296,7 @@ def test_bug16_do_not_merge_consecutive_blocks():
         "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
         "|  | Contexts : GLOBAL(1)GUI(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
         "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
-        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT",
         "|  |",
         "|  +- Exit CStateMatchSelectTT",
         "|",
@@ -319,7 +319,7 @@ def test_bug16_do_not_merge_consecutive_blocks():
         "|  | Entering CStatePlayerTeamChooseOptionalSkills, Boil-ton Wanderers is NOT WAITING FOR player decision",
         "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is NOT WAITING FOR player decision",
         "|  | Init CStateMatchSelectTT",
-        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT(1)",
+        "|  | Contexts : GLOBAL(1)GUI(1)CAMERA(1)CAMERAMATCHDEFAULT(1)MATCH(1)PLAYERTEAMHUMAN(1)PLAYERTEAMGAMEPLAYTT",
         "|  |",
         "|  +- Exit CStateMatchActionTT"
     ]
@@ -335,6 +335,7 @@ def test_bug16_do_not_merge_consecutive_blocks():
     assert isinstance(next(log_entries), TurnOverEntry)
     assert not next(log_entries, None)
 
+
 def test_mixed_order_of_injuries():
     # Casualty rolls are separate from armour/injury rolls, which means that a "both down"
     # situation can mix them. But for simplicity/consistency, we assume they're consecutive
@@ -347,7 +348,7 @@ def test_mixed_order_of_injuries():
             "|  | GameLog(02): NAG #10 Meseorl Injury  : 2 + 1 = 3 -> Stunned",
             "|  | GameLog(-1): WAN suffer a TURNOVER! : Knocked Down!",
             "|  | Entering CStatePlayerTeamChooseOptionalSkills, Boil-ton Wanderers is NOT WAITING FOR player decision",
-            "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is NOT WAITING FOR player decision",
+            "|  | Entering CStatePlayerTeamChooseOptionalSkills, Naggarothi  Nightmares is NOT WAITING FOR player deci",
             "|  | GameLog(02): WAN #01 Joe the Indisposed Casualty  : Badly Hurt -> No long term effect",
             "|  | GameLog(02): WAN #01 Joe the Indisposed Casualty  : Badly Hurt -> No long term effect",
             "|  | GameLog(12): NAG #10 Meseorl earns 2 SPP (Casualty)",

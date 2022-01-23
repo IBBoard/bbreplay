@@ -3,7 +3,6 @@
 
 import re
 
-from diskcache import Cache
 from . import enum_name_to_enum
 from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult, ThrowInDirection, \
     KickoffEvent, Weather, Skills, BlockResult, ThrowResult, CasualtyResult
@@ -567,12 +566,12 @@ def parse_log_entry_lines(lines):
                 elif (isinstance(log_entry, CasualtyRollEntry) or isinstance(log_entry, ApothecaryLogEntry)):
                     insert_offset = 0
                     for i in range(-1, -len(log_entries), -1):
-                        skip_log_entry = log_entries[i]
-                        log_type = type(skip_log_entry)
+                        old_log_entry = log_entries[i]
+                        log_type = type(old_log_entry)
                         if log_type in [BounceLogEntry, CatchEntry]:
                             insert_offset = i
                         elif log_type in [ArmourValueRollEntry, InjuryRollEntry] \
-                                and (skip_log_entry.team != log_entry.team or skip_log_entry.player != log_entry.player):
+                                and (old_log_entry.team != log_entry.team or old_log_entry.player != log_entry.player):
                             insert_offset = i
                         else:
                             break
