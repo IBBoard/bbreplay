@@ -2,6 +2,8 @@
 # Licensed under GPLv3 or later - see COPYING
 
 import re
+
+from diskcache import Cache
 from . import enum_name_to_enum
 from . import CoinToss, Role, TeamType, ScatterDirection, ActionResult, InjuryRollResult, ThrowInDirection, \
     KickoffEvent, Weather, Skills, BlockResult, ThrowResult, CasualtyResult
@@ -562,9 +564,23 @@ def parse_log_entry_lines(lines):
                         extra_log_entries.append(log_entry)
                     else:
                         was_spell = False
-                elif (isinstance(log_entry, CasualtyRollEntry) or isinstance(log_entry, ApothecaryLogEntry)) \
-                        and isinstance(log_entries[-1], BounceLogEntry):
-                    log_entries.insert(-1, log_entry)
+                elif (isinstance(log_entry, CasualtyRollEntry) or isinstance(log_entry, ApothecaryLogEntry)):
+                    insert_offset = 0
+                    for i in range(-1, -len(log_entries), -1):
+                        skip_log_entry = log_entries[i]
+                        log_type = type(skip_log_entry)
+                        if log_type in [BounceLogEntry, CatchEntry]:
+                            insert_offset = i
+                        elif log_type in [ArmourValueRollEntry, InjuryRollEntry] \
+                                and (skip_log_entry.team != log_entry.team or skip_log_entry.player != log_entry.player):
+                            insert_offset = i
+                        else:
+                            break
+
+                    if insert_offset < 0:
+                        log_entries.insert(insert_offset, log_entry)
+                    else:
+                        log_entries.append(log_entry)
                 else:
                     log_entries.append(log_entry)
         else:
