@@ -413,7 +413,13 @@ class Replay:
                 break
             cmd_type = type(cmd)
             events = []
-            if isinstance(cmd, TargetPlayerCommand):
+            if cmd.team != expected_team and cmd_type is not DeclineRerollCommand:
+                # Team change means time out (or something went wrong!)
+                # But DeclineRerollCommand is a special case that's always HOTSEAT
+                log_entry = next(log_entries)
+                validate_log_entry(log_entry, TurnOverEntry, expected_team)
+                events = [EndTurn(expected_team, board.turn, log_entry.reason, board)]
+            elif isinstance(cmd, TargetPlayerCommand):
                 targeting_player = self.get_team(cmd.team).get_player(cmd.player_idx)
                 target_by_idx = self.get_team(cmd.target_team).get_player(cmd.target_player)
                 is_block = targeting_player.team != target_by_idx.team
@@ -456,7 +462,7 @@ class Replay:
                 yield EndTurn(cmd.team, board.turn, END_REASON_TOUCHDOWN, board)
                 turn_complete = True
 
-        board.end_turn(cmd.team)
+        board.end_turn(expected_team)
 
     def _process_action_result(self, log_entry, log_type, cmds, log_entries, player, action_type, board,
                                is_active=True):
@@ -514,6 +520,9 @@ class Replay:
             validate_log_entry(log_entry, SkillEntry, player.team.team_type, player.number)
             actions.append(Reroll(player.team.team_type, reroll_skill.name.title()))
             reroll_success = True
+            if isinstance(cmds.peek(), DeclineRerollCommand):
+                # Dispose of the reroll - but it's not consistent
+                next(cmds)
         elif Skills.PRO in player.skills:
             cmd = next(cmds)
             if isinstance(cmd, ProRerollCommand):
@@ -1203,6 +1212,9 @@ class Replay:
                 yield FailedMovement(player, start_space, target_space)
 
             if diving_tackle_entry:
+                diving_tackle = next(cmds)
+                if not isinstance(diving_tackle, DivingTackleCommand):
+                    raise ValueError(f"Expected DivingTackleCommand but got {type(diving_tackle).__name__}")
                 team = self.get_team(diving_tackle_entry.team)
                 diving_player = team.get_player_by_number(diving_tackle_entry.player)
                 # Don't use the move() function because it's not regular movement
@@ -1210,6 +1222,7 @@ class Replay:
                 board.set_position(start_space, diving_player)
                 board.set_prone(diving_player)
                 yield DivingTackle(diving_player, start_space)
+                diving_tackle_entry = None
 
             if pickup_entry:
                 result = pickup_entry.result

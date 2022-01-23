@@ -1,7 +1,7 @@
 # Copyright © 2021, IBBoard
 # Licensed under GPLv3 or later - see COPYING
 
-from . import player_idx_to_type
+from . import TeamType, player_idx_to_type
 from . import CoinToss, Role, Position, CasualtyResult
 
 
@@ -273,6 +273,17 @@ class InterceptCommand(Command):
         return f'Intercept(team={self.team},  value={self._value}, data={self._data})'
 
 
+class DivingTackleCommand(Command):
+    def __init__(self, id, turn, team, command_type, data):
+        super().__init__(id, turn, team, command_type, data)
+        self.team = player_idx_to_type(data[0])  # Override the team
+        self.player_idx = data[1]
+        self._value = data[2]
+
+    def __repr__(self):
+        return f'DivingTackle(team={self.team},  value={self._value}, data={self._data})'
+
+
 class RerollCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         # 0 and 1 MIGHT be team and player IDX, but it doesn't always match
@@ -294,7 +305,7 @@ class ProRerollCommand(SimpleTeamOverrideCommand):
 class DeclineRerollCommand(Command):
     def __init__(self, id, turn, team, command_type, data):
         # Only ever seen data of [1,0,0,0,0,0,0,0] and TeamType.HOME in online matches or HOTSEAT in local exhibitions
-        super().__init__(id, turn, team, command_type, data)
+        super().__init__(id, turn, TeamType.HOTSEAT, command_type, data)
 
     def __repr__(self):
         return f'DeclineReroll(data={self._data})'
@@ -416,6 +427,7 @@ MOVE_MAP = {
     46: PushbackCommand,
     49: DumpOffCommand,
     51: DeclineRerollCommand,
+    54: DivingTackleCommand,
     59: AbandonMatchCommand,
     # Seen near coin toss, setup completion and kickoff completion, but occasionally in-game.
     # Always got team of HOTSET, even in Human vs Human games
