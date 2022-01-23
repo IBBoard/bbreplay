@@ -552,7 +552,8 @@ class Replay:
             new_result = log_entry.result
         return actions, new_result
 
-    def _process_armour_roll(self, player, cmds, roll_entry, log_entries, board):
+    def _process_armour_roll(self, player, cmds, log_entries, board):
+        roll_entry = next(log_entries)
         validate_log_entry(roll_entry, ArmourValueRollEntry,
                            player.team.team_type, player.number)
         board.set_prone(player)
@@ -577,6 +578,9 @@ class Replay:
     def _process_casualty(self, player, cmds, log_entries, board):
         casualty_roll = next(log_entries)
         yield Casualty(player, casualty_roll.result)
+        if Skills.DECAY in player.skills:
+            casualty_roll = next(log_entries)
+            yield Casualty(player, casualty_roll.result)
         yield from self._process_apothecary(player, InjuryRollResult.INJURED, casualty_roll.result,
                                             cmds, log_entries, board)
 
@@ -722,8 +726,7 @@ class Replay:
                         success = event.result == ActionResult.SUCCESS
 
             if not success:
-                log_entry = next(log_entries)
-                yield from self._process_armour_roll(targeting_player, cmds, log_entry, log_entries, board)
+                yield from self._process_armour_roll(targeting_player, cmds, log_entries, board)
                 log_entry = next(log_entries)
                 validate_log_entry(log_entry, TurnOverEntry, targeting_player.team.team_type)
                 yield EndTurn(targeting_player.team.team_type, board.turn, log_entry.reason, board)
@@ -864,8 +867,7 @@ class Replay:
             or chosen_block_dice == BlockResult.BOTH_DOWN) \
                 and not attacker_avoided:
             attacker_down = True
-            armour_entry = next(log_entries)
-            yield from self._process_armour_roll(blocking_player, cmds, armour_entry, log_entries, board)
+            yield from self._process_armour_roll(blocking_player, cmds, log_entries, board)
 
         ball_bounces = False
         if target_by_idx.position.is_offpitch():
@@ -876,10 +878,9 @@ class Replay:
         elif (chosen_block_dice == BlockResult.DEFENDER_DOWN or chosen_block_dice == BlockResult.DEFENDER_STUMBLES
               or chosen_block_dice == BlockResult.BOTH_DOWN) \
                 and not defender_avoided:
-            armour_entry = next(log_entries)
-            pushed_into_ball = target_by_idx.position == board.get_ball_position()
-            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, log_entries, board)
+            yield from self._process_armour_roll(target_by_idx, cmds, log_entries, board)
 
+            pushed_into_ball = target_by_idx.position == board.get_ball_position()
             if board.get_ball_carrier() == target_by_idx or pushed_into_ball:
                 ball_bounces = True
 
@@ -1018,8 +1019,7 @@ class Replay:
         yield Action(target_by_idx, ActionType.LANDING, landing_entry.result, board)
 
         if not landing_entry.result == ActionResult.SUCCESS:
-            armour_entry = next(log_entries)
-            yield from self._process_armour_roll(target_by_idx, cmds, armour_entry, log_entries, board)
+            yield from self._process_armour_roll(target_by_idx, cmds, log_entries, board)
 
     def _process_movement(self, player, cmds, log_entries, board):
         yield from self.__process_movement_list(player, self.__get_moves(player, cmds), cmds, log_entries, board)
@@ -1098,8 +1098,7 @@ class Replay:
                             yield Action(player, ActionType.DODGE, new_result, board)
                             failed_movement = new_result != ActionResult.SUCCESS
                         if failed_movement:
-                            log_entry = next(log_entries)
-                            yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
+                            yield from self._process_armour_roll(player, cmds, log_entries, board)
                             turnover = True
                             break
                         break
@@ -1144,8 +1143,7 @@ class Replay:
                             yield Action(player, ActionType.DODGE, new_result, board)
                             failed_movement = new_result != ActionResult.SUCCESS
                         if failed_movement:
-                            log_entry = next(log_entries)
-                            yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
+                            yield from self._process_armour_roll(player, cmds, log_entries, board)
                             turnover = True
                             break
                     elif isinstance(log_entry, SkillEntry) and log_entry.skill == Skills.JUMP_UP:
@@ -1167,7 +1165,7 @@ class Replay:
                         result = event.result
                 if result == ActionResult.FAILURE:
                     failed_movement = True
-                    yield from self._process_armour_roll(player, cmds, next(log_entries), log_entries, board)
+                    yield from self._process_armour_roll(player, cmds, log_entries, board)
                     turnover = True
 
             if in_leap:
@@ -1420,8 +1418,7 @@ class Replay:
                 player = self.get_team(log_entry.team).get_player_by_number(log_entry.player)
                 yield Action(player, ActionType.SPELL_HIT, log_entry.result, board)
                 if log_entry.result == ActionResult.SUCCESS:
-                    log_entry = next(log_entries)
-                    yield from self._process_armour_roll(player, cmds, log_entry, log_entries, board)
+                    yield from self._process_armour_roll(player, cmds, log_entries, board)
             else:
                 break
 
