@@ -1,7 +1,7 @@
-from bbreplay import ScatterDirection
+from bbreplay import ActionResult, ScatterDirection, TeamType
 from bbreplay.log import ApothecaryLogEntry, ArmourValueRollEntry, BlockLogEntry, BounceLogEntry, CatchEntry, \
-    FireballEntry, FoulAppearanceEntry, GoingForItEntry, InjuryRollEntry, RerollEntry, SkillEntry, \
-    TurnOverEntry, WildAnimalEntry, parse_log_entry_lines, CasualtyRollEntry
+    DodgeEntry, FireballEntry, FoulAppearanceEntry, GoingForItEntry, InjuryRollEntry, RerollEntry, SkillEntry, \
+    TurnOverEntry, WildAnimalEntry, parse_log_entry, parse_log_entry_lines, CasualtyRollEntry
 
 
 STARTING_LINE = "|  +- Enter CStateMatchTossCreateResults"
@@ -361,3 +361,14 @@ def test_mixed_order_of_injuries():
     assert isinstance(next(log_entries), CasualtyRollEntry)
     assert isinstance(next(log_entries), ArmourValueRollEntry)
     assert isinstance(next(log_entries), InjuryRollEntry)
+
+
+def test_parse_log_entries():
+    lines = [
+        "NAG #03 Gesmal Dodge {AG}  (3+) : 2 + 1 {Dodge} + -2 + 0 {TZ} = 0 -> Failure",
+        "NAG #03 Gesmal Dodge {AG}  (3+) : 6 Critical + -2 {Diving Tackle} -> Success",
+    ]
+    log_entries = [parse_log_entry(line, "NAG", "WAN") for line in lines]
+
+    assert log_entries[0] == DodgeEntry(TeamType.HOME, 3, "3+", "0", ActionResult.FAILURE.name)
+    assert log_entries[1] == DodgeEntry(TeamType.HOME, 3, "3+", "6", ActionResult.SUCCESS.name)

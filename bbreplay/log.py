@@ -23,6 +23,11 @@ class TeamPlayerEntry(TeamEntry):
         super().__init__(team)
         self.player = int(player)
 
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player
+
 
 class TossRandomisationEntry:
     def __init__(self):
@@ -79,6 +84,11 @@ class KickDirectionLogEntry(TeamPlayerEntry):
         # XXX Is this relative to the kick direction? i.e. rotated for the other team's kicks
         return f"KickDirection(team={self.team}, player_num={self.player}, direction={self.direction})"
 
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.direction == __o.direction
+
 
 class KickDistanceLogEntry(TeamPlayerEntry):
     def __init__(self, team, player, distance):
@@ -87,6 +97,11 @@ class KickDistanceLogEntry(TeamPlayerEntry):
 
     def __repr__(self):
         return f"KickDistance(team={self.team}, player_num={self.player}, distance={self.distance})"
+
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.distance == __o.distance
 
 
 class KickoffEventLogEntry:
@@ -112,6 +127,11 @@ class ThrowInDistanceLogEntry(TeamPlayerEntry):
 
     def __repr__(self):
         return f"ThrowInDistance(distance={self.distance})"
+
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.distance == __o.distance
 
 
 class BounceLogEntry:
@@ -142,6 +162,11 @@ class BlockLogEntry(TeamPlayerEntry, PartialEntry):
     def __repr__(self):
         return f"Block(team={self.team}, player_num={self.player}, results={self.results})"
 
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.results == __o.results
+
 
 class ActionResultEntry(TeamPlayerEntry):
     def __init__(self, name, team, player, required, roll, result):
@@ -154,6 +179,12 @@ class ActionResultEntry(TeamPlayerEntry):
     def __repr__(self):
         return f"{self.__name}(team={self.team}, player_num={self.player}, required={self.required}, "\
                f"roll={self.roll}, result={self.result})"
+
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.required == __o.required \
+            and self.roll == __o.roll and self.result == __o.result
 
 
 class PickupEntry(ActionResultEntry):
@@ -255,6 +286,12 @@ class ThrowEntry(TeamPlayerEntry):
         return f"Throw(team={self.team}, player_num={self.player}, required={self.required}, roll={self.roll}, " \
                f"result={self.result})"
 
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.required == __o.required \
+            and self.roll == __o.roll and self.result == __o.result
+
 
 class ThrowTeammateEntry(TeamPlayerEntry):
     def __init__(self, team, player, required, roll, result):
@@ -266,6 +303,12 @@ class ThrowTeammateEntry(TeamPlayerEntry):
     def __repr__(self):
         return f"ThrowTeammate(team={self.team}, player_num={self.player}, required={self.required}, " \
                f"roll={self.roll}, result={self.result})"
+
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.required == __o.required \
+            and self.roll == __o.roll and self.result == __o.result
 
 
 class LandingEntry(ActionResultEntry):
@@ -286,6 +329,11 @@ class SkillEntry(TeamPlayerEntry):
     def __repr__(self):
         return f'Skill(team={self.team}, player_num={self.player}, skill={self.skill})'
 
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.skill == __o.skill
+
 
 def create_skill_roll_entry(skill):
     def __create_skill_roll_entry(team, player, required, roll, result):
@@ -304,6 +352,12 @@ class SkillRollEntry(TeamPlayerEntry):
     def __repr__(self):
         return f"SkillRoll(team={self.team}, player_num={self.player}, skill={self.skill}, " \
                f"required={self.required}, roll={self.roll}, result={self.result})"
+
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.skill == __o.skill \
+            and self.required == __o.required and self.roll == __o.roll and self.result == __o.result
 
 
 class RerollEntry(TeamEntry):
@@ -347,6 +401,12 @@ class InjuryRollEntry(TeamPlayerEntry):
     def __repr__(self):
         return f"InjuryRoll(team={self.team}, player_num={self.player}, roll={self.roll}, result={self.result})"
 
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player \
+            and self.roll == __o.roll and self.result == __o.result
+
 
 class CasualtyRollEntry(TeamPlayerEntry):
     def __init__(self, team, player, result):
@@ -355,6 +415,11 @@ class CasualtyRollEntry(TeamPlayerEntry):
 
     def __repr__(self):
         return f"CasualtyRoll(team={self.team}, player_num={self.player}, result={self.result})"
+
+    def __eq__(self, __o):
+        if type(self) != type(__o):
+            return False
+        return self.team == __o.team and self.player == __o.player and self.result == __o.result
 
 
 class ApothecaryLogEntry(TeamPlayerEntry):
@@ -422,8 +487,8 @@ throw_re = re.compile(f"{TEAM_PLAYER} Launch {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9
                       " (Fumble|(?:Inaccurate|Accurate) pass)!")
 throw_teammate_re = re.compile(f"{TEAM_PLAYER} Throw Team-Mate {{AG}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? ->"
                                " (Fumble|Inaccurate pass)!")  # Throwing teammates is never accurate, even Crits
-dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{(?:AG|ST)}} +\\(([0-9]+\\+)\\) : .*([0-9]+)(?: Critical)? -> "
-                      "(Success|Failure)")
+dodge_re = re.compile(f"{TEAM_PLAYER} Dodge {{(?:AG|ST)}} +\\(([0-9]+\\+)\\) : (?:.+ = )?([0-9]+)(?: Critical)?(?:.*) "
+                      "-> (Success|Failure)")
 # We're specific about skills because some like Horns and Stunty aren't important to us and just change roll results
 skills = [
     "Dodge",
