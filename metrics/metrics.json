@@ -2,6 +2,7 @@
     "total_commands": 140177,
     "total_processed": 41333,
     "total_unprocessed": 98844,
+    "weighted_proportion": 0.3839200215236216,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,

@@ -20,7 +20,7 @@ if __name__ == '__main__':
                                                  ' coverage/completeness metrics')
     parser.add_argument('replays_dir', metavar='replays-dir', help='input directory of replays and logs')
     parser.add_argument('--output', '-o', help='output file for metrics (otherwise prints to stdout)')
-    parser.add_argument('--plot', '-p', help='output file for plot values (otherwise included in output)')
+    parser.add_argument('--plot', '-p', help='output file for plot values')
     args = parser.parse_args()
 
     total_commands = 0
@@ -72,10 +72,14 @@ if __name__ == '__main__':
                 "unprocessed": num_commands_unprocessed
             }
 
+    score_weight = 1.0 / len(results)
+    scores = sorted(result['processed'] / result['commands'] for result in results.values())
+
     metrics = {
         'total_commands': total_commands,
         'total_processed': total_processed,
         'total_unprocessed': total_unprocessed,
+        'weighted_proportion': sum(score * score_weight for score in scores),
         'results': results
     }
 
@@ -87,5 +91,4 @@ if __name__ == '__main__':
 
     if args.plot:
         with open(args.plot, 'w') as f:
-            scores = sorted(result['processed'] / result['commands'] for result in results.values())
             json.dump({'scores': [{'score': score} for score in scores]}, f, indent=4)

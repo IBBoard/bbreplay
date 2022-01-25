@@ -12,12 +12,12 @@ stages:
       size: 12440103
       nfiles: 58
     - path: metrics.py
-      md5: 0162c9623340acaed4b50843bb8280a6
-      size: 3310
+      md5: 4c652a1a18407c3922dcdfebcb01c9c4
+      size: 3388
     outs:
     - path: metrics/metrics.json
-      md5: ec2084d1ace31beb0d8ab034e7277d1a
-      size: 5229
+      md5: d29aa1c8aebbd02fd0d0b813486c95bd
+      size: 5276
     - path: metrics/plots.json
       md5: bfc7bca2d2513c7db5b7ce97f195e87d
       size: 1754
