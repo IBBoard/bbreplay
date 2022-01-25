@@ -712,8 +712,14 @@ class Replay:
                               log_entries, board, frenzied_block=False):
         if Skills.FOUL_APPEARANCE in target_by_idx.skills:
             log_entry = next(log_entries)
-            yield from self._process_action_result(log_entry, FoulAppearanceEntry, cmds, log_entries,
-                                                   targeting_player, ActionType.FOUL_APPEARANCE, board)
+            success = True
+            for event in self._process_action_result(log_entry, FoulAppearanceEntry, cmds, log_entries,
+                                                     targeting_player, ActionType.FOUL_APPEARANCE, board):
+                yield event
+                if isinstance(event, Action) and event.action == ActionType.FOUL_APPEARANCE:
+                    success = event.result == ActionResult.SUCCESS
+            if not success:
+                return
 
         dumped_off = False
         if Skills.DUMP_OFF in target_by_idx.skills and board.get_ball_carrier() == target_by_idx:
