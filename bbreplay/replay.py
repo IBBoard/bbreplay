@@ -300,7 +300,10 @@ class Replay:
         kickoff_result = kickoff_event.result
         board.kickoff_event = kickoff_result
         yield KickoffEventTuple(kickoff_result)
-        if kickoff_result == KickoffEvent.RIOT:
+        if kickoff_result == KickoffEvent.GET_THE_REF:
+            # We don't currently track bribes, but each team will get one
+            pass
+        elif kickoff_result == KickoffEvent.RIOT:
             if board.turn == 1 or board.turn == 9:
                 board.start_turn(board.receiving_team)
                 yield StartTurn(board.receiving_team, board.turn, board)
