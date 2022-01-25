@@ -29,6 +29,7 @@ class GameState:
         self.__ball_position = OFF_PITCH_POSITION
         self.__ball_carrier = None
         self.weather = None
+        self.kickoff_event = None
         self.quick_snap_turn = False
         self.__setups = [[], []]
         self.__last_setup_turn = 0

@@ -298,6 +298,7 @@ class Replay:
     def _process_kickoff_event(self, cmds, log_entries, board):
         kickoff_event = next(log_entries)
         kickoff_result = kickoff_event.result
+        board.kickoff_event = kickoff_result
         yield KickoffEventTuple(kickoff_result)
         if kickoff_result == KickoffEvent.RIOT:
             if board.turn == 1 or board.turn == 9:
@@ -537,7 +538,10 @@ class Replay:
                     if not isinstance(cmd, DiceChoiceCommand):
                         raise ValueError("Expected DiceChoiceCommand after ProRerollCommand "
                                          f"but got {type(cmd).__name__}")
-        elif board.can_reroll(player.team.team_type):
+        elif board.can_reroll(player.team.team_type) \
+                or (board.kickoff_event == KickoffEvent.CHEERING_FANS and isinstance(log_entries.peek(), RerollEntry)):
+            # We try to track when players can use rerolls,
+            # but Cheering Fans doesn't tell us who got the reroll, so we have to guess
             cmd = next(cmds)
             if isinstance(cmd, DeclineRerollCommand):
                 if is_active:
