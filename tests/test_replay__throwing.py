@@ -527,7 +527,7 @@ def test_pass_fumble_bounces_once(board):
 
     event = next(events)
     assert isinstance(event, EndTurn)
-    assert event.team == home_team
+    assert event.team == TeamType.HOME
     assert event.reason == "Fumble!"
 
     assert not board.get_ball_carrier()
