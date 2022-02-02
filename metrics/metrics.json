@@ -1,8 +1,8 @@
 {
     "total_commands": 140177,
-    "total_processed": 41333,
-    "total_unprocessed": 98844,
-    "weighted_proportion": 0.3839200215236216,
+    "total_processed": 44326,
+    "total_unprocessed": 95851,
+    "weighted_proportion": 0.4046040189978087,
     "results": {
         "data/Replay_2021-04-05_11-35-42.db": {
             "commands": 42,
@@ -78,9 +78,9 @@
         },
         "data/Replay_2021-03-28_10-12-59.db": {
             "commands": 6072,
-            "events": 169,
-            "processed": 1038,
-            "unprocessed": 5034
+            "events": 310,
+            "processed": 1809,
+            "unprocessed": 4263
         },
         "data/Replay_2020-07-26_10-08-00.db": {
             "commands": 6308,
@@ -114,9 +114,9 @@
         },
         "data/Replay_2021-05-16_09-36-48.db": {
             "commands": 5183,
-            "events": 38,
-            "processed": 296,
-            "unprocessed": 4887
+            "events": 187,
+            "processed": 966,
+            "unprocessed": 4217
         },
         "data/Replay_2021-04-18_13-44-12.db": {
             "commands": 5242,
@@ -174,9 +174,9 @@
         },
         "data/Replay_2021-04-11_10-04-51.db": {
             "commands": 4517,
-            "events": 542,
-            "processed": 2937,
-            "unprocessed": 1580
+            "events": 788,
+            "processed": 4489,
+            "unprocessed": 28
         }
     }
 }

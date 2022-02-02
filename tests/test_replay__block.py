@@ -871,3 +871,36 @@ def test_foul_appearance_prevents_block(board):
     assert not next(events, None)
     assert not next(cmds, None)
     assert not next(log_entries, None)
+
+
+def test_failed_stupid_prevents_block(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    player = home_team.get_player(0)
+    player.skills.append(Skills.REALLY_STUPID)
+    board.set_position(Position(7, 7), player)
+    opponent = away_team.get_player(0)
+    board.set_position(Position(8, 7), opponent)
+    board.setup_complete()
+    cmds = iter_([
+        TargetPlayerCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0,  TeamType.AWAY.value, 0, 8, 7]),
+        TargetSpaceCommand(1, 1, TeamType.HOME, 0, [TeamType.HOME.value, 0, 0, 0, 0, 0, 0, 0, 8, 7]),
+        DeclineRerollCommand(1, 1, TeamType.HOME, 1, []),
+        DiceChoiceCommand(1, 1, TeamType.HOME.value, 1, [0, 0, 0])
+    ])
+    log_entries = iter_([
+        StupidEntry(player.team.team_type, player.number, "2+", "1", ActionResult.FAILURE)
+    ])
+    events = replay._process_block(player, opponent, cmds, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.REALLY_STUPID
+    assert event.result == ActionResult.FAILURE
+
+    assert not board.is_prone(player)
+    assert not board.is_prone(opponent)
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)

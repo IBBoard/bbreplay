@@ -690,7 +690,14 @@ class Replay:
                 return
         else:
             cmd = next(cmds)
-            yield from self._process_uncontrollable_skills(targeting_player, cmds, log_entries, board)
+            failed_block = False
+            for event in self._process_uncontrollable_skills(targeting_player, cmds, log_entries, board):
+                if isinstance(event, Action):
+                    failed_block = event.result != ActionResult.SUCCESS
+                yield event
+            if failed_block:
+                return
+
             if board.is_prone(targeting_player):
                 yield from self.__unset_prone(targeting_player, log_entries, board)
                 yield Blitz(targeting_player, target_by_idx)
