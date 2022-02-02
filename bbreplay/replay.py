@@ -958,7 +958,7 @@ class Replay:
             if not board.get_ball_carrier():
                 log_entry = next(log_entries)
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                yield EndTurn(player.team, board.turn, log_entry.reason, board)
+                yield EndTurn(player.team.team_type, board.turn, log_entry.reason, board)
         else:
             # Else hand-off - doesn't have the pass part, just the catch
             pass_cmd = next(cmds)
@@ -980,7 +980,7 @@ class Replay:
                 yield from self._process_ball_movement(cmds, log_entries, board)
                 log_entry = next(log_entries)
                 validate_log_entry(log_entry, TurnOverEntry, player.team.team_type)
-                yield EndTurn(player.team, board.turn, log_entry.reason, board)
+                yield EndTurn(player.team.team_type, board.turn, log_entry.reason, board)
 
     def _process_throw_teammate(self, player, target_by_idx, cmds, log_entries, board):
         if Skills.THROW_TEAMMATE not in player.skills:
