@@ -15,8 +15,8 @@ def test_normal_kick(board):
         PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value])
     ])
     log_entries = iter_([
-        KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.S.value),
-        KickDistanceLogEntry(TeamType.AWAY.name, "1", 1),
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.S.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 1),
         KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value),
         BounceLogEntry(ScatterDirection.N.value)
     ])
@@ -64,8 +64,8 @@ def test_normal_kick_very_sunny(board):
         PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value])
     ])
     log_entries = iter_([
-        KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.S.value),
-        KickDistanceLogEntry(TeamType.AWAY.name, "1", 1),
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.S.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 1),
         KickoffEventLogEntry(KickoffEvent.CHANGING_WEATHER.value),
         WeatherLogEntry(Weather.VERY_SUNNY.name),
         BounceLogEntry(ScatterDirection.N.value),
@@ -115,6 +115,119 @@ def test_normal_kick_very_sunny(board):
     assert not next(log_entries, None)
 
 
+def test_catch_on_kick(board):
+    home_team, away_team = board.teams
+    player = home_team.get_player(0)
+    board.set_position(Position(8, 14), player)
+    replay = Replay(home_team, away_team, [], [])
+    cmds = iter_([
+        SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
+        SetupCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 8, 14]),
+        SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
+        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 15]),
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value])
+    ])
+    log_entries = iter_([
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.S.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 1),
+        KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value),
+        CatchEntry(TeamType.HOME, "1", "2+", "2", ActionResult.SUCCESS)
+    ])
+    events = replay._process_kickoff(cmds, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, TeamSetupComplete)
+    assert event.team == TeamType.AWAY
+
+    event = next(events)
+    assert isinstance(event, TeamSetupComplete)
+    assert event.team == TeamType.HOME
+
+    event = next(events)
+    assert isinstance(event, SetupComplete)
+
+    event = next(events)
+    assert isinstance(event, Kickoff)
+    assert event.target == Position(8, 15)
+    assert event.scatter_direction == ScatterDirection.S
+    assert event.scatter_distance == 1
+    assert board.get_ball_position() == Position(8, 14)
+
+    event = next(events)
+    assert isinstance(event, KickoffEventTuple)
+    assert event.result == KickoffEvent.CHEERING_FANS
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.CATCH
+    assert event.result == ActionResult.SUCCESS
+
+    assert board.get_ball_carrier() == player
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
+def test_failed_catch_on_kick(board):
+    home_team, away_team = board.teams
+    replay = Replay(home_team, away_team, [], [])
+    cmds = iter_([
+        SetupCompleteCommand(1, 0, TeamType.AWAY.value, 0, []),
+        SetupCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0, 8, 14]),
+        SetupCompleteCommand(1, 0, TeamType.HOME.value, 0, []),
+        KickoffCommand(1, 0, TeamType.AWAY.value, 0, [8, 15]),
+        PreKickoffCompleteCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value])
+    ])
+    log_entries = iter_([
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.S.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 1),
+        KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value),
+        CatchEntry(TeamType.HOME, "1", "2+", "1", ActionResult.FAILURE),
+        BounceLogEntry(ScatterDirection.N.value)
+    ])
+    events = replay._process_kickoff(cmds, log_entries, board)
+
+    event = next(events)
+    assert isinstance(event, TeamSetupComplete)
+    assert event.team == TeamType.AWAY
+
+    event = next(events)
+    assert isinstance(event, TeamSetupComplete)
+    assert event.team == TeamType.HOME
+
+    event = next(events)
+    assert isinstance(event, SetupComplete)
+
+    event = next(events)
+    assert isinstance(event, Kickoff)
+    assert event.target == Position(8, 15)
+    assert event.scatter_direction == ScatterDirection.S
+    assert event.scatter_distance == 1
+    assert board.get_ball_position() == Position(8, 14)
+
+    event = next(events)
+    assert isinstance(event, KickoffEventTuple)
+    assert event.result == KickoffEvent.CHEERING_FANS
+
+    event = next(events)
+    assert isinstance(event, Action)
+    assert event.action == ActionType.CATCH
+    assert event.result == ActionResult.FAILURE
+
+    event = next(events)
+    assert isinstance(event, Bounce)
+    assert event.scatter_direction == ScatterDirection.N
+    assert event.start_space == Position(8, 14)
+    assert event.end_space == Position(8, 15)
+
+    assert board.get_ball_carrier() is None
+
+    assert not next(events, None)
+    assert not next(cmds, None)
+    assert not next(log_entries, None)
+
+
 def test_touchback_for_off_pitch_kick(board):
     home_team, away_team = board.teams
     replay = Replay(home_team, away_team, [], [])
@@ -127,8 +240,8 @@ def test_touchback_for_off_pitch_kick(board):
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
-        KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.SW.value),
-        KickDistanceLogEntry(TeamType.AWAY.name, "1", 6),
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.SW.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 6),
         KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value),
         BounceLogEntry(ScatterDirection.NW.value)
     ])
@@ -176,8 +289,8 @@ def test_touchback_for_off_pitch_bounce(board):
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
-        KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.SW.value),
-        KickDistanceLogEntry(TeamType.AWAY.name, "1", 1),
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.SW.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 1),
         KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value),
         BounceLogEntry(ScatterDirection.S.value)
     ])
@@ -231,8 +344,8 @@ def test_touchback_for_own_half_kick(board):
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
-        KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.S.value),
-        KickDistanceLogEntry(TeamType.AWAY.name, "1", 1),
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.S.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 1),
         KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value),
         BounceLogEntry(ScatterDirection.W.value)
     ])
@@ -280,8 +393,8 @@ def test_touchback_for_own_half_kick_other_direction(board):
         TouchbackCommand(1, 0, TeamType.HOME.value, 0, [TeamType.HOME.value, 0])
     ])
     log_entries = iter_([
-        KickDirectionLogEntry(TeamType.AWAY.name, "1", ScatterDirection.N.value),
-        KickDistanceLogEntry(TeamType.AWAY.name, "1", 1),
+        KickDirectionLogEntry(TeamType.AWAY, "1", ScatterDirection.N.value),
+        KickDistanceLogEntry(TeamType.AWAY, "1", 1),
         KickoffEventLogEntry(KickoffEvent.CHEERING_FANS.value),
         BounceLogEntry(ScatterDirection.W.value)
     ])

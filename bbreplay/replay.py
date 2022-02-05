@@ -257,11 +257,7 @@ class Replay:
             next(cmds)
             cmd = cmds.peek()
 
-        ball_bounces = True
-        for event in self._process_kickoff_event(cmds, log_entries, board):
-            yield event
-            if isinstance(event, Action) and event.action == ActionType.CATCH:
-                ball_bounces = event.result != ActionResult.SUCCESS
+        yield from self._process_kickoff_event(cmds, log_entries, board)
 
         board.kickoff()
 
@@ -270,9 +266,30 @@ class Replay:
         target_half = kickoff_cmd.position.y // half_pitch_length
         landed_half = ball_dest.y // half_pitch_length
 
-        touchback = board.get_ball_position().is_offpitch() or target_half != landed_half
+        ball_position = board.get_ball_position()
+        touchback = ball_position.is_offpitch() or target_half != landed_half
+        if not touchback:
+            under_ball = board.get_position(ball_position)
+        else:
+            under_ball = None
+        ball_carrier = board.get_ball_carrier()
 
-        if ball_bounces:
+        if ball_carrier:
+            # Already caught
+            pass
+        elif under_ball:
+            # We don't use `_process_catch` here because we can't reroll kickoff catches but the process
+            # method uses helpers that assume a failed action rerolls or declines a reroll
+            catch_entry = next(log_entries)
+            validate_log_entry(catch_entry, CatchEntry, board.receiving_team)
+            if catch_entry.result == ActionResult.SUCCESS:
+                board.set_ball_carrier(under_ball)
+                yield Action(under_ball, ActionType.CATCH, catch_entry.result, board)
+            else:
+                yield Action(under_ball, ActionType.CATCH, catch_entry.result, board)
+                yield from self._process_ball_movement(cmds, log_entries, board)
+        else:
+            # No-one to caught it
             if touchback:
                 _ = next(log_entries)
             else:
@@ -284,8 +301,6 @@ class Replay:
                     yield Bounce(old_position, ball_dest, log_entry.direction, board)
                 if ball_dest.is_offpitch():
                     touchback = True
-        # else
-        # TODO: Handle no bounce when it gets caught straight away (but not via "High Kick" event)
 
         if touchback:
             cmd = next(cmds)
@@ -394,6 +409,7 @@ class Replay:
             next(cmds)
             cmd = cmds.peek()
 
+        # FIXME: Cmd ends up as `None` but we get an infinite loop if we return
         if cmd.team != expected_team:
             # Next command should be from the *other* team. If it's not then something odd happened
             log_entry = log_entries.peek()
