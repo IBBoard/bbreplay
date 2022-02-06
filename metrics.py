@@ -69,11 +69,12 @@ if __name__ == '__main__':
                 "commands": num_commands,
                 "events": i,
                 "processed": num_commands_processed,
-                "unprocessed": num_commands_unprocessed
+                "unprocessed": num_commands_unprocessed,
+                "proportion": num_commands_processed / num_commands
             }
 
     score_weight = 1.0 / len(results)
-    scores = sorted(result['processed'] / result['commands'] for result in results.values())
+    scores = sorted(result['proportion'] for result in results.values())
 
     metrics = {
         'total_commands': total_commands,
