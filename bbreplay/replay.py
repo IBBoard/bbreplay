@@ -10,11 +10,11 @@ from . import Peekable, other_team, CoinToss, TeamType, ActionResult, BlockResul
     scatter, throwin, KickoffEvent, Role, ThrowResult, _norths, _souths, \
     PITCH_LENGTH, PITCH_WIDTH, LAST_COLUMN_IDX, NEAR_ENDZONE_IDX, FAR_ENDZONE_IDX, OFF_PITCH_POSITION
 from .command import *
-from .log import DisconnectEntry, WeatherLogEntry, parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, \
+from .log import WeatherLogEntry, parse_log_entries, MatchLogEntry, StupidEntry, DodgeEntry, SkillEntry, \
     PickupEntry, TentacledEntry, RerollEntry, TurnOverEntry, BounceLogEntry, FoulAppearanceEntry, LeapEntry, \
     ThrowInDirectionLogEntry, CatchEntry, KORecoveryEntry, ThrowEntry, GoingForItEntry, WildAnimalEntry, \
     SkillRollEntry, ApothecaryLogEntry, LeaderRerollEntry, SpellEntry, ThrowTeammateEntry, LandingEntry, \
-    ArmourValueRollEntry, AlwaysHungryEntry
+    ArmourValueRollEntry, AlwaysHungryEntry, DisconnectEntry
 from .state import GameState
 from .teams import create_team
 
