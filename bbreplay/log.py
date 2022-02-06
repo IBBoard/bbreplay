@@ -439,6 +439,14 @@ class TurnOverEntry(TeamEntry):
         return f'TurnOver(team={self.team}, reason={self.reason})'
 
 
+class DisconnectEntry(TeamEntry):
+    def __init__(self, team):
+        super().__init__(team)
+
+    def __repr__(self) -> str:
+        return f'Disconnect(team={self.team})'
+
+
 OTHER_ENTRY_MAP = {
     "Animal": WildAnimalEntry,
     "Appearance": FoulAppearanceEntry,
@@ -665,4 +673,8 @@ def parse_log_entry_lines(lines):
                 toss_randomisation.result = CoinToss(int(result.group(1)))
                 log_entries.append(toss_randomisation)
                 continue
+            if line == "|  | Team Home is set as responsible for the disconnection.":
+                log_entries.append(DisconnectEntry(TeamType.HOME))
+            elif line == "|  | Team Away is set as responsible for the disconnection.":
+                log_entries.append(DisconnectEntry(TeamType.AWAY))
     return log_entries
