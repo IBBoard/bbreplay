@@ -21,7 +21,11 @@ class LoggingGenrator(Peekable):
 
 def print_team(team, debug):
     prefix = "Home" if team.team_type == TeamType.HOME else "Away"
-    print(f"{prefix}: {team.name} ({team.race})")
+    if debug:
+        print(f"{prefix}: {team.name} ({team.race} - {team.coach_type.name.title()})")
+    else:
+        print(f"{prefix}: {team.name} ({team.race})")
+    print(f"\t{team.team_value}TV, {team.rerolls} rerolls, {team.apothecaries} apothecaries")
     for idx, player in sorted(enumerate(team.get_players()), key=lambda x: x[1].number):
         if debug:
             print(f"\t{player.number} - {player.name} (idx {idx})")
